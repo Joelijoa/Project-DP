@@ -1,9 +1,8 @@
-const pool = require('../config/db');
+const { User } = require('./index');
+
 const findUserByEmail = async (email) => {
-    const result = await pool.query(
-        'SELECT * FROM users WHERE email = $1',
-        [email]
-    )
-    return result.rows[0];
+    const user = await User.findOne({ where: { email }, raw: true });
+    return user;
 };
+
 module.exports = { findUserByEmail };
