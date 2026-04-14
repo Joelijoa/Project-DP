@@ -1,5 +1,5 @@
-const {loginUser}= require('../services/authService');
-const {validationResult} = require('express-validator');
+const { loginUser } = require('../services/authService');
+const { validationResult } = require('express-validator');
 
 const login = async (req, res) => {
     const errors = validationResult(req);
@@ -14,4 +14,5 @@ const login = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 module.exports = { login };
