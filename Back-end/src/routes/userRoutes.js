@@ -7,7 +7,7 @@ const { verifyToken, verifyRole } = require('../middlewares/authMiddleware');
 router.get('/profile', verifyToken, (req, res) => {
   res.json({
     message: 'Profil récupéré avec succès',
-    user: req.user // contient id, email, role
+    user: req.user
   });
 });
 
