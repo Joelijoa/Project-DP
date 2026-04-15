@@ -8,7 +8,9 @@ const seed = async () => {
 
         const existing = await User.findOne({ where: { email: 'jean@example.com' } });
         if (existing) {
-            console.log('Utilisateur admin existe déjà');
+            // S'assurer que l'admin n'a pas must_change_password
+            await existing.update({ must_change_password: false });
+            console.log('Utilisateur admin existe déjà (must_change_password: false)');
             process.exit(0);
         }
 
@@ -20,6 +22,7 @@ const seed = async () => {
             password: hash,
             role: 'admin',
             organisation: 'GRC Corp',
+            must_change_password: false,
         });
 
         console.log('Utilisateur admin créé avec succès');

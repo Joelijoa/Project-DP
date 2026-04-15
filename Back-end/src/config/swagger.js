@@ -75,9 +75,45 @@ const options = {
             },
             role: {
               type: 'string',
-              enum: ['admin', 'user'],
+              enum: ['admin', 'auditeur_senior', 'auditeur_junior', 'client'],
               example: 'admin',
             },
+            organisation: {
+              type: 'string',
+              example: 'GRC Corp',
+            },
+            telephone: {
+              type: 'string',
+              example: '0600000000',
+            },
+            actif: {
+              type: 'boolean',
+              example: true,
+            },
+          },
+        },
+        CreateUserRequest: {
+          type: 'object',
+          required: ['nom', 'prenom', 'email', 'role'],
+          properties: {
+            nom: { type: 'string', example: 'Martin' },
+            prenom: { type: 'string', example: 'Sophie' },
+            email: { type: 'string', format: 'email', example: 'sophie@example.com' },
+            role: { type: 'string', enum: ['admin', 'auditeur_senior', 'auditeur_junior', 'client'], example: 'auditeur_junior' },
+            organisation: { type: 'string', example: 'Entreprise X' },
+            telephone: { type: 'string', example: '0600000000' },
+          },
+        },
+        UpdateUserRequest: {
+          type: 'object',
+          properties: {
+            nom: { type: 'string', example: 'Martin' },
+            prenom: { type: 'string', example: 'Sophie' },
+            email: { type: 'string', format: 'email', example: 'sophie@example.com' },
+            role: { type: 'string', enum: ['admin', 'auditeur_senior', 'auditeur_junior', 'client'], example: 'auditeur_senior' },
+            organisation: { type: 'string', example: 'Entreprise Y' },
+            telephone: { type: 'string', example: '0611111111' },
+            actif: { type: 'boolean', example: true },
           },
         },
         ErrorResponse: {

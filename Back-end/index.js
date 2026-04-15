@@ -6,6 +6,8 @@ require('dotenv').config();
 const { sequelize } = require('./src/models');
 const authRoutes = require('./src/routes/authRoutes');
 const userRoutes = require('./src/routes/userRoutes');
+const referentielRoutes = require('./src/routes/referentielRoutes');
+const auditRoutes = require('./src/routes/auditRoutes');
 const swaggerSpecs = require('./src/config/swagger');
 
 const app = express();
@@ -22,6 +24,14 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/referentiels', referentielRoutes);
+app.use('/api/audits', auditRoutes);
+
+// Gestionnaire d'erreurs global — retourne toujours du JSON
+app.use((err, req, res, next) => {
+    console.error('[ERROR]', err.message);
+    res.status(err.status || 500).json({ message: err.message || 'Erreur interne du serveur' });
+});
 
 const PORT = process.env.PORT || 5000;
 

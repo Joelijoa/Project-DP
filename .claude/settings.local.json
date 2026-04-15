@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "Bash(timeout 8 node index.js)",
+      "Bash(node -e \"console.log\\(require\\('express/package.json'\\).version\\)\")",
+      "Bash(npx vite *)",
+      "Bash(node index.js)",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"jean@example.com\",\"password\":\"motdepasse123\"}')",
+      "Bash(node -e ' *)",
+      "Bash(netstat -ano)",
+      "Bash(powershell.exe -Command \"Get-Process -Id 26284 2>/dev/null | Select-Object Name,Id,Path\")",
+      "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 5000 | Select-Object LocalAddress,LocalPort,State,OwningProcess\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 26284 -Force\" sleep 2 netstat -ano)"
     ]
   }
 }

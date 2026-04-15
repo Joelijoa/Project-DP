@@ -39,6 +39,16 @@ const Audit = sequelize.define('Audit', {
         type: DataTypes.INTEGER,
         allowNull: false,
     },
+    identification: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: null,
+    },
+    indicateurs: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: null,
+    },
 }, {
     tableName: 'audits',
 });
