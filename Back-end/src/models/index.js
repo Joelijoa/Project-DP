@@ -8,6 +8,7 @@ const Audit = require('./Audit');
 const AuditAuditeur = require('./AuditAuditeur');
 const Evaluation = require('./Evaluation');
 const PlanAction = require('./PlanAction');
+const SoA = require('./SoA');
 
 // ========== ASSOCIATIONS ==========
 
@@ -54,6 +55,14 @@ Audit.hasMany(PlanAction, { foreignKey: 'audit_id', as: 'plans_actions' });
 PlanAction.belongsTo(Mesure, { foreignKey: 'mesure_id', as: 'mesure' });
 Mesure.hasMany(PlanAction, { foreignKey: 'mesure_id', as: 'plans_actions' });
 
+// SoA -> Audit
+SoA.belongsTo(Audit, { foreignKey: 'audit_id', as: 'audit' });
+Audit.hasMany(SoA, { foreignKey: 'audit_id', as: 'soa_entries' });
+
+// SoA -> Mesure
+SoA.belongsTo(Mesure, { foreignKey: 'mesure_id', as: 'mesure' });
+Mesure.hasMany(SoA, { foreignKey: 'mesure_id', as: 'soa_entries' });
+
 module.exports = {
     sequelize,
     User,
@@ -65,4 +74,5 @@ module.exports = {
     AuditAuditeur,
     Evaluation,
     PlanAction,
+    SoA,
 };

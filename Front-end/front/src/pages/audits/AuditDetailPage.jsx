@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getAuditById, updateAudit, getEvaluations, saveEvaluations } from '../../services/endpoints/auditService';
+import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA } from '../../services/endpoints/auditService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
 import DateInput from '../../components/common/DateInput';
@@ -32,7 +32,7 @@ const STATUT_CONFIG = {
     archive:   { label: 'Archivé',   bg: 'bg-yellow-50',text: 'text-yellow-700' },
 };
 
-const TABS = [
+const TABS_DNSSI = [
     { id: 'description',    label: 'Description outil évaluation' },
     { id: 'identification', label: 'Identification entité ou IIV' },
     { id: 'evaluation',     label: 'Évaluation MO DNSSI' },
@@ -41,6 +41,31 @@ const TABS = [
     { id: 'avancement',     label: "État d'avancement" },
     { id: 'indicateurs',    label: 'Indicateurs de la SSI' },
 ];
+
+const TABS_ISO = [
+    { id: 'description',    label: "Description de l'audit" },
+    { id: 'identification', label: "Identification de l'organisme" },
+    { id: 'soa',            label: "Déclaration d'Applicabilité" },
+    { id: 'evaluation_iso', label: 'Évaluation des contrôles' },
+    { id: 'synthese_iso',   label: 'Synthèse par thème' },
+    { id: 'nc',             label: 'Non-conformités' },
+    { id: 'indicateurs_iso',label: 'Indicateurs SMSI' },
+];
+
+// Raisons d'inclusion ISO 27001
+const RAISONS_INCLUSION = [
+    { value: 'legal',          label: 'Exigence légale / réglementaire' },
+    { value: 'contractuel',    label: 'Exigence contractuelle' },
+    { value: 'risque',         label: 'Résultat d\'appréciation des risques' },
+    { value: 'bonne_pratique', label: 'Bonne pratique retenue' },
+];
+
+const STATUT_IMPL_CONFIG = {
+    implemente:     { label: 'Implémenté',          bg: 'bg-green-50',  text: 'text-green-700',  dot: 'bg-green-500' },
+    partiel:        { label: 'Partiellement impl.', bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500' },
+    planifie:       { label: 'Planifié',            bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-500' },
+    non_implemente: { label: 'Non implémenté',      bg: 'bg-red-50',    text: 'text-red-700',    dot: 'bg-red-500' },
+};
 
 const INDICATEURS_DEF = [
     { key: 'taux_organisation_ssi',    label: "Taux de conformité — Organisation SSI (Objectif 2)", auto: true },
@@ -130,6 +155,10 @@ const AuditDetailPage = () => {
     const [indicateurs, setIndicateurs] = useState({});
     const [savingInfo, setSavingInfo] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
+    // ISO 27001 — Déclaration d'Applicabilité
+    const [soaMap, setSoaMap] = useState({});       // { mesure_id: entry }
+    const [soaDirty, setSoaDirty] = useState(false);
+    const [savingSoa, setSavingSoa] = useState(false);
 
     // Chargement initial
     useEffect(() => {
@@ -146,7 +175,7 @@ const AuditDetailPage = () => {
                 setIndicateurs(a.indicateurs || {});
                 setAllUsers(usersRes.data.users || []);
 
-                // Map des évaluations existantes
+                // Map des évaluations existantes (DNSSI)
                 const map = {};
                 (evalsRes.data.evaluations || []).forEach(ev => {
                     map[ev.mesure_id] = ev;
@@ -156,11 +185,20 @@ const AuditDetailPage = () => {
 
                 // Chargement du référentiel complet (trié par id)
                 const refRes = await getReferentielById(a.referentiel_id);
-                setReferentiel(sortReferentiel(refRes.data.referentiel));
+                const sortedRef = sortReferentiel(refRes.data.referentiel);
+                setReferentiel(sortedRef);
 
                 // Ouvrir le 1er domaine par défaut
-                if (refRes.data.referentiel?.domaines?.length > 0) {
-                    setOpenDomaines({ [refRes.data.referentiel.domaines[0].id]: true });
+                if (sortedRef?.domaines?.length > 0) {
+                    setOpenDomaines({ [sortedRef.domaines[0].id]: true });
+                }
+
+                // Chargement SoA si ISO 27001
+                if (a.referentiel?.type === 'ISO27001' || refRes.data.referentiel?.type === 'ISO27001') {
+                    const soaRes = await getSoA(id);
+                    const sm = {};
+                    (soaRes.data.soa || []).forEach(e => { sm[e.mesure_id] = e; });
+                    setSoaMap(sm);
                 }
             } catch {
                 toast.error('Erreur lors du chargement de l\'audit');
@@ -201,6 +239,32 @@ const AuditDetailPage = () => {
             toast.error('Erreur lors de la sauvegarde');
         } finally {
             setSaving(false);
+        }
+    };
+
+    // Mise à jour d'une entrée SoA (ISO 27001)
+    const setSoaEntry = (mesureId, field, value) => {
+        setSoaMap(prev => ({
+            ...prev,
+            [mesureId]: { ...(prev[mesureId] || { mesure_id: mesureId }), [field]: value },
+        }));
+        setSoaDirty(true);
+    };
+
+    // Sauvegarde de la Déclaration d'Applicabilité
+    const handleSaveSoA = async () => {
+        setSavingSoa(true);
+        try {
+            const entries = Object.values(soaMap);
+            await saveSoA(id, entries);
+            setSoaDirty(false);
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success('Déclaration d\'applicabilité sauvegardée');
+        } catch {
+            toast.error('Erreur lors de la sauvegarde');
+        } finally {
+            setSavingSoa(false);
         }
     };
 
@@ -280,6 +344,9 @@ const AuditDetailPage = () => {
         );
     }
 
+    const isISO = referentiel?.type === 'ISO27001';
+    const tabs = isISO ? TABS_ISO : TABS_DNSSI;
+
     return (
         <div>
             {/* En-tête */}
@@ -307,12 +374,14 @@ const AuditDetailPage = () => {
             </div>
 
             {/* Onglets */}
-            <TabNav activeTab={activeTab} setActiveTab={setActiveTab} />
+            <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} />
 
-            {/* Contenu des onglets */}
+            {/* Contenu des onglets — communs */}
             {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} />}
             {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} />}
-            {activeTab === 'evaluation' && (
+
+            {/* Onglets DNSSI */}
+            {!isISO && activeTab === 'evaluation' && (
                 <TabEvaluation
                     referentiel={referentiel}
                     localEvals={localEvals}
@@ -324,10 +393,10 @@ const AuditDetailPage = () => {
                     onSave={handleSaveEvals}
                 />
             )}
-            {activeTab === 'synthese_mat' && <TabSyntheseMaturite synthese={synthese} />}
-            {activeTab === 'synthese_conf' && <TabSyntheseConformite synthese={synthese} totalConforme={totalConforme} totalPartiel={totalPartiel} totalNC={totalNC} tauxGlobal={tauxGlobal} />}
-            {activeTab === 'avancement' && <TabAvancement referentiel={referentiel} localEvals={localEvals} synthese={synthese} />}
-            {activeTab === 'indicateurs' && (
+            {!isISO && activeTab === 'synthese_mat' && <TabSyntheseMaturite synthese={synthese} />}
+            {!isISO && activeTab === 'synthese_conf' && <TabSyntheseConformite synthese={synthese} totalConforme={totalConforme} totalPartiel={totalPartiel} totalNC={totalNC} tauxGlobal={tauxGlobal} />}
+            {!isISO && activeTab === 'avancement' && <TabAvancement referentiel={referentiel} localEvals={localEvals} synthese={synthese} />}
+            {!isISO && activeTab === 'indicateurs' && (
                 <TabIndicateurs
                     indicateurs={indicateurs}
                     setIndicateurs={setIndicateurs}
@@ -336,13 +405,29 @@ const AuditDetailPage = () => {
                     saving={savingInfo}
                 />
             )}
+
+            {/* Onglets ISO 27001 */}
+            {isISO && activeTab === 'soa' && (
+                <TabSoA
+                    referentiel={referentiel}
+                    soaMap={soaMap}
+                    setSoaEntry={setSoaEntry}
+                    soaDirty={soaDirty}
+                    savingSoa={savingSoa}
+                    onSave={handleSaveSoA}
+                />
+            )}
+            {isISO && activeTab === 'evaluation_iso' && <TabPlaceholder titre="Évaluation des contrôles" texte="Cette section permettra d'évaluer la conformité des contrôles ISO 27001:2022 applicables (définis dans la Déclaration d'Applicabilité). Disponible après avoir complété la SoA." />}
+            {isISO && activeTab === 'synthese_iso' && <TabPlaceholder titre="Synthèse par thème" texte="Vue synthétique de la conformité regroupée par thème ISO 27001:2022 (A.5 Organisationnel, A.6 Personnes, A.7 Physique, A.8 Technologique)." />}
+            {isISO && activeTab === 'nc' && <TabPlaceholder titre="Non-conformités" texte="Registre des non-conformités identifiées lors de l'évaluation des contrôles ISO 27001:2022 applicables." />}
+            {isISO && activeTab === 'indicateurs_iso' && <TabPlaceholder titre="Indicateurs SMSI" texte="Indicateurs de performance du Système de Management de la Sécurité de l'Information (SMSI) selon ISO 27001:2022." />}
         </div>
     );
 };
 
 // ─── Navigation onglets ───────────────────────────────────────────────────────
 
-const TabNav = ({ activeTab, setActiveTab }) => {
+const TabNav = ({ activeTab, setActiveTab, tabs }) => {
     const navRef = useRef(null);
     const [canScrollLeft, setCanScrollLeft]   = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
@@ -393,7 +478,7 @@ const TabNav = ({ activeTab, setActiveTab }) => {
                 className="flex-1 flex gap-1 border-b border-gray-200 overflow-x-auto"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-                {TABS.map((tab, i) => (
+                {tabs.map((tab, i) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
@@ -1103,6 +1188,248 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving 
                     </button>
                 </div>
             </div>
+        </div>
+    );
+};
+
+// ─── TAB ISO : Placeholder ────────────────────────────────────────────────────
+
+const TabPlaceholder = ({ titre, texte }) => (
+    <div className="space-y-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
+            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h3 className="text-sm font-semibold text-gray-800 mb-2">{titre}</h3>
+            <p className="text-sm text-gray-500 max-w-md mx-auto">{texte}</p>
+        </div>
+    </div>
+);
+
+// ─── TAB ISO 3 : Déclaration d'Applicabilité (SoA) ───────────────────────────
+
+const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave }) => {
+    const [openThemes, setOpenThemes] = useState({});
+
+    // Ouvrir le 1er thème par défaut
+    useEffect(() => {
+        if (referentiel?.domaines?.length > 0) {
+            setOpenThemes({ [referentiel.domaines[0].id]: true });
+        }
+    }, [referentiel]);
+
+    const toggleTheme = (id) => setOpenThemes(prev => ({ ...prev, [id]: !prev[id] }));
+
+    // KPIs
+    const allMesures = referentiel?.domaines?.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []) ?? [];
+    const total = allMesures.length;
+    const applicable = allMesures.filter(m => soaMap[m.id]?.applicable === true).length;
+    const nonApplicable = allMesures.filter(m => soaMap[m.id]?.applicable === false).length;
+    const undecided = total - applicable - nonApplicable;
+
+    const toggleRaison = (mesureId, value) => {
+        const current = soaMap[mesureId]?.raisons_inclusion ?? [];
+        const next = current.includes(value)
+            ? current.filter(r => r !== value)
+            : [...current, value];
+        setSoaEntry(mesureId, 'raisons_inclusion', next);
+    };
+
+    return (
+        <div className="space-y-4">
+            <TabInfo text="La Déclaration d'Applicabilité (SoA) est un document central de l'ISO 27001. Elle liste tous les contrôles de l'Annexe A et indique pour chacun s'il est applicable ou non, les raisons de son inclusion, son statut d'implémentation et les références documentaires associées." />
+
+            {/* KPIs */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                    { label: 'Total contrôles', value: total, color: '#111827' },
+                    { label: 'Applicables', value: applicable, color: '#16a34a' },
+                    { label: 'Non applicables', value: nonApplicable, color: '#dc2626' },
+                    { label: 'À décider', value: undecided, color: '#d97706' },
+                ].map((kpi, i) => (
+                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
+                        <p className="text-3xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Accordion par thème */}
+            {referentiel?.domaines?.map(theme => {
+                const isOpen = !!openThemes[theme.id];
+                const themeMesures = theme.objectifs?.flatMap(o => o.mesures ?? []) ?? [];
+                const themeApplicable = themeMesures.filter(m => soaMap[m.id]?.applicable === true).length;
+                const themeTotal = themeMesures.length;
+
+                return (
+                    <div key={theme.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <button
+                            onClick={() => toggleTheme(theme.id)}
+                            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition"
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>
+                                    {theme.code}
+                                </span>
+                                <span className="text-sm font-semibold text-gray-800">{theme.nom}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-500">{themeApplicable}/{themeTotal} applicables</span>
+                                <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${themeTotal > 0 ? (themeApplicable / themeTotal) * 100 : 0}%` }} />
+                                </div>
+                                <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </div>
+                        </button>
+
+                        {isOpen && (
+                            <div className="border-t border-gray-100">
+                                {theme.objectifs?.map(objectif => (
+                                    <div key={objectif.id} className="border-b border-gray-50 last:border-0">
+                                        {/* En-tête objectif */}
+                                        <div className="px-5 py-2.5 bg-gray-50/60">
+                                            <p className="text-xs font-semibold text-gray-600">
+                                                <span className="text-gray-400 mr-1">{objectif.code}</span>
+                                                {objectif.description}
+                                            </p>
+                                        </div>
+
+                                        {/* Lignes contrôles */}
+                                        {objectif.mesures?.map(mesure => {
+                                            const entry = soaMap[mesure.id] || {};
+                                            const isApplicable = entry.applicable;
+                                            const raisons = entry.raisons_inclusion ?? [];
+
+                                            return (
+                                                <div key={mesure.id} className="px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors">
+                                                    {/* Ligne principale */}
+                                                    <div className="flex items-start gap-4">
+                                                        {/* Code + tooltip */}
+                                                        <div className="relative group flex-shrink-0 w-24">
+                                                            <span className="font-mono text-xs text-gray-600 cursor-help underline decoration-dotted decoration-gray-400">
+                                                                {mesure.code}
+                                                            </span>
+                                                            <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
+                                                                <p className="font-semibold text-gray-100 mb-1.5 text-xs">{mesure.code}</p>
+                                                                <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>
+                                                                <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Description mesure */}
+                                                        <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description}</p>
+
+                                                        {/* Toggle applicable */}
+                                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                                            <button
+                                                                onClick={() => setSoaEntry(mesure.id, 'applicable', isApplicable === true ? null : true)}
+                                                                className={`px-2.5 py-1 text-xs font-medium rounded-l-md border transition ${isApplicable === true ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-500 border-gray-200 hover:border-green-400'}`}
+                                                            >
+                                                                Oui
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setSoaEntry(mesure.id, 'applicable', isApplicable === false ? null : false)}
+                                                                className={`px-2.5 py-1 text-xs font-medium rounded-r-md border-t border-r border-b transition ${isApplicable === false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-200 hover:border-red-400'}`}
+                                                            >
+                                                                Non
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Détails si applicable = true */}
+                                                    {isApplicable === true && (
+                                                        <div className="mt-3 ml-28 space-y-3">
+                                                            {/* Raisons d'inclusion */}
+                                                            <div>
+                                                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Raisons d'inclusion</p>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {RAISONS_INCLUSION.map(r => (
+                                                                        <label key={r.value} className="flex items-center gap-1.5 cursor-pointer">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={raisons.includes(r.value)}
+                                                                                onChange={() => toggleRaison(mesure.id, r.value)}
+                                                                                className="w-3 h-3 rounded accent-red-600"
+                                                                            />
+                                                                            <span className="text-xs text-gray-600">{r.label}</span>
+                                                                        </label>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                {/* Statut implémentation */}
+                                                                <div>
+                                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Statut d'implémentation</p>
+                                                                    <select
+                                                                        value={entry.statut_implementation ?? ''}
+                                                                        onChange={e => setSoaEntry(mesure.id, 'statut_implementation', e.target.value || null)}
+                                                                        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-1"
+                                                                    >
+                                                                        <option value="">— Sélectionner —</option>
+                                                                        {Object.entries(STATUT_IMPL_CONFIG).map(([k, v]) => (
+                                                                            <option key={k} value={k}>{v.label}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+
+                                                                {/* Référence documentaire */}
+                                                                <div>
+                                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Référence documentaire</p>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={entry.reference_document ?? ''}
+                                                                        onChange={e => setSoaEntry(mesure.id, 'reference_document', e.target.value || null)}
+                                                                        placeholder="Ex : POL-SEC-001"
+                                                                        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Justification si non applicable */}
+                                                    {isApplicable === false && (
+                                                        <div className="mt-3 ml-28">
+                                                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Justification d'exclusion</p>
+                                                            <textarea
+                                                                value={entry.justification_exclusion ?? ''}
+                                                                onChange={e => setSoaEntry(mesure.id, 'justification_exclusion', e.target.value || null)}
+                                                                placeholder="Expliquer pourquoi ce contrôle n'est pas applicable..."
+                                                                rows={2}
+                                                                className="w-full text-xs border border-orange-200 rounded-md px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1 resize-none"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+
+            {/* Bouton flottant sauvegarde */}
+            {soaDirty && (
+                <div className="sticky bottom-4 flex justify-end">
+                    <button
+                        onClick={onSave}
+                        disabled={savingSoa}
+                        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-xl shadow-lg transition disabled:opacity-60"
+                        style={{ backgroundColor: 'var(--brand-red)' }}
+                    >
+                        {savingSoa ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                        Sauvegarder la Déclaration d'Applicabilité
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

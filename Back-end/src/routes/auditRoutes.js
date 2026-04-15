@@ -10,6 +10,7 @@ const {
     getEvaluations,
     saveEvaluations,
 } = require('../controllers/auditController');
+const { getSoA, saveSoA } = require('../controllers/soaController');
 
 // Liste tous les audits
 router.get('/', verifyToken, getAllAudits);
@@ -31,5 +32,9 @@ router.get('/:id/evaluations', verifyToken, getEvaluations);
 
 // Sauvegarder (bulk upsert) les évaluations
 router.put('/:id/evaluations', verifyToken, saveEvaluations);
+
+// Déclaration d'Applicabilité (ISO 27001)
+router.get('/:id/soa', verifyToken, getSoA);
+router.put('/:id/soa', verifyToken, saveSoA);
 
 module.exports = router;
