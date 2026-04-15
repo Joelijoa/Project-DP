@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getAuditById, updateAudit, getEvaluations, saveEvaluations } from '../../services/endpoints/auditService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
@@ -59,6 +59,21 @@ const INDICATEURS_DEF = [
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
+// Trie les domaines, objectifs et mesures par id (ordre d'insertion depuis le seed)
+const sortReferentiel = (ref) => {
+    if (!ref) return ref;
+    return {
+        ...ref,
+        domaines: [...(ref.domaines || [])].sort((a, b) => a.id - b.id).map(d => ({
+            ...d,
+            objectifs: [...(d.objectifs || [])].sort((a, b) => a.id - b.id).map(o => ({
+                ...o,
+                mesures: [...(o.mesures || [])].sort((a, b) => a.id - b.id),
+            })),
+        })),
+    };
+};
+
 const calcConformite = (niveau) => {
     if (niveau === null || niveau === undefined) return 'na';
     if (niveau <= 1) return 'non_conforme';
@@ -69,6 +84,15 @@ const calcConformite = (niveau) => {
 const niveauLabel = (v) => NIVEAUX.find(n => n.value === v)?.label ?? 'N/A';
 
 // ─── Sous-composants ───────────────────────────────────────────────────────────
+
+const TabInfo = ({ text }) => (
+    <div className="flex items-start gap-3 rounded-xl px-4 py-3 mb-5 text-sm text-gray-600 border border-blue-100 bg-blue-50/40">
+        <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+        </svg>
+        <p className="leading-relaxed">{text}</p>
+    </div>
+);
 
 const ConformiteBadge = ({ conformite }) => {
     const cfg = CONFORMITE_CONFIG[conformite] ?? CONFORMITE_CONFIG.na;
@@ -130,9 +154,9 @@ const AuditDetailPage = () => {
                 setEvalMap(map);
                 setLocalEvals({ ...map });
 
-                // Chargement du référentiel complet
+                // Chargement du référentiel complet (trié par id)
                 const refRes = await getReferentielById(a.referentiel_id);
-                setReferentiel(refRes.data.referentiel);
+                setReferentiel(sortReferentiel(refRes.data.referentiel));
 
                 // Ouvrir le 1er domaine par défaut
                 if (refRes.data.referentiel?.domaines?.length > 0) {
@@ -283,28 +307,7 @@ const AuditDetailPage = () => {
             </div>
 
             {/* Onglets */}
-            <div className="border-b border-gray-200 mb-6">
-                <nav className="flex gap-1 overflow-x-auto">
-                    {TABS.map((tab, i) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                                activeTab === tab.id
-                                    ? 'border-current'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                            }`}
-                            style={activeTab === tab.id ? { color: 'var(--brand-red)', borderColor: 'var(--brand-red)' } : {}}
-                        >
-                            <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
-                                style={{ backgroundColor: activeTab === tab.id ? 'var(--brand-red)' : '#9CA3AF' }}>
-                                {i + 1}
-                            </span>
-                            {tab.label}
-                        </button>
-                    ))}
-                </nav>
-            </div>
+            <TabNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
             {/* Contenu des onglets */}
             {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} />}
@@ -337,6 +340,101 @@ const AuditDetailPage = () => {
     );
 };
 
+// ─── Navigation onglets ───────────────────────────────────────────────────────
+
+const TabNav = ({ activeTab, setActiveTab }) => {
+    const navRef = useRef(null);
+    const [canScrollLeft, setCanScrollLeft]   = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const checkScroll = () => {
+        const el = navRef.current;
+        if (!el) return;
+        setCanScrollLeft(el.scrollLeft > 4);
+        setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    };
+
+    useEffect(() => {
+        checkScroll();
+        const el = navRef.current;
+        if (!el) return;
+        el.addEventListener('scroll', checkScroll, { passive: true });
+        const ro = new ResizeObserver(checkScroll);
+        ro.observe(el);
+        return () => { el.removeEventListener('scroll', checkScroll); ro.disconnect(); };
+    }, []);
+
+    const scroll = (dir) => {
+        navRef.current?.scrollBy({ left: dir * 200, behavior: 'smooth' });
+    };
+
+    return (
+        <div className="relative mb-6 flex items-end gap-1">
+            {/* Bouton gauche */}
+            <button
+                onClick={() => scroll(-1)}
+                disabled={!canScrollLeft}
+                className="flex-shrink-0 mb-px p-1 rounded-md border border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition disabled:opacity-0 disabled:pointer-events-none"
+                aria-label="Défiler à gauche"
+            >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+            </button>
+
+            {/* Fondu gauche */}
+            {canScrollLeft && (
+                <div className="absolute left-8 top-0 bottom-1 w-8 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none z-10" />
+            )}
+
+            {/* Liste des onglets */}
+            <nav
+                ref={navRef}
+                className="flex-1 flex gap-1 border-b border-gray-200 overflow-x-auto"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+                {TABS.map((tab, i) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+                            activeTab === tab.id
+                                ? 'border-current -mb-px'
+                                : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
+                        }`}
+                        style={activeTab === tab.id ? { color: 'var(--brand-red)', borderColor: 'var(--brand-red)' } : {}}
+                    >
+                        <span
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
+                            style={{ backgroundColor: activeTab === tab.id ? 'var(--brand-red)' : '#D1D5DB' }}
+                        >
+                            {i + 1}
+                        </span>
+                        {tab.label}
+                    </button>
+                ))}
+            </nav>
+
+            {/* Fondu droit */}
+            {canScrollRight && (
+                <div className="absolute right-8 top-0 bottom-1 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10" />
+            )}
+
+            {/* Bouton droit */}
+            <button
+                onClick={() => scroll(1)}
+                disabled={!canScrollRight}
+                className="flex-shrink-0 mb-px p-1 rounded-md border border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition disabled:opacity-0 disabled:pointer-events-none"
+                aria-label="Défiler à droite"
+            >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+            </button>
+        </div>
+    );
+};
+
 // ─── TAB 1 : Description outil évaluation ────────────────────────────────────
 
 const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal }) => (
@@ -350,10 +448,9 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal }) => 
                 </div>
                 <h2 className="text-sm font-semibold text-gray-800">Description de l'outil d'évaluation</h2>
             </div>
-            <div className="prose prose-sm max-w-none text-gray-600 space-y-3">
+            <div className="prose prose-sm max-w-none text-gray-600 space-y-2">
                 <p>
-                    Cet outil d'évaluation est basé sur le référentiel <strong>{audit.referentiel?.nom}</strong>.
-                    Il permet d'évaluer le niveau de maturité et de conformité de l'entité auditée selon la <strong>Directive Nationale de la Sécurité des Systèmes d'Information (DNSSI)</strong>.
+                    Dans le cadre de l'implémentation de la DNSSI au sein des entités et des infrastructures d'importance vitale (IIV) concernées par ses dispositions, la <strong>DGSSI</strong> a réalisé cet outil dans l'objectif d'évaluer la conformité des entités et des IIV par rapport à la DNSSI et d'assurer un suivi pour l'état de mise en œuvre des règles de sécurité.
                 </p>
                 <p>
                     L'évaluation se fait mesure par mesure selon une échelle de maturité à 6 niveaux (de 0 à 5) inspirée du modèle CMMI :
@@ -412,6 +509,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving }
 
     return (
         <div className="space-y-5">
+            <TabInfo text="L'objectif de cette feuille est de renseigner la dénomination de l'entité ou de l'IIV, son adresse ainsi que les informations relatives au RSSI et à l'auteur de l'évaluation." />
             <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h2 className="text-sm font-semibold text-gray-800 mb-5">1. Identification de l'entité ou de l'IIV</h2>
 
@@ -521,6 +619,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
 
     return (
         <div className="space-y-3">
+            <TabInfo text="L'objectif de cette feuille est d'évaluer le niveau de maturité atteint pour chacune des mesures de sécurité édictées par la DNSSI et ainsi en déduire le niveau de conformité. L'auteur de l'évaluation est invité à évaluer la mise en œuvre de chacune des règles selon l'échelle de maturité définie." />
             {/* Barre de sauvegarde */}
             <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-5 py-3">
                 <p className="text-sm text-gray-600">
@@ -593,12 +692,11 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                         <table className="w-full text-xs">
                                             <thead>
                                                 <tr className="border-b border-gray-100">
-                                                    <th className="text-left px-5 py-2 font-semibold text-gray-400 uppercase tracking-wider w-32">Règle</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Description</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-40">Niveau maturité</th>
+                                                    <th className="text-left px-5 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Règle</th>
+                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Niveau maturité</th>
                                                     <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Conformité</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-48">Commentaire</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-48">Justificatif N/A</th>
+                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-52">Commentaire</th>
+                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Justificatif N/A</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -610,8 +708,18 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
 
                                                     return (
                                                         <tr key={mesure.id} className="border-b border-gray-50 hover:bg-gray-50/40 transition-colors">
-                                                            <td className="px-5 py-2 font-mono text-gray-500 text-xs">{mesure.code}</td>
-                                                            <td className="px-3 py-2 text-gray-700 leading-relaxed">{mesure.description}</td>
+                                                            <td className="px-5 py-2">
+                                                                <div className="relative group inline-flex items-center gap-1">
+                                                                    <span className="font-mono text-gray-500 cursor-help underline decoration-dotted decoration-gray-400">
+                                                                        {mesure.code}
+                                                                    </span>
+                                                                    <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
+                                                                        <p className="font-semibold text-gray-100 mb-1.5">{mesure.code}</p>
+                                                                        <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>
+                                                                        <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
+                                                                    </div>
+                                                                </div>
+                                                            </td>
                                                             <td className="px-3 py-2">
                                                                 <select
                                                                     value={niveau === null ? 'na' : String(niveau)}
@@ -689,6 +797,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
 
 const TabSyntheseMaturite = ({ synthese }) => (
     <div className="space-y-4">
+        <TabInfo text="Cette feuille a pour but de donner une synthèse du niveau de maturité selon les valeurs renseignées par l'entité ou de l'IIV. Elle permet de visualiser l'état de mise en œuvre des règles de la DNSSI par niveau de maturité et d'identifier les axes d'amélioration prioritaires." />
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-800 mb-5">3. Synthèse du niveau de maturité par domaine</h2>
             <div className="overflow-x-auto">
@@ -748,6 +857,7 @@ const TabSyntheseMaturite = ({ synthese }) => (
 
 const TabSyntheseConformite = ({ synthese, totalConforme, totalPartiel, totalNC, tauxGlobal }) => (
     <div className="space-y-4">
+        <TabInfo text="Cette feuille a pour but de donner une synthèse du niveau de conformité du SI par rapport aux règles de la DNSSI selon les valeurs renseignées par l'entité ou de l'IIV. La conformité est déduite du niveau de maturité : niveaux 0-1 → Non conforme, 2-3 → Partielle, 4-5 → Totale." />
         {/* KPIs */}
         <div className="grid grid-cols-4 gap-4">
             {[
@@ -820,6 +930,7 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
 
     return (
         <div className="space-y-4">
+            <TabInfo text="Cette feuille a pour but de renseigner les actions déjà entreprises ainsi que les actions qui seront implémentées pour la mise en conformité de l'entité ou de l'IIV avec la DNSSI. Cet aperçu sur l'état d'avancement tient en compte les mesures à court terme et les mesures atteignables à moyen terme." />
             <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h2 className="text-sm font-semibold text-gray-800 mb-2">5. État d'avancement</h2>
                 <p className="text-xs text-gray-400 mb-5">Vue détaillée de l'avancement par domaine et par règle</p>
@@ -843,45 +954,71 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
                     ))}
                 </div>
 
-                {/* Tableau détail par règle */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
+                {/* Tableau détail — 1 objectif → N règles */}
+                <div className="overflow-x-auto border border-gray-100 rounded-lg">
+                    <table className="w-full text-xs border-collapse">
                         <thead>
-                            <tr className="border-b border-gray-100 bg-gray-50/60">
-                                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider">Chapitre</th>
-                                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider w-24">Règle</th>
-                                <th className="text-center px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider">Niveau conformité</th>
-                                <th className="text-center px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider">Niveau maturité</th>
-                                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider">Commentaires</th>
+                            <tr className="bg-gray-50/80">
+                                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-r border-gray-100 w-72">Objectif</th>
+                                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-r border-gray-100 w-24">Règle</th>
+                                <th className="text-center px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-r border-gray-100 w-32">Conformité</th>
+                                <th className="text-center px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-r border-gray-100 w-32">Maturité</th>
+                                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Commentaire</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {referentiel.domaines?.flatMap(domaine =>
-                                domaine.objectifs?.flatMap(obj =>
-                                    obj.mesures?.map(mesure => {
-                                        const ev = localEvals[mesure.id] || {};
-                                        const niveau = ev.niveau_maturite ?? null;
-                                        const conformite = calcConformite(niveau);
-                                        return (
-                                            <tr key={mesure.id} className="hover:bg-gray-50/40">
-                                                <td className="px-4 py-2.5">
-                                                    <span className="font-semibold text-gray-600">{domaine.nom}</span>
-                                                </td>
-                                                <td className="px-4 py-2.5 font-mono text-gray-500">{mesure.code}</td>
-                                                <td className="px-4 py-2.5 text-center">
-                                                    <ConformiteBadge conformite={conformite} />
-                                                </td>
-                                                <td className="px-4 py-2.5 text-center">
-                                                    <span className={`font-semibold ${NIVEAUX.find(n => n.value === niveau)?.color ?? 'text-gray-400'}`}>
-                                                        {niveauLabel(niveau)}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-2.5 text-gray-500">{ev.commentaire || '—'}</td>
-                                            </tr>
-                                        );
-                                    })
-                                )
-                            )}
+                        <tbody>
+                            {referentiel.domaines?.map(domaine => (
+                                <>
+                                    {/* Ligne d'en-tête domaine */}
+                                    <tr key={`dom-${domaine.id}`} className="bg-gray-100/70">
+                                        <td colSpan={5} className="px-4 py-2 border-b border-gray-200">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>
+                                                    {domaine.code}
+                                                </span>
+                                                <span className="font-semibold text-gray-700 text-xs">{domaine.nom}</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    {/* Lignes par objectif avec rowspan */}
+                                    {domaine.objectifs?.map(obj => {
+                                        const mesures = obj.mesures || [];
+                                        return mesures.map((mesure, idx) => {
+                                            const ev = localEvals[mesure.id] || {};
+                                            const niveau = ev.niveau_maturite ?? null;
+                                            const conformite = calcConformite(niveau);
+                                            return (
+                                                <tr key={mesure.id} className="hover:bg-blue-50/20 border-b border-gray-50">
+                                                    {/* Cellule fusionnée objectif — seulement sur la 1re ligne */}
+                                                    {idx === 0 && (
+                                                        <td
+                                                            rowSpan={mesures.length}
+                                                            className="px-4 py-3 border-r border-gray-100 align-top"
+                                                            style={{ verticalAlign: 'top' }}
+                                                        >
+                                                            <p className="font-semibold text-gray-500 text-[10px] uppercase tracking-wide mb-1">{obj.code}</p>
+                                                            <p className="text-gray-700 leading-relaxed">{obj.description}</p>
+                                                        </td>
+                                                    )}
+                                                    <td className="px-4 py-2.5 border-r border-gray-100">
+                                                        <span className="font-mono text-gray-500">{mesure.code}</span>
+                                                    </td>
+                                                    <td className="px-4 py-2.5 text-center border-r border-gray-100">
+                                                        <ConformiteBadge conformite={conformite} />
+                                                    </td>
+                                                    <td className="px-4 py-2.5 text-center border-r border-gray-100">
+                                                        <span className={`font-semibold ${NIVEAUX.find(n => n.value === niveau)?.color ?? 'text-gray-400'}`}>
+                                                            {niveauLabel(niveau)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-2.5 text-gray-500">{ev.commentaire || <span className="text-gray-300">—</span>}</td>
+                                                </tr>
+                                            );
+                                        });
+                                    })}
+                                </>
+                            ))}
                         </tbody>
                     </table>
                 </div>
@@ -910,6 +1047,7 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving 
 
     return (
         <div className="space-y-4">
+            <TabInfo text="Les indicateurs de la SSI énumérés dans ce document sont donnés à titre indicatif. Ils peuvent être complétés par l'entité ou l'IIV. Ces indicateurs permettent aux responsables des entités et des IIV de définir les axes de progrès et de s'inscrire dans un processus d'amélioration continue." />
             <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h2 className="text-sm font-semibold text-gray-800 mb-1">6. Indicateurs de la SSI</h2>
                 <p className="text-xs text-gray-400 mb-5">Liste non exhaustive d'indicateurs de performance de la sécurité des SI</p>

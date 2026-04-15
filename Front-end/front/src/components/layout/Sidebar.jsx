@@ -1,8 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../store/auth/AuthContext';
 import { useState } from 'react';
+import logo from '../../assets/images/Logo.png';
 
-// Icônes SVG inline pour éviter les emojis
+// ─── Icônes ───────────────────────────────────────────────────────────────────
+
 const icons = {
     dashboard: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -56,11 +58,23 @@ const icons = {
         </svg>
     ),
     chevron: (
-        <svg className="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
         </svg>
     ),
+    collapseLeft: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+    ),
+    collapseRight: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+    ),
 };
+
+// ─── Structure des menus ──────────────────────────────────────────────────────
 
 const menuSections = [
     {
@@ -72,10 +86,12 @@ const menuSections = [
     {
         title: 'AUDIT & CONFORMITE',
         items: [
-            { path: '/audits', label: 'Audits', icon: 'audit', children: [
-                { path: '/audits', label: 'Tous les audits' },
-                { path: '/audits/nouveau', label: 'Nouvel audit' },
-            ]},
+            {
+                path: '/audits', label: 'Audits', icon: 'audit', children: [
+                    { path: '/audits', label: 'Tous les audits' },
+                    { path: '/audits/nouveau', label: 'Nouvel audit' },
+                ],
+            },
             { path: '/referentiels', label: 'Referentiels', icon: 'referentiel' },
             { path: '/entites', label: 'Entites auditees', icon: 'building' },
         ],
@@ -99,14 +115,16 @@ const menuSections = [
     },
 ];
 
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+
 const Sidebar = () => {
     const { user } = useAuth();
     const location = useLocation();
     const [openMenus, setOpenMenus] = useState({});
+    const [collapsed, setCollapsed] = useState(false);
 
-    const toggleMenu = (path) => {
+    const toggleMenu = (path) =>
         setOpenMenus(prev => ({ ...prev, [path]: !prev[path] }));
-    };
 
     const isActive = (path) => {
         if (path === '/audits') return location.pathname.startsWith('/audits');
@@ -114,53 +132,159 @@ const Sidebar = () => {
     };
 
     return (
-        <aside className="w-64 text-white flex flex-col flex-shrink-0" style={{ backgroundColor: 'var(--brand-dark)' }}>
-            {/* Logo */}
-            <div className="p-5 border-b border-white/5">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-red)' }}>
-                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 className="text-base font-semibold tracking-tight">
-                            <span className="text-blue-400">GRC</span> Audit
-                        </h1>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">DNSSI & ISO 27001</p>
-                    </div>
+        <aside
+            className="text-white flex flex-col flex-shrink-0 transition-all duration-200"
+            style={{
+                width: collapsed ? '3.5rem' : '16rem',
+                backgroundColor: 'var(--brand-dark)',
+            }}
+        >
+            {/* ── Logo ── */}
+            {collapsed ? (
+                /* Mode réduit : colonne centrée logo + bouton */
+                <div className="border-b border-white/5 flex flex-col items-center gap-2 py-3">
+                    <img src={logo} alt="ZeroGap logo" className="w-9 h-9 object-contain" />
+                    <button
+                        onClick={() => setCollapsed(c => !c)}
+                        className="w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+                        title="Agrandir la barre"
+                    >
+                        {icons.collapseRight}
+                    </button>
                 </div>
-            </div>
+            ) : (
+                /* Mode étendu : logo + texte + bouton */
+                <div className="border-b border-white/5 flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        <img src={logo} alt="ZeroGap logo" className="w-16 h-16 flex-shrink-0 object-contain" />
+                        <div className="min-w-0">
+                            <h1 className="leading-snug">
+                                <span className="text-base font-bold tracking-tight whitespace-nowrap">
+                                    <span className="text-white">Zero</span><span style={{ color: 'var(--brand-red)' }}>Gap</span>
+                                </span>
+                                <br />
+                                <span className="text-[11px] text-gray-400 font-normal tracking-wide whitespace-nowrap">GRC audit platform</span>
+                            </h1>
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider border border-gray-600 rounded px-1 py-px">DNSSI</span>
+                                <span className="text-[9px] text-gray-600">·</span>
+                                <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider border border-gray-600 rounded px-1 py-px">ISO 27001</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setCollapsed(c => !c)}
+                        className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+                        title="Réduire la barre"
+                    >
+                        {icons.collapseLeft}
+                    </button>
+                </div>
+            )}
 
-            {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-3 px-3">
+            {/* ── Navigation ── */}
+            <nav
+                className={`flex-1 py-3 transition-all ${
+                    collapsed ? 'px-1.5 overflow-visible' : 'px-3 overflow-y-auto'
+                }`}
+            >
                 {menuSections.map((section, sIdx) => {
-                    // Filtrer par rôle
                     if (section.roles && !section.roles.includes(user?.role)) return null;
 
                     return (
-                        <div key={sIdx} className={section.title ? 'mt-5' : ''}>
-                            {section.title && (
+                        <div key={sIdx} className={section.title ? (collapsed ? 'mt-2' : 'mt-5') : ''}>
+
+                            {/* Titre de section */}
+                            {section.title && !collapsed && (
                                 <p className="px-3 mb-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                                     {section.title}
                                 </p>
                             )}
+                            {section.title && collapsed && (
+                                <div className="mx-1 mb-2 border-t border-white/10" />
+                            )}
+
                             <div className="space-y-0.5">
                                 {section.items.map((item) => {
-                                    const hasChildren = item.children && item.children.length > 0;
+                                    const hasChildren = item.children?.length > 0;
                                     const isOpen = openMenus[item.path];
                                     const active = isActive(item.path);
 
+                                    // ── MODE RÉDUIT ──
+                                    if (collapsed) {
+                                        return (
+                                            <div key={item.path} className="relative group/flyout">
+                                                {/* Icône */}
+                                                {hasChildren ? (
+                                                    <button
+                                                        className={`w-full flex items-center justify-center p-2 rounded-lg transition-colors ${
+                                                            active ? '' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                                                        }`}
+                                                        style={active ? { backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' } : {}}
+                                                    >
+                                                        {icons[item.icon]}
+                                                    </button>
+                                                ) : (
+                                                    <NavLink
+                                                        to={item.path}
+                                                        style={({ isActive: na }) => na ? { backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' } : {}}
+                                                        className={({ isActive: na }) =>
+                                                            `flex items-center justify-center p-2 rounded-lg transition-colors ${
+                                                                na ? '' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                                                            }`
+                                                        }
+                                                    >
+                                                        {icons[item.icon]}
+                                                    </NavLink>
+                                                )}
+
+                                                {/* Popup au survol */}
+                                                <div className="absolute left-full top-0 ml-2 hidden group-hover/flyout:block z-50">
+                                                    {hasChildren ? (
+                                                        // Flyout sous-menu
+                                                        <div
+                                                            className="min-w-44 rounded-xl shadow-2xl border border-white/10 overflow-hidden py-1"
+                                                            style={{ backgroundColor: 'var(--brand-dark)' }}
+                                                        >
+                                                            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-white/5 mb-1">
+                                                                {item.label}
+                                                            </p>
+                                                            {item.children.map(child => (
+                                                                <NavLink
+                                                                    key={child.path}
+                                                                    to={child.path}
+                                                                    end
+                                                                    style={({ isActive: ca }) => ca ? { color: 'var(--brand-red)' } : {}}
+                                                                    className={({ isActive: ca }) =>
+                                                                        `block px-3 py-2 text-sm transition-colors ${
+                                                                            ca ? 'font-medium' : 'text-gray-400 hover:text-gray-100 hover:bg-white/5'
+                                                                        }`
+                                                                    }
+                                                                >
+                                                                    {child.label}
+                                                                </NavLink>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        // Tooltip simple
+                                                        <div className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg shadow-xl whitespace-nowrap border border-white/10">
+                                                            {item.label}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    // ── MODE ÉTENDU ──
                                     if (hasChildren) {
                                         return (
                                             <div key={item.path}>
                                                 <button
                                                     onClick={() => toggleMenu(item.path)}
                                                     style={active ? { backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' } : {}}
-                                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer ${
-                                                        active
-                                                            ? ''
-                                                            : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                                                        active ? '' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
                                                     }`}
                                                 >
                                                     <span className="flex-shrink-0">{icons[item.icon]}</span>
@@ -171,17 +295,15 @@ const Sidebar = () => {
                                                 </button>
                                                 {isOpen && (
                                                     <div className="ml-8 mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
-                                                        {item.children.map((child) => (
+                                                        {item.children.map(child => (
                                                             <NavLink
                                                                 key={child.path}
                                                                 to={child.path}
                                                                 end
                                                                 style={({ isActive: ca }) => ca ? { color: 'var(--brand-red)' } : {}}
-                                                                className={({ isActive: childActive }) =>
+                                                                className={({ isActive: ca }) =>
                                                                     `block px-3 py-1.5 rounded text-xs transition-colors ${
-                                                                        childActive
-                                                                            ? 'font-medium'
-                                                                            : 'text-gray-500 hover:text-gray-300'
+                                                                        ca ? 'font-medium' : 'text-gray-500 hover:text-gray-300'
                                                                     }`
                                                                 }
                                                             >
@@ -199,11 +321,9 @@ const Sidebar = () => {
                                             key={item.path}
                                             to={item.path}
                                             style={({ isActive: na }) => na ? { backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' } : {}}
-                                            className={({ isActive: navActive }) =>
+                                            className={({ isActive: na }) =>
                                                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                                                    navActive
-                                                        ? 'font-medium'
-                                                        : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                                                    na ? 'font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
                                                 }`
                                             }
                                         >
@@ -218,19 +338,29 @@ const Sidebar = () => {
                 })}
             </nav>
 
-            {/* User info en bas */}
-            <div className="p-4 border-t border-white/5">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white" style={{ backgroundColor: 'var(--brand-red)' }}>
-                        {user?.prenom?.[0]}{user?.nom?.[0]}
+            {/* ── Utilisateur ── */}
+            <div className="border-t border-white/5 px-3 py-3">
+                {collapsed ? (
+                    <div className="flex justify-center">
+                        <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white"
+                            style={{ backgroundColor: 'var(--brand-red)' }}
+                            title={`${user?.prenom} ${user?.nom}`}
+                        >
+                            {user?.prenom?.[0]}{user?.nom?.[0]}
+                        </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-200 truncate">
-                            {user?.prenom} {user?.nom}
-                        </p>
-                        <p className="text-[10px] text-gray-500 truncate">{user?.organisation || user?.email}</p>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium text-white" style={{ backgroundColor: 'var(--brand-red)' }}>
+                            {user?.prenom?.[0]}{user?.nom?.[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-200 truncate">{user?.prenom} {user?.nom}</p>
+                            <p className="text-[10px] text-gray-500 truncate">{user?.organisation || user?.email}</p>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </aside>
     );

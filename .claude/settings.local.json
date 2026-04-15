@@ -11,7 +11,9 @@
       "Bash(netstat -ano)",
       "Bash(powershell.exe -Command \"Get-Process -Id 26284 2>/dev/null | Select-Object Name,Id,Path\")",
       "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 5000 | Select-Object LocalAddress,LocalPort,State,OwningProcess\")",
-      "Bash(powershell.exe -Command \"Stop-Process -Id 26284 -Force\" sleep 2 netstat -ano)"
+      "Bash(powershell.exe -Command \"Stop-Process -Id 26284 -Force\" sleep 2 netstat -ano)",
+      "Bash(npm run *)",
+      "Bash(node -e \"const xlsx = require\\('./node_modules/xlsx'\\); const wb = xlsx.readFile\\('../Support/outil_devaluation_dnssi.xlsx'\\); console.log\\('Sheets:', wb.SheetNames\\); wb.SheetNames.forEach\\(name => { const ws = wb.Sheets[name]; const data = xlsx.utils.sheet_to_json\\(ws, { header: 1, defval: '' }\\); console.log\\('\\\\n=== Sheet:', name, '==='\\); data.slice\\(0, 10\\).forEach\\(\\(row, i\\) => { const cells = row.filter\\(c => c !== ''\\).join\\(' | '\\); if \\(cells\\) console.log\\('  row', i, ':', cells.substring\\(0, 250\\)\\); }\\); }\\);\")"
     ]
   }
 }
