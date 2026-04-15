@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA } from '../../services/endpoints/auditService';
+import { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
 import DateInput from '../../components/common/DateInput';
@@ -39,6 +40,7 @@ const TABS_DNSSI = [
     { id: 'synthese_mat',   label: 'Synthèse niveau de maturité' },
     { id: 'synthese_conf',  label: 'Synthèse niveau de conformité' },
     { id: 'avancement',     label: "État d'avancement" },
+    { id: 'plans_actions',  label: "Plan d'actions" },
     { id: 'indicateurs',    label: 'Indicateurs de la SSI' },
 ];
 
@@ -47,6 +49,7 @@ const TABS_ISO = [
     { id: 'identification', label: "Identification de l'organisme" },
     { id: 'soa',            label: "Déclaration d'Applicabilité" },
     { id: 'evaluation_iso', label: 'Évaluation des contrôles' },
+    { id: 'plans_actions',  label: "Plan d'actions" },
     { id: 'synthese_iso',   label: 'Synthèse par thème' },
     { id: 'nc',             label: 'Non-conformités' },
     { id: 'indicateurs_iso',label: 'Indicateurs SMSI' },
@@ -159,6 +162,8 @@ const AuditDetailPage = () => {
     const [soaMap, setSoaMap] = useState({});       // { mesure_id: entry }
     const [soaDirty, setSoaDirty] = useState(false);
     const [savingSoa, setSavingSoa] = useState(false);
+    // Plans d'actions
+    const [planActions, setPlanActions] = useState([]);
 
     // Chargement initial
     useEffect(() => {
@@ -200,8 +205,13 @@ const AuditDetailPage = () => {
                     (soaRes.data.soa || []).forEach(e => { sm[e.mesure_id] = e; });
                     setSoaMap(sm);
                 }
-            } catch {
-                toast.error('Erreur lors du chargement de l\'audit');
+
+                // Chargement plans d'actions
+                const plansRes = await getPlanActions(id);
+                setPlanActions(plansRes.data.plans_actions || []);
+            } catch (err) {
+                const msg = err?.response?.data?.message || err?.message || 'Erreur réseau';
+                toast.error(`Chargement audit: ${msg}`);
             } finally {
                 setLoading(false);
             }
@@ -239,6 +249,37 @@ const AuditDetailPage = () => {
             toast.error('Erreur lors de la sauvegarde');
         } finally {
             setSaving(false);
+        }
+    };
+
+    // Plans d'actions CRUD
+    const handleCreatePlanAction = async (data) => {
+        try {
+            const res = await createPlanAction(id, data);
+            setPlanActions(prev => [res.data.plan_action, ...prev]);
+            toast.success("Action corrective créée");
+        } catch {
+            toast.error("Erreur lors de la création");
+        }
+    };
+
+    const handleUpdatePlanAction = async (planId, data) => {
+        try {
+            const res = await updatePlanAction(id, planId, data);
+            setPlanActions(prev => prev.map(p => p.id === planId ? { ...p, ...res.data.plan_action } : p));
+            toast.success("Action mise à jour");
+        } catch {
+            toast.error("Erreur lors de la mise à jour");
+        }
+    };
+
+    const handleDeletePlanAction = async (planId) => {
+        try {
+            await deletePlanAction(id, planId);
+            setPlanActions(prev => prev.filter(p => p.id !== planId));
+            toast.success("Action supprimée");
+        } catch {
+            toast.error("Erreur lors de la suppression");
         }
     };
 
@@ -417,10 +458,34 @@ const AuditDetailPage = () => {
                     onSave={handleSaveSoA}
                 />
             )}
-            {isISO && activeTab === 'evaluation_iso' && <TabPlaceholder titre="Évaluation des contrôles" texte="Cette section permettra d'évaluer la conformité des contrôles ISO 27001:2022 applicables (définis dans la Déclaration d'Applicabilité). Disponible après avoir complété la SoA." />}
+            {isISO && activeTab === 'evaluation_iso' && (
+                <TabEvaluationISO
+                    referentiel={referentiel}
+                    soaMap={soaMap}
+                    localEvals={localEvals}
+                    setEval={setEval}
+                    isDirty={isDirty}
+                    saving={saving}
+                    onSave={handleSaveEvals}
+                />
+            )}
             {isISO && activeTab === 'synthese_iso' && <TabPlaceholder titre="Synthèse par thème" texte="Vue synthétique de la conformité regroupée par thème ISO 27001:2022 (A.5 Organisationnel, A.6 Personnes, A.7 Physique, A.8 Technologique)." />}
             {isISO && activeTab === 'nc' && <TabPlaceholder titre="Non-conformités" texte="Registre des non-conformités identifiées lors de l'évaluation des contrôles ISO 27001:2022 applicables." />}
             {isISO && activeTab === 'indicateurs_iso' && <TabPlaceholder titre="Indicateurs SMSI" texte="Indicateurs de performance du Système de Management de la Sécurité de l'Information (SMSI) selon ISO 27001:2022." />}
+
+            {/* Plan d'actions — commun DNSSI + ISO */}
+            {activeTab === 'plans_actions' && (
+                <TabPlanActions
+                    referentiel={referentiel}
+                    planActions={planActions}
+                    localEvals={localEvals}
+                    soaMap={soaMap}
+                    isISO={isISO}
+                    onAdd={handleCreatePlanAction}
+                    onUpdate={handleUpdatePlanAction}
+                    onDelete={handleDeletePlanAction}
+                />
+            )}
         </div>
     );
 };
@@ -1188,6 +1253,440 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving 
                     </button>
                 </div>
             </div>
+        </div>
+    );
+};
+
+// ─── Constantes ISO évaluation ────────────────────────────────────────────────
+
+const ISO_CONF_STATES = [
+    { value: 5, label: 'Conforme',      activeCls: 'bg-green-600 text-white border-green-600',  inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-green-400' },
+    { value: 2, label: 'Partiel',       activeCls: 'bg-yellow-500 text-white border-yellow-500', inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-yellow-400' },
+    { value: 0, label: 'Non conforme',  activeCls: 'bg-red-600 text-white border-red-600',       inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-red-400' },
+];
+
+const PRIORITE_CONFIG = {
+    haute:   { label: 'Haute',   bg: 'bg-red-50',    text: 'text-red-700' },
+    moyenne: { label: 'Moyenne', bg: 'bg-yellow-50',  text: 'text-yellow-700' },
+    basse:   { label: 'Basse',   bg: 'bg-green-50',   text: 'text-green-700' },
+};
+
+const STATUT_PLAN_CONFIG = {
+    a_faire:  { label: 'À faire',  bg: 'bg-gray-100',  text: 'text-gray-600' },
+    en_cours: { label: 'En cours', bg: 'bg-blue-50',   text: 'text-blue-700' },
+    cloture:  { label: 'Clôturé',  bg: 'bg-green-50',  text: 'text-green-700' },
+};
+
+// ─── TAB ISO 4 : Évaluation des contrôles ─────────────────────────────────────
+
+const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, saving, onSave }) => {
+    const [openThemes, setOpenThemes] = useState({});
+
+    useEffect(() => {
+        if (referentiel?.domaines?.length > 0) {
+            setOpenThemes({ [referentiel.domaines[0].id]: true });
+        }
+    }, [referentiel]);
+
+    const toggleTheme = (id) => setOpenThemes(prev => ({ ...prev, [id]: !prev[id] }));
+
+    const allApplicable = referentiel?.domaines?.flatMap(d =>
+        d.objectifs?.flatMap(o => o.mesures?.filter(m => soaMap[m.id]?.applicable === true) ?? []) ?? []
+    ) ?? [];
+
+    if (allApplicable.length === 0) {
+        return (
+            <div className="space-y-4">
+                <TabInfo text="Complétez d'abord la Déclaration d'Applicabilité pour définir les contrôles applicables avant d'évaluer." />
+                <TabPlaceholder titre="Aucun contrôle applicable défini" texte="Retournez à l'onglet 'Déclaration d'Applicabilité' et marquez les contrôles applicables avant de commencer l'évaluation." />
+            </div>
+        );
+    }
+
+    const conforme    = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+    const partiel     = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
+    const nonConforme = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+    const evaluated   = conforme + partiel + nonConforme;
+
+    return (
+        <div className="space-y-4">
+            <TabInfo text="Évaluez la conformité de chaque contrôle ISO 27001:2022 applicable défini dans la SoA. Pour chaque contrôle, indiquez s'il est Conforme, Partiellement conforme ou Non conforme, puis ajoutez vos observations et références de preuves." />
+
+            {/* KPIs */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                    { label: 'Contrôles applicables', value: allApplicable.length, sub: `${evaluated} évalués`, color: '#111827' },
+                    { label: 'Conformes',   value: conforme,    color: '#16a34a' },
+                    { label: 'Partiels',    value: partiel,     color: '#d97706' },
+                    { label: 'Non conformes', value: nonConforme, color: '#dc2626' },
+                ].map((kpi, i) => (
+                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
+                        <p className="text-3xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
+                        {kpi.sub && <p className="text-xs text-gray-400">{kpi.sub}</p>}
+                    </div>
+                ))}
+            </div>
+
+            {/* Accordion par thème */}
+            {referentiel?.domaines?.map(theme => {
+                const isOpen = !!openThemes[theme.id];
+                const themeMesures = theme.objectifs?.flatMap(o =>
+                    o.mesures?.filter(m => soaMap[m.id]?.applicable === true) ?? []) ?? [];
+
+                if (themeMesures.length === 0) return null;
+
+                const themeEval = themeMesures.filter(m =>
+                    localEvals[m.id]?.niveau_maturite !== null && localEvals[m.id]?.niveau_maturite !== undefined
+                ).length;
+
+                return (
+                    <div key={theme.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <button onClick={() => toggleTheme(theme.id)}
+                            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>
+                                    {theme.code}
+                                </span>
+                                <span className="text-sm font-semibold text-gray-800">{theme.nom}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-500">{themeEval}/{themeMesures.length} évalués</span>
+                                <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </div>
+                        </button>
+
+                        {isOpen && (
+                            <div className="border-t border-gray-100">
+                                {theme.objectifs?.map(objectif => {
+                                    const objApplicable = objectif.mesures?.filter(m => soaMap[m.id]?.applicable === true) ?? [];
+                                    if (objApplicable.length === 0) return null;
+                                    return (
+                                        <div key={objectif.id} className="border-b border-gray-50 last:border-0">
+                                            <div className="px-5 py-2.5 bg-gray-50/60">
+                                                <p className="text-xs font-semibold text-gray-600">
+                                                    <span className="text-gray-400 mr-1">{objectif.code}</span>
+                                                    {objectif.description}
+                                                </p>
+                                            </div>
+                                            {objApplicable.map(mesure => {
+                                                const ev = localEvals[mesure.id] || {};
+                                                const niveau = ev.niveau_maturite ?? null;
+                                                return (
+                                                    <div key={mesure.id} className="px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors">
+                                                        <div className="flex items-start gap-4">
+                                                            {/* Code + tooltip */}
+                                                            <div className="relative group flex-shrink-0 w-20">
+                                                                <span className="font-mono text-xs text-gray-600 cursor-help underline decoration-dotted decoration-gray-400">
+                                                                    {mesure.code}
+                                                                </span>
+                                                                <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
+                                                                    <p className="font-semibold text-gray-100 mb-1.5 text-xs">{mesure.code}</p>
+                                                                    <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>
+                                                                    <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
+                                                                </div>
+                                                            </div>
+                                                            {/* Description */}
+                                                            <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description}</p>
+                                                            {/* 3-state toggle */}
+                                                            <div className="flex items-center flex-shrink-0">
+                                                                {ISO_CONF_STATES.map((s, idx) => (
+                                                                    <button key={s.value}
+                                                                        onClick={() => setEval(mesure.id, 'niveau_maturite', niveau === s.value ? null : s.value)}
+                                                                        className={`px-2.5 py-1 text-xs font-medium border transition
+                                                                            ${idx === 0 ? 'rounded-l-md border-r-0' : ''}
+                                                                            ${idx === ISO_CONF_STATES.length - 1 ? 'rounded-r-md' : ''}
+                                                                            ${idx > 0 && idx < ISO_CONF_STATES.length - 1 ? 'border-r-0' : ''}
+                                                                            ${niveau === s.value ? s.activeCls : s.inactiveCls}`}
+                                                                    >
+                                                                        {s.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        {/* Commentaire + preuve si évalué */}
+                                                        {niveau !== null && (
+                                                            <div className="mt-2 ml-24 grid grid-cols-2 gap-3">
+                                                                <input type="text" value={ev.commentaire || ''}
+                                                                    onChange={e => setEval(mesure.id, 'commentaire', e.target.value)}
+                                                                    placeholder="Observations..."
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none" />
+                                                                <input type="text" value={ev.preuve || ''}
+                                                                    onChange={e => setEval(mesure.id, 'preuve', e.target.value)}
+                                                                    placeholder="Références / preuves..."
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+
+            {/* Bouton flottant sauvegarde */}
+            {isDirty && (
+                <div className="sticky bottom-4 flex justify-end">
+                    <button onClick={onSave} disabled={saving}
+                        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-xl shadow-lg transition disabled:opacity-60"
+                        style={{ backgroundColor: 'var(--brand-red)' }}>
+                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                        Sauvegarder l'évaluation
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ─── TAB Plan d'actions (DNSSI + ISO) ─────────────────────────────────────────
+
+const emptyPlanForm = { mesure_id: '', description_nc: '', action_corrective: '', responsable: '', delai: '', priorite: 'moyenne', statut: 'a_faire', kpi: '' };
+
+const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, onAdd, onUpdate, onDelete }) => {
+    const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [form, setForm] = useState({ ...emptyPlanForm });
+    const [submitting, setSubmitting] = useState(false);
+
+    const setF = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+    const resetForm = () => { setForm({ ...emptyPlanForm }); setEditingId(null); };
+
+    const handleEdit = (plan) => {
+        setForm({
+            mesure_id: plan.mesure_id || '',
+            description_nc: plan.description_nc || '',
+            action_corrective: plan.action_corrective || '',
+            responsable: plan.responsable || '',
+            delai: plan.delai || '',
+            priorite: plan.priorite || 'moyenne',
+            statut: plan.statut || 'a_faire',
+            kpi: plan.kpi || '',
+        });
+        setEditingId(plan.id);
+        setShowForm(true);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            if (editingId) {
+                await onUpdate(editingId, form);
+            } else {
+                await onAdd(form);
+            }
+            setShowForm(false);
+            resetForm();
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const allMesures = referentiel?.domaines?.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []) ?? [];
+
+    // Mesures non conformes (pour mettre en évidence dans le dropdown)
+    const nonConfIds = new Set(allMesures.filter(m => {
+        const n = localEvals[m.id]?.niveau_maturite;
+        return isISO ? (soaMap[m.id]?.applicable === true && n === 0) : (n !== null && n !== undefined && n <= 1);
+    }).map(m => m.id));
+
+    return (
+        <div className="space-y-4">
+            <TabInfo text="Définissez les actions correctives pour traiter les non-conformités identifiées lors de l'évaluation. Chaque action est associée à une mesure, un responsable, un délai et une priorité de traitement." />
+
+            {/* Barre d'action */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-600">{planActions.length} action(s) définie(s)</span>
+                    {nonConfIds.size > 0 && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-50 text-red-700">
+                            {nonConfIds.size} mesure(s) non conforme(s)
+                        </span>
+                    )}
+                </div>
+                <button onClick={() => { resetForm(); setShowForm(true); }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-lg transition"
+                    style={{ backgroundColor: 'var(--brand-red)' }}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Ajouter une action
+                </button>
+            </div>
+
+            {/* Formulaire */}
+            {showForm && (
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h3 className="text-sm font-semibold text-gray-800 mb-4">
+                        {editingId ? "Modifier l'action" : 'Nouvelle action corrective'}
+                    </h3>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {!editingId && (
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Mesure / Contrôle *</label>
+                                <select value={form.mesure_id} onChange={e => setF('mesure_id', e.target.value)} required
+                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1">
+                                    <option value="">— Sélectionner une mesure —</option>
+                                    {allMesures.map(m => (
+                                        <option key={m.id} value={m.id}>
+                                            {nonConfIds.has(m.id) ? '⚠ ' : ''}{m.code} — {m.description?.substring(0, 70)}{m.description?.length > 70 ? '…' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Description de la non-conformité</label>
+                            <textarea value={form.description_nc} onChange={e => setF('description_nc', e.target.value)}
+                                rows={2} placeholder="Décrivez la non-conformité observée..."
+                                className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1" />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Action corrective</label>
+                            <textarea value={form.action_corrective} onChange={e => setF('action_corrective', e.target.value)}
+                                rows={2} placeholder="Décrivez l'action à mettre en place..."
+                                className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1" />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Responsable</label>
+                                <input type="text" value={form.responsable} onChange={e => setF('responsable', e.target.value)}
+                                    placeholder="Nom..."
+                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Délai</label>
+                                <input type="date" value={form.delai} onChange={e => setF('delai', e.target.value)}
+                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Priorité</label>
+                                <select value={form.priorite} onChange={e => setF('priorite', e.target.value)}
+                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1">
+                                    <option value="basse">Basse</option>
+                                    <option value="moyenne">Moyenne</option>
+                                    <option value="haute">Haute</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {editingId && (
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut</label>
+                                <select value={form.statut} onChange={e => setF('statut', e.target.value)}
+                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1">
+                                    <option value="a_faire">À faire</option>
+                                    <option value="en_cours">En cours</option>
+                                    <option value="cloture">Clôturé</option>
+                                </select>
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">KPI de suivi (optionnel)</label>
+                            <input type="text" value={form.kpi} onChange={e => setF('kpi', e.target.value)}
+                                placeholder="Ex : Taux de couverture antivirus"
+                                className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1" />
+                        </div>
+
+                        <div className="flex gap-2 pt-1">
+                            <button type="submit" disabled={submitting}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60"
+                                style={{ backgroundColor: 'var(--brand-red)' }}>
+                                {submitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                {editingId ? 'Enregistrer' : "Créer l'action"}
+                            </button>
+                            <button type="button" onClick={() => { setShowForm(false); resetForm(); }}
+                                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+                                Annuler
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {/* Tableau */}
+            {planActions.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <p className="text-sm text-gray-500">Aucune action corrective définie</p>
+                    <p className="text-xs text-gray-400 mt-1">Ajoutez des actions pour traiter les non-conformités identifiées</p>
+                </div>
+            ) : (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <table className="w-full text-xs">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                                <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Mesure</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Action corrective</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Responsable</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Délai</th>
+                                <th className="text-center px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Priorité</th>
+                                <th className="text-center px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Statut</th>
+                                <th className="px-4 py-3" />
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {planActions.map(plan => {
+                                const pr = PRIORITE_CONFIG[plan.priorite] ?? PRIORITE_CONFIG.moyenne;
+                                const st = STATUT_PLAN_CONFIG[plan.statut] ?? STATUT_PLAN_CONFIG.a_faire;
+                                return (
+                                    <tr key={plan.id} className="hover:bg-gray-50/40">
+                                        <td className="px-4 py-3">
+                                            <span className="font-mono font-semibold text-gray-600">{plan.mesure?.code || `#${plan.mesure_id}`}</span>
+                                        </td>
+                                        <td className="px-4 py-3 max-w-xs">
+                                            <p className="text-gray-700 line-clamp-2">{plan.action_corrective || plan.description_nc || '—'}</p>
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-600">{plan.responsable || '—'}</td>
+                                        <td className="px-4 py-3 text-gray-600">
+                                            {plan.delai ? new Date(plan.delai).toLocaleDateString('fr-FR') : '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className={`inline-flex px-2 py-0.5 rounded font-medium ${pr.bg} ${pr.text}`}>{pr.label}</span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className={`inline-flex px-2 py-0.5 rounded font-medium ${st.bg} ${st.text}`}>{st.label}</span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-1">
+                                                <button onClick={() => handleEdit(plan)}
+                                                    className="p-1 text-gray-400 hover:text-blue-600 rounded" title="Modifier">
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                                                    </svg>
+                                                </button>
+                                                <button onClick={() => { if (window.confirm('Supprimer cette action ?')) onDelete(plan.id); }}
+                                                    className="p-1 text-gray-400 hover:text-red-600 rounded" title="Supprimer">
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
         </div>
     );
 };

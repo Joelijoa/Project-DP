@@ -11,6 +11,7 @@ const {
     saveEvaluations,
 } = require('../controllers/auditController');
 const { getSoA, saveSoA } = require('../controllers/soaController');
+const { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction } = require('../controllers/planActionController');
 
 // Liste tous les audits
 router.get('/', verifyToken, getAllAudits);
@@ -36,5 +37,11 @@ router.put('/:id/evaluations', verifyToken, saveEvaluations);
 // Déclaration d'Applicabilité (ISO 27001)
 router.get('/:id/soa', verifyToken, getSoA);
 router.put('/:id/soa', verifyToken, saveSoA);
+
+// Plans d'actions
+router.get('/:id/plans-actions', verifyToken, getPlanActions);
+router.post('/:id/plans-actions', verifyToken, createPlanAction);
+router.put('/:id/plans-actions/:planId', verifyToken, updatePlanAction);
+router.delete('/:id/plans-actions/:planId', verifyToken, deletePlanAction);
 
 module.exports = router;

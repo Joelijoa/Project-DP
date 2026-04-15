@@ -9,6 +9,8 @@ const userRoutes = require('./src/routes/userRoutes');
 const referentielRoutes = require('./src/routes/referentielRoutes');
 const auditRoutes = require('./src/routes/auditRoutes');
 const swaggerSpecs = require('./src/config/swagger');
+const { verifyToken } = require('./src/middlewares/authMiddleware');
+const { getAllPlanActions } = require('./src/controllers/planActionController');
 
 const app = express();
 
@@ -25,6 +27,11 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/referentiels', referentielRoutes);
+
+// Route globale plans-actions enregistrée AVANT le middleware auditRoutes pour éviter
+// que /:id dans auditRoutes ne capte "plans-actions" comme paramètre
+app.get('/api/audits/plans-actions', verifyToken, getAllPlanActions);
+
 app.use('/api/audits', auditRoutes);
 
 // Gestionnaire d'erreurs global — retourne toujours du JSON
