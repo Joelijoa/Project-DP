@@ -28,3 +28,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+
+graphify-out/
+Support/
+CLAUDE.md
