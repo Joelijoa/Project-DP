@@ -18,17 +18,35 @@ const ChevronDown = () => (
     </svg>
 );
 
-// Ligne mesure
-const MesureRow = ({ mesure }) => (
-    <div className="flex items-start gap-2 py-1.5 px-3 rounded hover:bg-gray-50 ml-1">
-        <span className="font-mono text-xs font-semibold text-gray-500 mt-0.5 w-20 shrink-0">{mesure.code}</span>
-        <span className="text-xs text-gray-700">{mesure.description}</span>
+// Supprime le préfixe numérique d'un libellé  ex: "1. POLITIQUE..." → "POLITIQUE..."
+const stripNumericPrefix = (str = '') =>
+    str.replace(/^\d+[\.\s\t]+/, '').trim();
+
+// Supprime "Objectif N : " ou "Objectif N: " en début de chaîne
+const stripObjectifPrefix = (str = '') =>
+    str.replace(/^Objectif\s+\d+\s*:\s*/i, '').trim();
+
+// Ligne mesure avec tooltip sur l'objectif parent
+const MesureRow = ({ mesure, objectifDesc }) => (
+    <div className="relative group flex items-start gap-2 py-1.5 px-3 rounded hover:bg-gray-50 ml-1">
+        <span className="font-mono text-xs font-semibold text-gray-500 mt-0.5 w-24 shrink-0">{mesure.code?.trim()}</span>
+        <span className="text-xs text-gray-700 line-clamp-2 flex-1">
+            {mesure.description || objectifDesc || '—'}
+        </span>
+        {(mesure.description || objectifDesc) && (
+            <div className="absolute left-0 bottom-full mb-2 z-50 hidden group-hover:block w-96 bg-gray-900 text-white text-xs rounded-lg px-3 py-2.5 shadow-xl pointer-events-none">
+                <p className="font-semibold mb-1 text-gray-200">{mesure.code?.trim()}</p>
+                <p className="text-gray-300 leading-relaxed">{mesure.description || objectifDesc}</p>
+                <div className="absolute left-4 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
+            </div>
+        )}
     </div>
 );
 
 // Objectif accordéon
 const ObjectifRow = ({ objectif }) => {
     const [open, setOpen] = useState(false);
+    const desc = stripObjectifPrefix(objectif.description || '');
     return (
         <div className="ml-4">
             <button
@@ -36,13 +54,13 @@ const ObjectifRow = ({ objectif }) => {
                 className="w-full flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 text-left"
             >
                 <span className="text-gray-400">{open ? <ChevronDown /> : <ChevronRight />}</span>
-                <span className="font-mono text-xs font-medium text-gray-500 w-20 shrink-0">{objectif.code}</span>
-                <span className="text-xs text-gray-700 flex-1">{objectif.nom}</span>
+                <span className="font-mono text-xs font-medium text-gray-500 w-8 shrink-0">{objectif.code}</span>
+                <span className="text-xs text-gray-700 flex-1 line-clamp-1">{desc}</span>
                 <span className="text-xs text-gray-400 shrink-0">{objectif.mesures?.length || 0} mesure(s)</span>
             </button>
             {open && objectif.mesures?.length > 0 && (
                 <div className="ml-6 mt-1 mb-1 border-l-2 border-gray-100 pl-2">
-                    {objectif.mesures.map(m => <MesureRow key={m.id} mesure={m} />)}
+                    {objectif.mesures.map(m => <MesureRow key={m.id} mesure={m} objectifDesc={desc} />)}
                 </div>
             )}
         </div>
@@ -53,15 +71,16 @@ const ObjectifRow = ({ objectif }) => {
 const DomaineRow = ({ domaine }) => {
     const [open, setOpen] = useState(false);
     const totalMesures = domaine.objectifs?.reduce((acc, o) => acc + (o.mesures?.length || 0), 0) || 0;
+    const nomPropre = stripNumericPrefix(domaine.nom || '');
     return (
-        <div className="border border-gray-100 rounded-lg overflow-hidden mb-2">
+        <div className="border border-gray-100 rounded-lg mb-2">
             <button
                 onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left"
+                className={`w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left ${open ? 'rounded-t-lg' : 'rounded-lg'}`}
             >
                 <span className="text-gray-500">{open ? <ChevronDown /> : <ChevronRight />}</span>
-                <span className="font-mono text-xs font-bold text-gray-600 w-16 shrink-0">{domaine.code}</span>
-                <span className="text-sm font-medium text-gray-800 flex-1">{domaine.nom}</span>
+                <span className="font-mono text-xs font-bold text-gray-600 w-8 shrink-0">{domaine.code}</span>
+                <span className="text-sm font-medium text-gray-800 flex-1">{nomPropre}</span>
                 <span className="text-xs text-gray-400 shrink-0">
                     {domaine.objectifs?.length || 0} obj. · {totalMesures} mesures
                 </span>

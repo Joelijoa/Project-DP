@@ -13,6 +13,13 @@ const {
 const { getSoA, saveSoA } = require('../controllers/soaController');
 const { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction } = require('../controllers/planActionController');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Audits
+ *   description: Gestion des audits et de leurs sous-ressources
+ */
+
 // Liste tous les audits
 router.get('/', verifyToken, getAllAudits);
 
@@ -38,10 +45,161 @@ router.put('/:id/evaluations', verifyToken, saveEvaluations);
 router.get('/:id/soa', verifyToken, getSoA);
 router.put('/:id/soa', verifyToken, saveSoA);
 
-// Plans d'actions
+// ─── Plans d'actions ────────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/audits/{id}/plans-actions:
+ *   get:
+ *     summary: Lister les plans d'actions d'un audit
+ *     tags: [Plans d'actions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'audit
+ *     responses:
+ *       200:
+ *         description: Liste des plans d'actions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 plans_actions:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PlanAction'
+ *       404:
+ *         description: Audit introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.get('/:id/plans-actions', verifyToken, getPlanActions);
+
+/**
+ * @swagger
+ * /api/audits/{id}/plans-actions:
+ *   post:
+ *     summary: Créer un plan d'action pour un audit
+ *     tags: [Plans d'actions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'audit
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreatePlanActionRequest'
+ *     responses:
+ *       201:
+ *         description: Plan d'action créé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 plan_action:
+ *                   $ref: '#/components/schemas/PlanAction'
+ *       404:
+ *         description: Audit introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.post('/:id/plans-actions', verifyToken, createPlanAction);
+
+/**
+ * @swagger
+ * /api/audits/{id}/plans-actions/{planId}:
+ *   put:
+ *     summary: Modifier un plan d'action
+ *     tags: [Plans d'actions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'audit
+ *       - in: path
+ *         name: planId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du plan d'action
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdatePlanActionRequest'
+ *     responses:
+ *       200:
+ *         description: Plan d'action mis à jour
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 plan_action:
+ *                   $ref: '#/components/schemas/PlanAction'
+ *       404:
+ *         description: Plan d'action introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put('/:id/plans-actions/:planId', verifyToken, updatePlanAction);
+
+/**
+ * @swagger
+ * /api/audits/{id}/plans-actions/{planId}:
+ *   delete:
+ *     summary: Supprimer un plan d'action
+ *     tags: [Plans d'actions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'audit
+ *       - in: path
+ *         name: planId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du plan d'action
+ *     responses:
+ *       200:
+ *         description: Plan d'action supprimé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Plan d'action supprimé"
+ *       404:
+ *         description: Plan d'action introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.delete('/:id/plans-actions/:planId', verifyToken, deletePlanAction);
 
 module.exports = router;

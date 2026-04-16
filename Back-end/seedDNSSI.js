@@ -72,6 +72,24 @@ const seedDNSSI = async () => {
         let lastChapitreText = '';
         let lastObjectifText = '';
 
+        // Construire le map code → description depuis les commentaires de cellule
+        const descriptionMap = {};
+        ws.eachRow((row, rowNumber) => {
+            if (rowNumber <= 2) return;
+            const cell = row.getCell(3);
+            const code = cell.value ? String(cell.value).trim() : '';
+            if (!code) return;
+            const note = cell.note;
+            if (note && note.texts) {
+                const full = note.texts.map(t => t.text).join('');
+                // Supprimer la première ligne (qui répète le code) et nettoyer
+                const lines = full.split('\n').map(l => l.trim()).filter(Boolean);
+                const desc = lines.slice(1).join(' ').trim(); // ignorer la 1ère ligne = code
+                if (desc) descriptionMap[code] = desc;
+            }
+        });
+        console.log(`${Object.keys(descriptionMap).length} descriptions extraites des commentaires`);
+
         for (const row of rows) {
             // Nouveau domaine/chapitre ?
             if (row.chapitre && row.chapitre !== lastChapitreText) {
@@ -107,10 +125,11 @@ const seedDNSSI = async () => {
 
             // Créer la mesure/règle
             if (row.regle && currentObjectif) {
+                const code = row.regle.trim();
                 await Mesure.create({
                     objectif_id: currentObjectif.id,
-                    code: row.regle.trim(),
-                    description: null,
+                    code,
+                    description: descriptionMap[code] || null,
                     niveau_cible: 3,
                 });
                 mesureCount++;

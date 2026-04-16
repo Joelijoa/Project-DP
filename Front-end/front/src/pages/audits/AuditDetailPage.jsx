@@ -7,6 +7,11 @@ import { getAllUsers } from '../../services/endpoints/userService';
 import DateInput from '../../components/common/DateInput';
 import { toast } from 'react-toastify';
 
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+const stripNumericPrefix  = (str = '') => str.replace(/^\d+[\.\s\t]+/, '').trim();
+const stripObjectifPrefix = (str = '') => str.replace(/^Objectif\s+\d+\s*:\s*/i, '').trim();
+
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
 const NIVEAUX = [
@@ -813,7 +818,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                 <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>
                                     {domaine.code}
                                 </span>
-                                <span className="text-sm font-semibold text-gray-800">{domaine.nom}</span>
+                                <span className="text-sm font-semibold text-gray-800">{stripNumericPrefix(domaine.nom)}</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-xs text-gray-500">{evCount}/{mesures.length} évaluées</span>
@@ -828,13 +833,15 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
 
                         {isOpen && (
                             <div className="border-t border-gray-100">
-                                {domaine.objectifs?.map(objectif => (
+                                {domaine.objectifs?.map(objectif => {
+                                    const objDesc = stripObjectifPrefix(objectif.description || '');
+                                    return (
                                     <div key={objectif.id} className="border-b border-gray-50 last:border-0">
                                         {/* En-tête objectif */}
                                         <div className="px-5 py-2.5 bg-gray-50/60">
                                             <p className="text-xs font-semibold text-gray-600">
                                                 <span className="text-gray-400 mr-1">{objectif.code}</span>
-                                                {objectif.description}
+                                                {objDesc}
                                             </p>
                                         </div>
 
@@ -864,8 +871,8 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                         {mesure.code}
                                                                     </span>
                                                                     <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
-                                                                        <p className="font-semibold text-gray-100 mb-1.5">{mesure.code}</p>
-                                                                        <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>
+                                                                        <p className="font-semibold text-gray-100 mb-1.5">{mesure.code?.trim()}</p>
+                                                                        {mesure.description && <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>}
                                                                         <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
                                                                     </div>
                                                                 </div>
@@ -918,7 +925,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                             </tbody>
                                         </table>
                                     </div>
-                                ))}
+                                ); })}
                             </div>
                         )}
                     </div>
@@ -1363,12 +1370,13 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                 {theme.objectifs?.map(objectif => {
                                     const objApplicable = objectif.mesures?.filter(m => soaMap[m.id]?.applicable === true) ?? [];
                                     if (objApplicable.length === 0) return null;
+                                    const objDesc = stripObjectifPrefix(objectif.description || '');
                                     return (
                                         <div key={objectif.id} className="border-b border-gray-50 last:border-0">
                                             <div className="px-5 py-2.5 bg-gray-50/60">
                                                 <p className="text-xs font-semibold text-gray-600">
                                                     <span className="text-gray-400 mr-1">{objectif.code}</span>
-                                                    {objectif.description}
+                                                    {objDesc}
                                                 </p>
                                             </div>
                                             {objApplicable.map(mesure => {
@@ -1380,16 +1388,16 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                                             {/* Code + tooltip */}
                                                             <div className="relative group flex-shrink-0 w-20">
                                                                 <span className="font-mono text-xs text-gray-600 cursor-help underline decoration-dotted decoration-gray-400">
-                                                                    {mesure.code}
+                                                                    {mesure.code?.trim()}
                                                                 </span>
                                                                 <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
-                                                                    <p className="font-semibold text-gray-100 mb-1.5 text-xs">{mesure.code}</p>
-                                                                    <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>
+                                                                    <p className="font-semibold text-gray-100 mb-1.5 text-xs">{mesure.code?.trim()}</p>
+                                                                    {mesure.description && <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>}
                                                                     <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
                                                                 </div>
                                                             </div>
-                                                            {/* Description */}
-                                                            <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description}</p>
+                                                            {/* Description de la règle */}
+                                                            <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description || objDesc}</p>
                                                             {/* 3-state toggle */}
                                                             <div className="flex items-center flex-shrink-0">
                                                                 {ISO_CONF_STATES.map((s, idx) => (
@@ -1787,13 +1795,15 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave 
 
                         {isOpen && (
                             <div className="border-t border-gray-100">
-                                {theme.objectifs?.map(objectif => (
+                                {theme.objectifs?.map(objectif => {
+                                    const objDesc = stripObjectifPrefix(objectif.description || '');
+                                    return (
                                     <div key={objectif.id} className="border-b border-gray-50 last:border-0">
                                         {/* En-tête objectif */}
                                         <div className="px-5 py-2.5 bg-gray-50/60">
                                             <p className="text-xs font-semibold text-gray-600">
                                                 <span className="text-gray-400 mr-1">{objectif.code}</span>
-                                                {objectif.description}
+                                                {objDesc}
                                             </p>
                                         </div>
 
@@ -1810,17 +1820,17 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave 
                                                         {/* Code + tooltip */}
                                                         <div className="relative group flex-shrink-0 w-24">
                                                             <span className="font-mono text-xs text-gray-600 cursor-help underline decoration-dotted decoration-gray-400">
-                                                                {mesure.code}
+                                                                {mesure.code?.trim()}
                                                             </span>
                                                             <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
-                                                                <p className="font-semibold text-gray-100 mb-1.5 text-xs">{mesure.code}</p>
-                                                                <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>
+                                                                <p className="font-semibold text-gray-100 mb-1.5 text-xs">{mesure.code?.trim()}</p>
+                                                                {mesure.description && <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>}
                                                                 <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
                                                             </div>
                                                         </div>
 
-                                                        {/* Description mesure */}
-                                                        <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description}</p>
+                                                        {/* Description de la règle */}
+                                                        <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description || objDesc}</p>
 
                                                         {/* Toggle applicable */}
                                                         <div className="flex items-center gap-1 flex-shrink-0">
@@ -1908,7 +1918,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave 
                                             );
                                         })}
                                     </div>
-                                ))}
+                                ); })}
                             </div>
                         )}
                     </div>

@@ -31,6 +31,10 @@ const Audit = sequelize.define('Audit', {
         type: DataTypes.ENUM('brouillon', 'en_cours', 'termine', 'archive'),
         defaultValue: 'brouillon',
     },
+    entite_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+    },
     referentiel_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
