@@ -5,6 +5,19 @@
   --brand-red-light: rgba(204, 0, 0, 0.12);
   --brand-dark: #111111;
   --brand-dark-2: #1A1A1A;
+
+  /* ── React-Toastify overrides ── */
+  --toastify-font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --toastify-color-light: #ffffff;
+  --toastify-text-color-light: #111827;
+  --toastify-color-info:    #3b82f6;
+  --toastify-color-success: #16a34a;
+  --toastify-color-warning: #d97706;
+  --toastify-color-error:   #CC0000;
+  --toastify-toast-bd-radius: 10px;
+  --toastify-toast-min-height: 56px;
+  --toastify-toast-width: 340px;
+  --toastify-z-index: 9999;
 }
 
 body {
@@ -29,3 +42,49 @@ textarea::placeholder {
 #root {
   min-height: 100vh;
 }
+
+/* ── Toast styling ── */
+.Toastify__toast {
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.07) !important;
+  border-left-width: 3px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04) !important;
+  padding: 12px 14px 12px 16px !important;
+  align-items: center !important;
+}
+
+.Toastify__toast--success { border-left-color: var(--toastify-color-success) !important; }
+.Toastify__toast--error   { border-left-color: var(--toastify-color-error)   !important; }
+.Toastify__toast--warning { border-left-color: var(--toastify-color-warning) !important; }
+.Toastify__toast--info    { border-left-color: var(--toastify-color-info)    !important; }
+.Toastify__toast--default { border-left-color: #9ca3af !important; }
+
+.Toastify__toast-body {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.45 !important;
+  color: #111827 !important;
+  gap: 10px !important;
+  padding: 0 !important;
+}
+
+.Toastify__toast-icon {
+  width: 18px !important;
+  flex-shrink: 0 !important;
+}
+
+.Toastify__progress-bar {
+  height: 2px !important;
+  opacity: 0.35 !important;
+}
+.Toastify__progress-bar--success { background: var(--toastify-color-success) !important; }
+.Toastify__progress-bar--error   { background: var(--toastify-color-error)   !important; }
+.Toastify__progress-bar--warning { background: var(--toastify-color-warning) !important; }
+.Toastify__progress-bar--info    { background: var(--toastify-color-info)    !important; }
+
+.Toastify__close-button {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+  align-self: center !important;
+}
+.Toastify__close-button:hover { color: #374151 !important; }
