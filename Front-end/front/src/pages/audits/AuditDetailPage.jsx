@@ -5,6 +5,7 @@ import { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction } 
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
 import DateInput from '../../components/common/DateInput';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import { toast } from 'react-toastify';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -88,6 +89,18 @@ const INDICATEURS_DEF = [
     { key: 'nb_audits',                label: "Nombre d'audits effectués", unit: '/an' },
     { key: 'taux_sensibilisation',     label: "Taux d'utilisateurs sensibilisés en SSI", unit: '%' },
     { key: 'taux_admins_formes',       label: "Taux d'administrateurs formés en SSI", unit: '%' },
+];
+
+const ISO_INDICATEURS_DEF = [
+    { key: 'iso_risques_traites',      label: "Nombre de risques identifiés et traités",                unit: '' },
+    { key: 'iso_taux_nc',              label: "Taux de non-conformités (contrôles NC / applicables)",   auto: 'nc' },
+    { key: 'iso_taux_conf',            label: "Taux de contrôles conformes (Annexe A)",                 auto: 'conf' },
+    { key: 'iso_taux_impl',            label: "Taux de contrôles implémentés (SoA)",                    auto: 'impl' },
+    { key: 'iso_incidents_smsi',       label: "Nombre d'incidents de sécurité déclarés",                unit: '/an' },
+    { key: 'iso_audits_internes',      label: "Nombre d'audits internes réalisés",                      unit: '/an' },
+    { key: 'iso_rev_direction',        label: "Nombre de revues de direction réalisées",                unit: '/an' },
+    { key: 'iso_taux_sensibilisation', label: "Taux de personnel sensibilisé ISO 27001",                unit: '%' },
+    { key: 'iso_actions_clot',         label: "Nombre d'actions correctives clôturées",                 unit: '' },
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -314,6 +327,40 @@ const AuditDetailPage = () => {
         }
     };
 
+    // Clôture de l'audit
+    const [showClotureModal, setShowClotureModal] = useState(false);
+    const [cloturing, setCloturing] = useState(false);
+
+    const handleClotureAudit = async () => {
+        setCloturing(true);
+        try {
+            await updateAudit(id, { statut: 'termine' });
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success('Audit clôturé avec succès');
+        } catch {
+            toast.error('Erreur lors de la clôture');
+        } finally {
+            setCloturing(false);
+            setShowClotureModal(false);
+        }
+    };
+
+    // Sauvegarde des informations de base de l'audit (nom, client, perimetre, dates)
+    const handleUpdateAuditInfo = async (data) => {
+        setSavingInfo(true);
+        try {
+            await updateAudit(id, data);
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success("Informations de l'audit mises à jour");
+        } catch {
+            toast.error('Erreur lors de la mise à jour');
+        } finally {
+            setSavingInfo(false);
+        }
+    };
+
     // Sauvegarde identification + indicateurs
     const handleSaveInfo = async (field, data) => {
         setSavingInfo(true);
@@ -373,6 +420,36 @@ const AuditDetailPage = () => {
         ? Math.round(((totalConforme + totalPartiel * 0.5) / (totalMesures - synthese.reduce((a, d) => a + d.na, 0))) * 100)
         : 0;
 
+    // ── Indicateurs de complétion par onglet (dot orange si non rempli) ──────────
+    const identFilled     = Object.values(identification).some(v => v && String(v).trim());
+    const isoEvalsDone    = Object.values(localEvals).some(e => e.niveau_maturite !== null && e.niveau_maturite !== undefined);
+    const MANUAL_IND_KEYS = INDICATEURS_DEF.filter(i => !i.auto).map(i => i.key);
+    const ISO_MANUAL_KEYS = ISO_INDICATEURS_DEF.filter(i => !i.auto).map(i => i.key);
+    const tabStatus = {
+        identification:  identFilled,
+        evaluation:      totalEvaluated > 0,
+        soa:             Object.keys(soaMap).length > 0,
+        evaluation_iso:  isoEvalsDone,
+        plans_actions:   planActions.length > 0,
+        indicateurs:     MANUAL_IND_KEYS.some(k => indicateurs[k]),
+        indicateurs_iso: ISO_MANUAL_KEYS.some(k => indicateurs[k]),
+    };
+
+    const allEvalsISO = (() => {
+        if (!referentiel) return false;
+        const applicableIds = Object.values(soaMap).filter(e => e.applicable).map(e => e.mesure_id);
+        if (applicableIds.length === 0) return false;
+        return applicableIds.every(mid => {
+            const ev = localEvals[mid];
+            return ev && ev.niveau_maturite !== null && ev.niveau_maturite !== undefined;
+        });
+    })();
+
+    const _isISO = referentiel?.type === 'ISO27001';
+    const auditComplete = _isISO
+        ? identFilled && Object.keys(soaMap).length > 0 && allEvalsISO
+        : identFilled && totalMesures > 0 && totalEvaluated === totalMesures;
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -411,20 +488,34 @@ const AuditDetailPage = () => {
                         <p className="text-sm text-gray-500 mt-0.5">{audit.client} — {audit.referentiel?.nom}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-500">{totalEvaluated}/{totalMesures} mesures évaluées</span>
-                    <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${totalMesures > 0 ? (totalEvaluated/totalMesures)*100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-500">{totalEvaluated}/{totalMesures} mesures évaluées</span>
+                        <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${totalMesures > 0 ? (totalEvaluated/totalMesures)*100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
+                        </div>
                     </div>
+                    {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && (
+                        <button
+                            onClick={() => setShowClotureModal(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90"
+                            style={{ backgroundColor: '#16a34a' }}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                            Clôturer l'audit
+                        </button>
+                    )}
                 </div>
             </div>
 
             {/* Onglets */}
-            <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} />
+            <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} tabStatus={tabStatus} />
 
             {/* Contenu des onglets — communs */}
-            {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} />}
-            {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} />}
+            {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} />}
+            {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} />}
 
             {/* Onglets DNSSI */}
             {!isISO && activeTab === 'evaluation' && (
@@ -474,9 +565,9 @@ const AuditDetailPage = () => {
                     onSave={handleSaveEvals}
                 />
             )}
-            {isISO && activeTab === 'synthese_iso' && <TabPlaceholder titre="Synthèse par thème" texte="Vue synthétique de la conformité regroupée par thème ISO 27001:2022 (A.5 Organisationnel, A.6 Personnes, A.7 Physique, A.8 Technologique)." />}
-            {isISO && activeTab === 'nc' && <TabPlaceholder titre="Non-conformités" texte="Registre des non-conformités identifiées lors de l'évaluation des contrôles ISO 27001:2022 applicables." />}
-            {isISO && activeTab === 'indicateurs_iso' && <TabPlaceholder titre="Indicateurs SMSI" texte="Indicateurs de performance du Système de Management de la Sécurité de l'Information (SMSI) selon ISO 27001:2022." />}
+            {isISO && activeTab === 'synthese_iso' && <TabSyntheseISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
+            {isISO && activeTab === 'nc' && <TabNC referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
+            {isISO && activeTab === 'indicateurs_iso' && <TabIndicateursISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} indicateurs={indicateurs} setIndicateurs={setIndicateurs} onSave={() => handleSaveInfo('indicateurs', indicateurs)} saving={savingInfo} />}
 
             {/* Plan d'actions — commun DNSSI + ISO */}
             {activeTab === 'plans_actions' && (
@@ -491,13 +582,24 @@ const AuditDetailPage = () => {
                     onDelete={handleDeletePlanAction}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={showClotureModal}
+                title="Clôturer l'audit"
+                message={`Êtes-vous sûr de vouloir clôturer l'audit "${audit.nom}" ? Cette action indique que l'audit est terminé. Vous pourrez encore consulter les données mais l'audit sera marqué comme terminé.`}
+                confirmLabel={cloturing ? 'Clôture en cours…' : 'Confirmer la clôture'}
+                cancelLabel="Annuler"
+                danger={false}
+                onConfirm={handleClotureAudit}
+                onCancel={() => setShowClotureModal(false)}
+            />
         </div>
     );
 };
 
 // ─── Navigation onglets ───────────────────────────────────────────────────────
 
-const TabNav = ({ activeTab, setActiveTab, tabs }) => {
+const TabNav = ({ activeTab, setActiveTab, tabs, tabStatus = {} }) => {
     const navRef = useRef(null);
     const [canScrollLeft, setCanScrollLeft]   = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
@@ -552,18 +654,23 @@ const TabNav = ({ activeTab, setActiveTab, tabs }) => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+                        className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
                             activeTab === tab.id
                                 ? 'border-current -mb-px'
                                 : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
                         }`}
                         style={activeTab === tab.id ? { color: 'var(--brand-red)', borderColor: 'var(--brand-red)' } : {}}
                     >
-                        <span
-                            className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
-                            style={{ backgroundColor: activeTab === tab.id ? 'var(--brand-red)' : '#D1D5DB' }}
-                        >
-                            {i + 1}
+                        <span className="relative flex-shrink-0">
+                            <span
+                                className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                                style={{ backgroundColor: activeTab === tab.id ? 'var(--brand-red)' : '#D1D5DB' }}
+                            >
+                                {i + 1}
+                            </span>
+                            {tabStatus[tab.id] === false && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400 border border-white" />
+                            )}
                         </span>
                         {tab.label}
                     </button>
@@ -592,85 +699,276 @@ const TabNav = ({ activeTab, setActiveTab, tabs }) => {
 
 // ─── TAB 1 : Description outil évaluation ────────────────────────────────────
 
-const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal }) => (
-    <div className="space-y-5">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-red-light)' }}>
-                    <svg className="w-4 h-4" style={{ color: 'var(--brand-red)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                    </svg>
-                </div>
-                <h2 className="text-sm font-semibold text-gray-800">Description de l'outil d'évaluation</h2>
-            </div>
-            <div className="prose prose-sm max-w-none text-gray-600 space-y-2">
-                <p>
-                    Dans le cadre de l'implémentation de la DNSSI au sein des entités et des infrastructures d'importance vitale (IIV) concernées par ses dispositions, la <strong>DGSSI</strong> a réalisé cet outil dans l'objectif d'évaluer la conformité des entités et des IIV par rapport à la DNSSI et d'assurer un suivi pour l'état de mise en œuvre des règles de sécurité.
-                </p>
-                <p>
-                    L'évaluation se fait mesure par mesure selon une échelle de maturité à 6 niveaux (de 0 à 5) inspirée du modèle CMMI :
-                </p>
-            </div>
-            <div className="mt-4 grid grid-cols-3 sm:grid-cols-6 gap-3">
-                {NIVEAUX.filter(n => n.value !== null).map(n => (
-                    <div key={n.value} className="text-center p-3 rounded-lg bg-gray-50 border border-gray-100">
-                        <p className={`text-2xl font-bold ${n.color}`}>{n.value}</p>
-                        <p className="text-xs text-gray-600 mt-1 font-medium">{n.label}</p>
-                    </div>
-                ))}
-            </div>
-        </div>
+const fmtISODate = (iso) => {
+    if (!iso) return '—';
+    const parts = (iso.split('T')[0]).split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return iso;
+};
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-                { label: 'Référentiel', value: audit.referentiel?.type ?? '—', sub: audit.referentiel?.nom },
-                { label: 'Mesures évaluées', value: `${totalEvaluated} / ${totalMesures}`, sub: 'sur le référentiel' },
-                { label: 'Taux de conformité', value: `${tauxGlobal}%`, sub: 'global pondéré', accent: true },
-                { label: 'Statut', value: STATUT_CONFIG[audit.statut]?.label ?? '—', sub: audit.perimetre || 'Aucun périmètre défini' },
-            ].map((s, i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-200 p-4" style={s.accent ? { borderTopWidth: '3px', borderTopColor: 'var(--brand-red)' } : {}}>
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</p>
-                    <p className="text-2xl font-bold mt-1" style={s.accent ? { color: 'var(--brand-red)' } : { color: '#111827' }}>{s.value}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">{s.sub}</p>
-                </div>
-            ))}
-        </div>
+const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO, onSave, saving }) => {
+    const [editing, setEditing] = useState(false);
+    const [form, setForm] = useState({
+        nom:        audit.nom || '',
+        client:     audit.client || '',
+        perimetre:  audit.perimetre || '',
+        date_debut: audit.date_debut?.split('T')[0] || '',
+        date_fin:   audit.date_fin?.split('T')[0] || '',
+    });
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-sm font-semibold text-gray-800 mb-4">Informations de l'audit</h3>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
-                {[
-                    { label: 'Client / Entité', value: audit.client },
-                    { label: 'Périmètre', value: audit.perimetre || '—' },
-                    { label: 'Date de début', value: audit.date_debut ? new Date(audit.date_debut).toLocaleDateString('fr-FR') : '—' },
-                    { label: 'Date de fin prévue', value: audit.date_fin ? new Date(audit.date_fin).toLocaleDateString('fr-FR') : '—' },
-                    { label: 'Créé par', value: audit.createur ? `${audit.createur.prenom} ${audit.createur.nom}` : '—' },
-                    { label: 'Auditeurs', value: audit.auditeurs?.length > 0 ? audit.auditeurs.map(u => `${u.prenom} ${u.nom}`).join(', ') : '—' },
-                ].map(({ label, value }) => (
-                    <div key={label}>
-                        <dt className="text-xs font-medium text-gray-500">{label}</dt>
-                        <dd className="text-gray-800 mt-0.5">{value}</dd>
-                    </div>
-                ))}
-            </dl>
-        </div>
-    </div>
-);
+    useEffect(() => {
+        if (!editing) {
+            setForm({
+                nom:        audit.nom || '',
+                client:     audit.client || '',
+                perimetre:  audit.perimetre || '',
+                date_debut: audit.date_debut?.split('T')[0] || '',
+                date_fin:   audit.date_fin?.split('T')[0] || '',
+            });
+        }
+    }, [audit, editing]);
 
-// ─── TAB 2 : Identification entité ou IIV ────────────────────────────────────
+    const setF = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-const TabIdentification = ({ identification, setIdentification, onSave, saving }) => {
-    const set = (k, v) => setIdentification(prev => ({ ...prev, [k]: v }));
+    const handleSave = async () => {
+        await onSave(form);
+        setEditing(false);
+    };
 
     return (
         <div className="space-y-5">
-            <TabInfo text="L'objectif de cette feuille est de renseigner la dénomination de l'entité ou de l'IIV, son adresse ainsi que les informations relatives au RSSI et à l'auteur de l'évaluation." />
+            {/* Description statique */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-sm font-semibold text-gray-800 mb-5">1. Identification de l'entité ou de l'IIV</h2>
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-red-light)' }}>
+                        <svg className="w-4 h-4" style={{ color: 'var(--brand-red)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-sm font-semibold text-gray-800">
+                        {isISO ? "Description de l'audit ISO 27001:2022" : "Description de l'outil d'évaluation"}
+                    </h2>
+                </div>
+                <div className="prose prose-sm max-w-none text-gray-600 space-y-2">
+                    {isISO ? (
+                        <p>
+                            Cet outil permet d'évaluer le niveau de conformité d'un organisme par rapport aux exigences de la norme <strong>ISO/IEC 27001:2022</strong> (Sécurité de l'information, cybersécurité et protection de la vie privée). L'évaluation porte sur les contrôles de l'<strong>Annexe A</strong> classés en 4 thèmes : Organisationnel (A.5), Personnes (A.6), Physique (A.7) et Technologique (A.8).
+                        </p>
+                    ) : (
+                        <>
+                            <p>
+                                Dans le cadre de l'implémentation de la DNSSI au sein des entités et des infrastructures d'importance vitale (IIV) concernées par ses dispositions, la <strong>DGSSI</strong> a réalisé cet outil dans l'objectif d'évaluer la conformité des entités et des IIV par rapport à la DNSSI et d'assurer un suivi pour l'état de mise en œuvre des règles de sécurité.
+                            </p>
+                            <p>L'évaluation se fait mesure par mesure selon une échelle de maturité à 6 niveaux (de 0 à 5) inspirée du modèle CMMI :</p>
+                        </>
+                    )}
+                </div>
+                {!isISO && (
+                    <div className="mt-4 grid grid-cols-3 sm:grid-cols-6 gap-3">
+                        {NIVEAUX.filter(n => n.value !== null).map(n => (
+                            <div key={n.value} className="text-center p-3 rounded-lg bg-gray-50 border border-gray-100">
+                                <p className={`text-2xl font-bold ${n.color}`}>{n.value}</p>
+                                <p className="text-xs text-gray-600 mt-1 font-medium">{n.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* KPI cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                    { label: 'Référentiel', value: audit.referentiel?.type ?? '—', sub: audit.referentiel?.nom },
+                    { label: 'Mesures évaluées', value: `${totalEvaluated} / ${totalMesures}`, sub: 'sur le référentiel' },
+                    { label: 'Taux de conformité', value: `${tauxGlobal}%`, sub: 'global pondéré', accent: true },
+                    { label: 'Statut', value: STATUT_CONFIG[audit.statut]?.label ?? '—', sub: audit.perimetre || 'Aucun périmètre défini' },
+                ].map((s, i) => (
+                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4" style={s.accent ? { borderTopWidth: '3px', borderTopColor: 'var(--brand-red)' } : {}}>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</p>
+                        <p className="text-2xl font-bold mt-1" style={s.accent ? { color: 'var(--brand-red)' } : { color: '#111827' }}>{s.value}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">{s.sub}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Informations de l'audit — vue ou édition */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-gray-800">Informations de l'audit</h3>
+                    {!editing && (
+                        <button
+                            onClick={() => setEditing(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                            </svg>
+                            Modifier
+                        </button>
+                    )}
+                </div>
+
+                {editing ? (
+                    <div>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            {[
+                                { key: 'nom',      label: "Nom de l'audit" },
+                                { key: 'client',   label: 'Client / Entité' },
+                                { key: 'perimetre',label: 'Périmètre', span: true },
+                            ].map(({ key, label, span }) => (
+                                <div key={key} className={span ? 'col-span-2' : ''}>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
+                                    <input
+                                        type="text"
+                                        value={form[key]}
+                                        onChange={e => setF(key, e.target.value)}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                        style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                                    />
+                                </div>
+                            ))}
+                            {[
+                                { key: 'date_debut', label: 'Date de début' },
+                                { key: 'date_fin',   label: 'Date de fin prévue' },
+                            ].map(({ key, label }) => (
+                                <div key={key}>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
+                                    <input
+                                        type="date"
+                                        value={form[key]}
+                                        onChange={e => setF(key, e.target.value)}
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                        style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                            <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+                                Annuler
+                            </button>
+                            <button onClick={handleSave} disabled={saving}
+                                className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60"
+                                style={{ backgroundColor: 'var(--brand-red)' }}>
+                                {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                Enregistrer
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <dl className="grid grid-cols-2 gap-4 text-sm">
+                        {[
+                            { label: 'Client / Entité',   value: audit.client || '—' },
+                            { label: 'Périmètre',         value: audit.perimetre || '—' },
+                            { label: 'Date de début',     value: fmtISODate(audit.date_debut) },
+                            { label: 'Date de fin prévue',value: fmtISODate(audit.date_fin) },
+                            { label: 'Créé par',          value: audit.createur ? `${audit.createur.prenom} ${audit.createur.nom}` : '—' },
+                            { label: 'Auditeurs',         value: audit.auditeurs?.length > 0 ? audit.auditeurs.map(u => `${u.prenom} ${u.nom}`).join(', ') : '—' },
+                        ].map(({ label, value }) => (
+                            <div key={label}>
+                                <dt className="text-xs font-medium text-gray-500">{label}</dt>
+                                <dd className="text-gray-800 mt-0.5">{value}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ─── TAB 2 : Identification entité ou IIV ────────────────────────────────────
+
+const TabIdentification = ({ identification, setIdentification, onSave, saving, isISO }) => {
+    const isEmpty = !Object.values(identification).some(v => v && String(v).trim());
+    const [editing, setEditing] = useState(isEmpty);
+    const set = (k, v) => setIdentification(prev => ({ ...prev, [k]: v }));
+
+    const handleSave = () => {
+        onSave();
+        setEditing(false);
+    };
+
+    const infoText = isISO
+        ? "Renseignez les informations relatives à l'organisme audité, à son RSSI et à l'auteur de l'évaluation ISO 27001."
+        : "L'objectif de cette feuille est de renseigner la dénomination de l'entité ou de l'IIV, son adresse ainsi que les informations relatives au RSSI et à l'auteur de l'évaluation.";
+    const sectionTitle = isISO ? "2. Identification de l'organisme" : "1. Identification de l'entité ou de l'IIV";
+    const genLabel = isISO ? "Informations de l'organisme" : "Informations générales";
+
+    // ── Vue carte (après remplissage) ─────────────────────────────────────────
+    if (!editing) {
+        const InfoRow = ({ label, value }) => !value ? null : (
+            <div>
+                <dt className="text-xs font-medium text-gray-500">{label}</dt>
+                <dd className="text-sm text-gray-800 mt-0.5">{value}</dd>
+            </div>
+        );
+        return (
+            <div className="space-y-5">
+                <TabInfo text={infoText} />
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-5">
+                        <h2 className="text-sm font-semibold text-gray-800">{sectionTitle}</h2>
+                        <button
+                            onClick={() => setEditing(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                            </svg>
+                            Modifier
+                        </button>
+                    </div>
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">{genLabel}</h3>
+                            <dl className="grid grid-cols-2 gap-3">
+                                <InfoRow label="Dénomination" value={identification.denomination} />
+                                <InfoRow label="Département" value={identification.departement} />
+                                <InfoRow label="Adresse" value={identification.adresse} />
+                                <InfoRow label="Ville" value={identification.ville} />
+                                <InfoRow label="Site web" value={identification.site_web} />
+                            </dl>
+                        </div>
+                        <div>
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">RSSI</h3>
+                            <dl className="grid grid-cols-2 gap-3">
+                                <InfoRow label="Nom et Prénom" value={identification.rssi_nom_prenom} />
+                                <InfoRow label="Rattachement" value={identification.rssi_rattachement} />
+                                <InfoRow label="E-mail" value={identification.rssi_email} />
+                                <InfoRow label="Téléphone" value={identification.rssi_telephone} />
+                            </dl>
+                        </div>
+                        <div>
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Gestion du document</h3>
+                            <dl className="grid grid-cols-2 gap-3">
+                                <InfoRow label="Auteur de l'évaluation" value={identification.auteur_evaluation} />
+                                <InfoRow label="Date de l'évaluation" value={identification.date_evaluation ? fmtISODate(identification.date_evaluation) : null} />
+                                <InfoRow label="Validé par" value={identification.valide_par} />
+                                <InfoRow label="Date de validation" value={identification.date_validation ? fmtISODate(identification.date_validation) : null} />
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Formulaire d'édition ──────────────────────────────────────────────────
+    return (
+        <div className="space-y-5">
+            <TabInfo text={infoText} />
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-5">
+                    <h2 className="text-sm font-semibold text-gray-800">{sectionTitle}</h2>
+                    {!isEmpty && (
+                        <button onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>
+                    )}
+                </div>
 
                 {/* Informations générales */}
                 <div className="mb-6">
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Informations générales</h3>
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">{genLabel}</h3>
                     <div className="grid grid-cols-2 gap-4">
                         {[
                             { key: 'denomination',  label: 'Dénomination' },
@@ -685,7 +983,8 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving }
                                     type="text"
                                     value={identification[key] || ''}
                                     onChange={e => set(key, e.target.value)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                 />
                             </div>
                         ))}
@@ -697,10 +996,10 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving }
                     <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Responsable de la Sécurité des SI (RSSI)</h3>
                     <div className="grid grid-cols-2 gap-4">
                         {[
-                            { key: 'rssi_nom_prenom',    label: 'Nom et Prénom' },
-                            { key: 'rssi_rattachement',  label: 'Rattachement' },
-                            { key: 'rssi_email',         label: 'e-mail', type: 'email' },
-                            { key: 'rssi_telephone',     label: 'Téléphone', type: 'tel' },
+                            { key: 'rssi_nom_prenom',   label: 'Nom et Prénom' },
+                            { key: 'rssi_rattachement', label: 'Rattachement' },
+                            { key: 'rssi_email',        label: 'E-mail', type: 'email' },
+                            { key: 'rssi_telephone',    label: 'Téléphone', type: 'tel' },
                         ].map(({ key, label, type = 'text' }) => (
                             <div key={key}>
                                 <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
@@ -708,7 +1007,8 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving }
                                     type={type}
                                     value={identification[key] || ''}
                                     onChange={e => set(key, e.target.value)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                 />
                             </div>
                         ))}
@@ -734,14 +1034,16 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving }
                                     <DateInput
                                         value={identification[key] || ''}
                                         onChange={v => set(key, v)}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                        style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                     />
                                 ) : (
                                     <input
                                         type="text"
                                         value={identification[key] || ''}
                                         onChange={e => set(key, e.target.value)}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                        style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                     />
                                 )}
                             </div>
@@ -751,12 +1053,12 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving }
 
                 <div className="flex justify-end">
                     <button
-                        onClick={onSave}
+                        onClick={handleSave}
                         disabled={saving}
                         className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg transition disabled:opacity-60"
                         style={{ backgroundColor: 'var(--brand-red)' }}
                     >
-                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                        {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                         Enregistrer
                     </button>
                 </div>
@@ -1695,6 +1997,260 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, o
                     </table>
                 </div>
             )}
+        </div>
+    );
+};
+
+// ─── TAB ISO 6 : Synthèse par thème ──────────────────────────────────────────
+
+const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
+    if (!referentiel) return <div className="text-gray-400 text-sm">Chargement...</div>;
+
+    const themes = referentiel.domaines.map(theme => {
+        const mesures = theme.objectifs.flatMap(o => o.mesures);
+        const applicable = mesures.filter(m => soaMap[m.id]?.applicable === true);
+        const conforme    = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+        const partiel     = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
+        const nonConforme = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+        const evaluated   = conforme + partiel + nonConforme;
+        const taux = evaluated > 0 ? Math.round(((conforme + partiel * 0.5) / evaluated) * 100) : 0;
+        return { ...theme, total: mesures.length, applicable: applicable.length, conforme, partiel, nonConforme, evaluated, taux };
+    });
+
+    const totApp = themes.reduce((s, t) => s + t.applicable, 0);
+    const totConf = themes.reduce((s, t) => s + t.conforme, 0);
+    const totPart = themes.reduce((s, t) => s + t.partiel, 0);
+    const totNC   = themes.reduce((s, t) => s + t.nonConforme, 0);
+    const totEval = themes.reduce((s, t) => s + t.evaluated, 0);
+    const tauxGlobal = totEval > 0 ? Math.round(((totConf + totPart * 0.5) / totEval) * 100) : 0;
+
+    if (totApp === 0) {
+        return (
+            <div className="space-y-4">
+                <TabInfo text="Complétez la Déclaration d'Applicabilité puis l'évaluation des contrôles pour voir la synthèse par thème." />
+                <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
+                    <p className="text-sm text-gray-500">Aucun contrôle applicable défini.</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <TabInfo text="Synthèse de la conformité ISO 27001:2022 regroupée par thème (A.5 Organisationnel, A.6 Personnes, A.7 Physique, A.8 Technologique). Seuls les contrôles applicables définis dans la SoA sont pris en compte." />
+
+            {/* KPIs globaux */}
+            <div className="grid grid-cols-4 gap-4">
+                {[
+                    { label: 'Taux global', value: `${tauxGlobal}%`, color: tauxGlobal >= 75 ? '#16a34a' : tauxGlobal >= 50 ? '#d97706' : '#dc2626', accent: true },
+                    { label: 'Conformes',      value: totConf, color: '#16a34a' },
+                    { label: 'Partiels',       value: totPart, color: '#d97706' },
+                    { label: 'Non conformes',  value: totNC,   color: '#dc2626' },
+                ].map((k, i) => (
+                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4" style={k.accent ? { borderTopWidth: '3px', borderTopColor: k.color } : {}}>
+                        <p className="text-xs font-medium text-gray-500">{k.label}</p>
+                        <p className="text-2xl font-bold mt-1" style={{ color: k.color }}>{k.value}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Tableau par thème */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h2 className="text-sm font-semibold text-gray-800 mb-5">Conformité par thème ISO 27001:2022</h2>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-100 bg-gray-50/60">
+                                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Thème</th>
+                                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Applicables</th>
+                                <th className="text-center px-4 py-3 text-xs font-semibold text-green-600">Conformes</th>
+                                <th className="text-center px-4 py-3 text-xs font-semibold text-yellow-600">Partiels</th>
+                                <th className="text-center px-4 py-3 text-xs font-semibold text-red-600">Non conformes</th>
+                                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Taux (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {themes.map(t => (
+                                <tr key={t.id} className="hover:bg-gray-50/40">
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>{t.code}</span>
+                                            <span className="text-xs font-medium text-gray-700">{t.nom}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-gray-600 text-xs">{t.applicable}/{t.total}</td>
+                                    <td className="px-4 py-3 text-center text-green-700 font-semibold text-xs">{t.conforme}</td>
+                                    <td className="px-4 py-3 text-center text-yellow-700 font-semibold text-xs">{t.partiel}</td>
+                                    <td className="px-4 py-3 text-center text-red-700 font-semibold text-xs">{t.nonConforme}</td>
+                                    <td className="px-4 py-3 text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                <div className="h-full rounded-full" style={{ width: `${t.taux}%`, backgroundColor: t.taux >= 75 ? '#16a34a' : t.taux >= 50 ? '#d97706' : '#dc2626' }} />
+                                            </div>
+                                            <span className="text-xs font-semibold text-gray-700">{t.taux}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─── TAB ISO 7 : Non-conformités ──────────────────────────────────────────────
+
+const TabNC = ({ referentiel, soaMap, localEvals }) => {
+    if (!referentiel) return <div className="text-gray-400 text-sm">Chargement...</div>;
+
+    const ncList = referentiel.domaines.flatMap(theme =>
+        theme.objectifs.flatMap(obj =>
+            (obj.mesures || [])
+                .filter(m => soaMap[m.id]?.applicable === true && localEvals[m.id]?.niveau_maturite === 0)
+                .map(m => ({ ...m, theme, obj }))
+        )
+    );
+
+    if (ncList.length === 0) {
+        return (
+            <div className="space-y-4">
+                <TabInfo text="Ce registre liste tous les contrôles ISO 27001 applicables évalués comme Non conformes. Il sert de base pour définir les actions correctives dans le Plan d'actions." />
+                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                    <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700">Aucune non-conformité enregistrée</p>
+                    <p className="text-xs text-gray-400 mt-1">Tous les contrôles applicables évalués sont conformes ou partiellement conformes.</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Grouper par thème
+    const byTheme = {};
+    ncList.forEach(m => {
+        const key = m.theme.id;
+        if (!byTheme[key]) byTheme[key] = { theme: m.theme, items: [] };
+        byTheme[key].items.push(m);
+    });
+
+    return (
+        <div className="space-y-4">
+            <TabInfo text="Ce registre liste tous les contrôles ISO 27001 applicables évalués comme Non conformes. Utilisez le Plan d'actions pour définir les actions correctives associées." />
+
+            {/* Compteur */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                    <span className="text-lg font-bold text-red-600">{ncList.length}</span>
+                </div>
+                <div>
+                    <p className="text-sm font-semibold text-gray-800">Non-conformité(s) identifiée(s)</p>
+                    <p className="text-xs text-gray-500">Contrôles applicables évalués à « Non conforme »</p>
+                </div>
+            </div>
+
+            {/* Liste par thème */}
+            {Object.values(byTheme).map(({ theme, items }) => (
+                <div key={theme.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 border-b border-gray-100">
+                        <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>{theme.code}</span>
+                        <span className="text-sm font-semibold text-gray-700">{theme.nom}</span>
+                        <span className="ml-auto text-xs text-red-600 font-medium">{items.length} NC</span>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                        {items.map(m => {
+                            const ev = localEvals[m.id] || {};
+                            return (
+                                <div key={m.id} className="px-5 py-3 flex items-start gap-4">
+                                    <span className="font-mono text-xs text-gray-600 flex-shrink-0 w-24 pt-0.5">{m.code?.trim()}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-gray-700 leading-relaxed">{m.description || m.obj?.description || ''}</p>
+                                        {ev.commentaire && <p className="text-xs text-gray-400 mt-1 italic">"{ev.commentaire}"</p>}
+                                    </div>
+                                    <span className="shrink-0 text-xs px-2 py-0.5 rounded bg-red-50 text-red-700 font-medium">Non conforme</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+// ─── TAB ISO 8 : Indicateurs SMSI ────────────────────────────────────────────
+
+const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIndicateurs, onSave, saving }) => {
+    const set = (k, v) => setIndicateurs(prev => ({ ...prev, [k]: v }));
+
+    const allMesures = referentiel?.domaines?.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []) ?? [];
+    const applicable = allMesures.filter(m => soaMap[m.id]?.applicable === true);
+    const ncCount    = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+    const confCount  = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+    const implCount  = allMesures.filter(m => ['implemente', 'partiel', 'planifie'].includes(soaMap[m.id]?.statut_implementation)).length;
+
+    const getAutoValue = (key) => {
+        if (!applicable.length) return '—';
+        if (key === 'iso_taux_nc')   return `${Math.round(ncCount / applicable.length * 100)}%`;
+        if (key === 'iso_taux_conf') return `${Math.round(confCount / applicable.length * 100)}%`;
+        if (key === 'iso_taux_impl') return allMesures.length > 0 ? `${Math.round(implCount / allMesures.length * 100)}%` : '—';
+        return '—';
+    };
+
+    return (
+        <div className="space-y-4">
+            <TabInfo text="Indicateurs de performance du Système de Management de la Sécurité de l'Information (SMSI) selon ISO 27001:2022. Les indicateurs marqués « Auto » sont calculés depuis l'évaluation et la SoA." />
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h2 className="text-sm font-semibold text-gray-800 mb-1">Indicateurs SMSI</h2>
+                <p className="text-xs text-gray-400 mb-5">Indicateurs de pilotage de la sécurité de l'information</p>
+
+                <div className="space-y-3">
+                    {ISO_INDICATEURS_DEF.map(({ key, label, unit, auto }) => {
+                        const autoVal = auto ? getAutoValue(key) : null;
+                        return (
+                            <div key={key} className="flex items-center gap-4 py-2 border-b border-gray-50 last:border-0">
+                                <div className="flex-1">
+                                    <p className="text-sm text-gray-700">{label}</p>
+                                    {auto && <p className="text-xs text-gray-400 mt-0.5">Calculé automatiquement</p>}
+                                </div>
+                                {auto ? (
+                                    <div className="w-40 px-3 py-2 text-sm font-semibold text-center rounded-lg" style={{ backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' }}>
+                                        {autoVal}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 w-48">
+                                        <input
+                                            type="number"
+                                            value={indicateurs[key] || ''}
+                                            onChange={e => set(key, e.target.value)}
+                                            placeholder="—"
+                                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 text-right"
+                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                                        />
+                                        {unit && <span className="text-xs text-gray-400 flex-shrink-0">{unit}</span>}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="flex justify-end mt-5">
+                    <button
+                        onClick={onSave}
+                        disabled={saving}
+                        className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60"
+                        style={{ backgroundColor: 'var(--brand-red)' }}
+                    >
+                        {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                        Enregistrer les indicateurs
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
