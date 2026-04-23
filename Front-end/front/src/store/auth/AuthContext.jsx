@@ -34,6 +34,12 @@ export const AuthProvider = ({ children }) => {
         setMustChangePassword(false);
     };
 
+    const updateUserContext = (updatedFields) => {
+        const merged = { ...user, ...updatedFields };
+        localStorage.setItem('user', JSON.stringify(merged));
+        setUser(merged);
+    };
+
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -48,7 +54,7 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{
             user, token, mustChangePassword, loading,
-            isAuthenticated, loginSuccess, passwordChanged, logout,
+            isAuthenticated, loginSuccess, passwordChanged, updateUserContext, logout,
         }}>
             {children}
         </AuthContext.Provider>

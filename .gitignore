@@ -3,3 +3,7 @@ Support/
 CLAUDE.md
 .claude/
 ~$*
+
+# Variables d'environnement — ne jamais committer
+Back-end/.env
+.env

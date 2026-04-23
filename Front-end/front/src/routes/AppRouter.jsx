@@ -17,6 +17,7 @@ import PlansActionsPage from '../pages/actions/PlansActionsPage';
 import IndicateursPage from '../pages/indicateurs/IndicateursPage';
 import RapportsPage from '../pages/rapports/RapportsPage';
 import UtilisateursPage from '../pages/utilisateurs/UtilisateursPage';
+import JournauxPage from '../pages/journaux/JournauxPage';
 import ParametresPage from '../pages/parametres/ParametresPage';
 import ProfilPage from '../pages/profil/ProfilPage';
 
@@ -56,9 +57,16 @@ const AppRouter = () => {
                     <Route path="/indicateurs" element={<IndicateursPage />} />
                     <Route path="/rapports" element={<RapportsPage />} />
 
-                    {/* Administration */}
-                    <Route path="/utilisateurs" element={<UtilisateursPage />} />
-                    <Route path="/parametres" element={<ParametresPage />} />
+                    {/* Administration — admin uniquement */}
+                    <Route path="/utilisateurs" element={
+                        <ProtectedRoute roles={['admin']}><UtilisateursPage /></ProtectedRoute>
+                    } />
+                    <Route path="/journaux" element={
+                        <ProtectedRoute roles={['admin']}><JournauxPage /></ProtectedRoute>
+                    } />
+                    <Route path="/parametres" element={
+                        <ProtectedRoute roles={['admin']}><ParametresPage /></ProtectedRoute>
+                    } />
 
                     {/* Profil */}
                     <Route path="/profil" element={<ProfilPage />} />
