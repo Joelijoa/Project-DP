@@ -10,6 +10,7 @@ const Evaluation = require('./Evaluation');
 const PlanAction = require('./PlanAction');
 const SoA = require('./SoA');
 const Entite = require('./Entite');
+const Log = require('./Log');
 
 // ========== ASSOCIATIONS ==========
 
@@ -68,6 +69,10 @@ Mesure.hasMany(SoA, { foreignKey: 'mesure_id', as: 'soa_entries' });
 Entite.hasMany(Audit, { foreignKey: 'entite_id', as: 'audits' });
 Audit.belongsTo(Entite, { foreignKey: 'entite_id', as: 'entite' });
 
+// Log -> User
+Log.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(Log, { foreignKey: 'user_id', as: 'logs' });
+
 module.exports = {
     sequelize,
     User,
@@ -81,4 +86,5 @@ module.exports = {
     PlanAction,
     SoA,
     Entite,
+    Log,
 };

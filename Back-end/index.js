@@ -9,6 +9,7 @@ const userRoutes = require('./src/routes/userRoutes');
 const referentielRoutes = require('./src/routes/referentielRoutes');
 const auditRoutes = require('./src/routes/auditRoutes');
 const entiteRoutes = require('./src/routes/entiteRoutes');
+const logRoutes    = require('./src/routes/logRoutes');
 const swaggerSpecs = require('./src/config/swagger');
 const { verifyToken } = require('./src/middlewares/authMiddleware');
 const { getAllPlanActions } = require('./src/controllers/planActionController');
@@ -29,6 +30,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/referentiels', referentielRoutes);
 app.use('/api/entites', entiteRoutes);
+app.use('/api/logs',   logRoutes);
 
 // Route globale plans-actions enregistrée AVANT le middleware auditRoutes pour éviter
 // que /:id dans auditRoutes ne capte "plans-actions" comme paramètre

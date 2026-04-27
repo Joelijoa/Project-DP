@@ -1,4 +1,5 @@
-const { PlanAction, Audit, Mesure } = require('../models');
+const { PlanAction, Audit, Mesure, User } = require('../models');
+const { log, getIp } = require('../services/logService');
 
 // GET /api/audits/:id/plans-actions
 const getPlanActions = async (req, res) => {
@@ -30,6 +31,7 @@ const createPlanAction = async (req, res) => {
             mesure_id, description_nc, action_corrective, responsable, delai, priorite, kpi,
             statut: 'a_faire',
         });
+        log(req.user?.userId, 'CREATE_PLAN_ACTION', 'plan_action', plan.id, `Audit #${req.params.id}`, getIp(req));
         res.status(201).json({ plan_action: plan });
     } catch (error) {
         console.error('[PlanAction] createPlanAction:', error.message);
@@ -45,6 +47,7 @@ const updatePlanAction = async (req, res) => {
 
         const { description_nc, action_corrective, responsable, delai, priorite, statut, kpi } = req.body;
         await plan.update({ description_nc, action_corrective, responsable, delai, priorite, statut, kpi });
+        log(req.user?.userId, 'UPDATE_PLAN_ACTION', 'plan_action', plan.id, `statut: ${statut || plan.statut}`, getIp(req));
         res.json({ plan_action: plan });
     } catch (error) {
         console.error('[PlanAction] updatePlanAction:', error.message);
@@ -59,6 +62,7 @@ const deletePlanAction = async (req, res) => {
         if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
 
         await plan.destroy();
+        log(req.user?.userId, 'DELETE_PLAN_ACTION', 'plan_action', parseInt(req.params.planId), null, getIp(req));
         res.json({ message: "Plan d'action supprimé" });
     } catch (error) {
         console.error('[PlanAction] deletePlanAction:', error.message);
@@ -72,7 +76,8 @@ const getAllPlanActions = async (req, res) => {
         const plans = await PlanAction.findAll({
             include: [
                 { model: Mesure, as: 'mesure', attributes: ['id', 'code', 'description'] },
-                { model: Audit,  as: 'audit',  attributes: ['id', 'nom', 'client'] },
+                { model: Audit,  as: 'audit',  attributes: ['id', 'nom', 'client'],
+                  include: [{ model: User, as: 'auditeurs', attributes: ['id'], through: { attributes: [] } }] },
             ],
             order: [['createdAt', 'DESC']],
         });

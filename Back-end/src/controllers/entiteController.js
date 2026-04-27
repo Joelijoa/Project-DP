@@ -1,4 +1,5 @@
 const { Entite, Audit, Referentiel } = require('../models');
+const { log, getIp } = require('../services/logService');
 
 // GET /api/entites
 const getAllEntites = async (req, res) => {
@@ -43,6 +44,7 @@ const createEntite = async (req, res) => {
         const { nom, secteur, adresse, ville, pays, telephone, email, site_web, description } = req.body;
         if (!nom) return res.status(400).json({ message: 'Le nom est requis' });
         const entite = await Entite.create({ nom, secteur, adresse, ville, pays, telephone, email, site_web, description });
+        log(req.user?.userId, 'CREATE_ENTITE', 'entite', entite.id, entite.nom, getIp(req));
         res.status(201).json({ entite });
     } catch (error) {
         console.error('[Entite] createEntite:', error.message);
@@ -57,6 +59,7 @@ const updateEntite = async (req, res) => {
         if (!entite) return res.status(404).json({ message: 'Entité introuvable' });
         const { nom, secteur, adresse, ville, pays, telephone, email, site_web, description } = req.body;
         await entite.update({ nom, secteur, adresse, ville, pays, telephone, email, site_web, description });
+        log(req.user?.userId, 'UPDATE_ENTITE', 'entite', entite.id, entite.nom, getIp(req));
         res.json({ entite });
     } catch (error) {
         console.error('[Entite] updateEntite:', error.message);
@@ -69,7 +72,9 @@ const deleteEntite = async (req, res) => {
     try {
         const entite = await Entite.findByPk(req.params.id);
         if (!entite) return res.status(404).json({ message: 'Entité introuvable' });
+        const nom = entite.nom;
         await entite.destroy();
+        log(req.user?.userId, 'DELETE_ENTITE', 'entite', parseInt(req.params.id), nom, getIp(req));
         res.json({ message: 'Entité supprimée' });
     } catch (error) {
         console.error('[Entite] deleteEntite:', error.message);

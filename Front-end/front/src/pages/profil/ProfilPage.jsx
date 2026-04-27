@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../store/auth/AuthContext';
-import { getUserById, updateUser } from '../../services/endpoints/userService';
+import { getProfile, updateProfile } from '../../services/endpoints/userService';
 import { changePassword } from '../../services/endpoints/authService';
 import { toast } from 'react-toastify';
 
@@ -35,7 +35,7 @@ const ProfilPage = () => {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const res = await getUserById(authUser.id);
+                const res = await getProfile();
                 const u = res.data.user;
                 setProfile(u);
                 setInfoForm({ nom: u.nom || '', prenom: u.prenom || '', organisation: u.organisation || '', telephone: u.telephone || '' });
@@ -45,14 +45,14 @@ const ProfilPage = () => {
                 setLoading(false);
             }
         };
-        if (authUser?.id) fetchProfile();
-    }, [authUser?.id]);
+        if (authUser) fetchProfile();
+    }, [authUser]);
 
     const handleSaveInfo = async (e) => {
         e.preventDefault();
         setSavingInfo(true);
         try {
-            const res = await updateUser(profile.id, infoForm);
+            const res = await updateProfile(infoForm);
             const updated = res.data.user;
             setProfile(prev => ({ ...prev, ...updated }));
             updateUserContext(updated);

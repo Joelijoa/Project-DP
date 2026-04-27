@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../store/auth/AuthContext';
 import { getAllAudits, deleteAudit } from '../../services/endpoints/auditService';
 import { toast } from 'react-toastify';
 
@@ -21,6 +22,8 @@ const StatutBadge = ({ statut }) => {
 
 const AuditsListPage = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const isJunior = user?.role === 'auditeur_junior';
     const [audits, setAudits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -30,7 +33,11 @@ const AuditsListPage = () => {
     const load = async () => {
         try {
             const res = await getAllAudits();
-            setAudits(res.data.audits);
+            const all = res.data.audits || [];
+            const visible = isJunior
+                ? all.filter(a => a.auditeurs?.some(au => au.id === user.id))
+                : all;
+            setAudits(visible);
         } catch {
             toast.error('Impossible de charger les audits');
         } finally {
@@ -65,18 +72,22 @@ const AuditsListPage = () => {
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-xl font-semibold text-gray-900">Audits</h1>
-                    <p className="text-sm text-gray-500 mt-1">Liste de tous les audits de conformité</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                        {isJunior ? 'Audits qui vous sont assignés' : 'Liste de tous les audits de conformité'}
+                    </p>
                 </div>
-                <Link
-                    to="/audits/nouveau"
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition"
-                    style={{ backgroundColor: 'var(--brand-red)' }}
-                >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Nouvel audit
-                </Link>
+                {!isJunior && (
+                    <Link
+                        to="/audits/nouveau"
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition"
+                        style={{ backgroundColor: 'var(--brand-red)' }}
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Nouvel audit
+                    </Link>
+                )}
             </div>
 
             {/* Filtres */}
@@ -182,15 +193,17 @@ const AuditsListPage = () => {
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                                                 </svg>
                                             </Link>
-                                            <button
-                                                onClick={() => setConfirmDelete(audit)}
-                                                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                                                title="Supprimer"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                </svg>
-                                            </button>
+                                            {!isJunior && (
+                                                <button
+                                                    onClick={() => setConfirmDelete(audit)}
+                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                                                    title="Supprimer"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                    </svg>
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

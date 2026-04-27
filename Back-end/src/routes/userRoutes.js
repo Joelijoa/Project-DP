@@ -4,6 +4,7 @@ const { body } = require('express-validator');
 const { verifyToken, verifyRole } = require('../middlewares/authMiddleware');
 const {
     getProfile,
+    updateProfile,
     getAdminZone,
     createUser,
     getAllUsers,
@@ -58,6 +59,7 @@ const changePasswordValidation = [
  *         description: Token invalide ou expiré
  */
 router.get('/profile', verifyToken, getProfile);
+router.put('/profile', verifyToken, updateProfile);
 
 /**
  * @swagger

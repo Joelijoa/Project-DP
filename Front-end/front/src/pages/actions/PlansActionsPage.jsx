@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../store/auth/AuthContext';
 import { getAllPlanActions, updatePlanAction, deletePlanAction } from '../../services/endpoints/planActionService';
 import { toast } from 'react-toastify';
 
@@ -16,6 +17,8 @@ const STATUT_CONFIG = {
 };
 
 const PlansActionsPage = () => {
+    const { user } = useAuth();
+    const isJunior = user?.role === 'auditeur_junior';
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filterStatut, setFilterStatut] = useState('');
@@ -28,7 +31,11 @@ const PlansActionsPage = () => {
     const load = async () => {
         try {
             const res = await getAllPlanActions();
-            setPlans(res.data.plans_actions || []);
+            const all = res.data.plans_actions || [];
+            const visible = isJunior
+                ? all.filter(p => p.audit?.auditeurs?.some(au => au.id === user.id))
+                : all;
+            setPlans(visible);
         } catch (err) {
             const msg = err?.response?.data?.message || err?.message || 'Erreur réseau';
             toast.error(`Plans d'actions: ${msg}`);
@@ -106,7 +113,9 @@ const PlansActionsPage = () => {
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-xl font-semibold text-gray-900">Plans d'actions</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">Suivi de toutes les actions correctives</p>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                        {isJunior ? 'Actions correctives de vos audits assignés' : 'Suivi de toutes les actions correctives'}
+                    </p>
                 </div>
             </div>
 
@@ -184,7 +193,7 @@ const PlansActionsPage = () => {
                                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Délai</th>
                                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Priorité</th>
                                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut</th>
-                                    <th className="px-4 py-3" />
+                                    {!isJunior && <th className="px-4 py-3" />}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -265,6 +274,7 @@ const PlansActionsPage = () => {
                                                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${st.bg} ${st.text}`}>{st.label}</span>
                                                 )}
                                             </td>
+                                            {!isJunior && (
                                             <td className="px-4 py-3">
                                                 {isEditing ? (
                                                     <div className="flex items-center gap-1">
@@ -295,6 +305,7 @@ const PlansActionsPage = () => {
                                                     </div>
                                                 )}
                                             </td>
+                                            )}
                                         </tr>
                                     );
                                 })}

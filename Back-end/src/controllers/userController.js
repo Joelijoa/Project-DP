@@ -1,11 +1,24 @@
 const { validationResult } = require('express-validator');
 const userService = require('../services/userService');
+const { log, getIp } = require('../services/logService');
 
-const getProfile = (req, res) => {
-    res.json({
-        message: 'Profil récupéré avec succès',
-        user: req.user,
-    });
+const getProfile = async (req, res) => {
+    try {
+        const user = await userService.getUserById(req.user.userId);
+        res.json({ message: 'Profil récupéré avec succès', user });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const updateProfile = async (req, res) => {
+    try {
+        const { nom, prenom, organisation, telephone } = req.body;
+        const user = await userService.updateUser(req.user.userId, { nom, prenom, organisation, telephone });
+        res.json({ message: 'Profil mis à jour', user });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
 const getAdminZone = (_req, res) => {
@@ -19,6 +32,7 @@ const createUser = async (req, res) => {
     }
     try {
         const user = await userService.createUser(req.body);
+        log(req.user.userId, 'CREATE_USER', 'user', user.id, `${user.prenom} ${user.nom} (${user.role})`, getIp(req));
         res.status(201).json({ message: 'Utilisateur créé avec succès', user });
     } catch (error) {
         const status = error.message.includes('existe déjà') ? 409 : 500;
@@ -52,6 +66,7 @@ const updateUser = async (req, res) => {
     }
     try {
         const user = await userService.updateUser(req.params.id, req.body);
+        log(req.user.userId, 'UPDATE_USER', 'user', user.id, `${user.prenom} ${user.nom}`, getIp(req));
         res.json({ message: 'Utilisateur modifié avec succès', user });
     } catch (error) {
         const status = error.message.includes('non trouvé') ? 404
@@ -63,6 +78,7 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
     try {
         const result = await userService.deleteUser(req.params.id);
+        log(req.user.userId, 'DELETE_USER', 'user', parseInt(req.params.id), null, getIp(req));
         res.json(result);
     } catch (error) {
         const status = error.message.includes('non trouvé') ? 404 : 500;
@@ -92,6 +108,7 @@ const changePassword = async (req, res) => {
 const resetPassword = async (req, res) => {
     try {
         const result = await userService.resetPassword(req.params.id);
+        log(req.user.userId, 'RESET_PASSWORD', 'user', parseInt(req.params.id), null, getIp(req));
         res.json(result);
     } catch (error) {
         const status = error.message.includes('non trouvé') ? 404 : 500;
@@ -100,6 +117,6 @@ const resetPassword = async (req, res) => {
 };
 
 module.exports = {
-    getProfile, getAdminZone, createUser, getAllUsers,
+    getProfile, updateProfile, getAdminZone, createUser, getAllUsers,
     getUserById, updateUser, deleteUser, changePassword, resetPassword,
 };

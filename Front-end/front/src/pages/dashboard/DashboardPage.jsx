@@ -81,6 +81,9 @@ const SectionLabel = ({ children }) => (
 
 const DashboardPage = () => {
     const { user } = useAuth();
+    const isJunior       = user?.role === 'auditeur_junior';
+    const isClient       = user?.role === 'client';
+    const canCreateAudit = !isJunior && !isClient;
     const [audits, setAudits]         = useState([]);
     const [plans, setPlans]           = useState([]);
     const [referentiels, setReferentiels] = useState([]);
@@ -89,7 +92,11 @@ const DashboardPage = () => {
     useEffect(() => {
         Promise.all([getAllAudits(), getAllPlanActions(), getAllReferentiels()])
             .then(([a, p, r]) => {
-                setAudits(a.data.audits || []);
+                const allAudits = a.data.audits || [];
+                setAudits(isJunior
+                    ? allAudits.filter(aud => aud.auditeurs?.some(au => au.id === user.id))
+                    : allAudits
+                );
                 setPlans(p.data.plans_actions || []);
                 setReferentiels(r.data.referentiels || []);
             })
@@ -165,14 +172,16 @@ const DashboardPage = () => {
                         {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                 </div>
-                <Link to="/audits/nouveau"
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl shadow-sm transition hover:opacity-90"
-                    style={{ backgroundColor: 'var(--brand-red)' }}>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Nouvel audit
-                </Link>
+                {canCreateAudit && (
+                    <Link to="/audits/nouveau"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl shadow-sm transition hover:opacity-90"
+                        style={{ backgroundColor: 'var(--brand-red)' }}>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Nouvel audit
+                    </Link>
+                )}
             </div>
 
             {/* ── KPI cards ── */}
@@ -460,15 +469,15 @@ const DashboardPage = () => {
                         <p className="text-sm font-semibold text-gray-800 mb-4">Accès rapides</p>
                         <div className="flex flex-col gap-2">
                             {[
-                                { label: 'Nouvel audit',         to: '/audits/nouveau',   primary: true,
+                                canCreateAudit && { label: 'Nouvel audit',         to: '/audits/nouveau',   primary: true,
                                   icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /> },
-                                { label: 'Tous les audits',      to: '/audits',           primary: false,
+                                { label: 'Tous les audits',      to: '/audits',           primary: !canCreateAudit,
                                   icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /> },
                                 { label: "Plans d'actions",      to: '/plans-actions',    primary: false,
                                   icon: <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /> },
                                 { label: 'Graphiques & Rosace',  to: '/resultats',        primary: false,
                                   icon: <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" /> },
-                            ].map((link, i) => (
+                            ].filter(Boolean).map((link, i) => (
                                 <Link key={i} to={link.to}
                                     className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition"
                                     style={link.primary

@@ -1,4 +1,5 @@
 const { Audit, User, Referentiel, Mesure, Evaluation, AuditAuditeur } = require('../models');
+const { log, getIp } = require('../services/logService');
 
 const NIVEAUX_LABELS = ['Aucun', 'Initial', 'Reproductible', 'Défini', 'Maitrisé', 'Optimisé'];
 
@@ -66,6 +67,7 @@ const createAudit = async (req, res) => {
                 auditeurs_ids.map(uid => ({ audit_id: audit.id, user_id: uid }))
             );
         }
+        log(req.user.userId, 'CREATE_AUDIT', 'audit', audit.id, audit.nom, getIp(req));
         res.status(201).json({ message: 'Audit créé avec succès', audit });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -98,6 +100,7 @@ const updateAudit = async (req, res) => {
                 );
             }
         }
+        log(req.user.userId, 'UPDATE_AUDIT', 'audit', audit.id, audit.nom, getIp(req));
         res.json({ message: 'Audit mis à jour', audit });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -109,7 +112,9 @@ const deleteAudit = async (req, res) => {
     try {
         const audit = await Audit.findByPk(req.params.id);
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
+        const nom = audit.nom;
         await audit.destroy();
+        log(req.user.userId, 'DELETE_AUDIT', 'audit', parseInt(req.params.id), nom, getIp(req));
         res.json({ message: 'Audit supprimé' });
     } catch (error) {
         res.status(500).json({ message: error.message });

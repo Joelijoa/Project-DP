@@ -1,5 +1,6 @@
 const { loginUser, forgotPassword, resetPasswordWithToken } = require('../services/authService');
 const { validationResult } = require('express-validator');
+const { log, getIp } = require('../services/logService');
 
 const login = async (req, res) => {
     const errors = validationResult(req);
@@ -9,8 +10,10 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
         const result = await loginUser(email, password);
+        log(result.user?.id, 'LOGIN', 'user', result.user?.id, email, getIp(req));
         res.status(200).json(result);
     } catch (error) {
+        log(null, 'LOGIN_FAILED', 'user', null, req.body.email, getIp(req));
         const status = error.message.includes('désactivé') ? 403 : 401;
         res.status(status).json({ message: error.message });
     }
