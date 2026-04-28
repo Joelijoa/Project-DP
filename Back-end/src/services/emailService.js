@@ -80,4 +80,29 @@ const sendResetPasswordEmail = async (to, nom, prenom, resetToken) => {
     await transporter.sendMail(mailOptions);
 };
 
-module.exports = { sendTempPasswordEmail, sendResetPasswordEmail };
+const sendNotificationEmail = async (to, nom, prenom, titre, message) => {
+    const mailOptions = {
+        from: `"ZeroGap — DataProtect" <${process.env.SMTP_USER}>`,
+        to,
+        subject: `${titre} — ZeroGap`,
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a2e;">
+                <div style="background: #1a1a2e; padding: 24px 32px; border-radius: 8px 8px 0 0;">
+                    <h1 style="margin: 0; color: #ffffff; font-size: 22px; letter-spacing: -0.5px;">
+                        Zero<span style="color: #cc0000;">Gap</span>
+                    </h1>
+                    <p style="margin: 4px 0 0; color: #9ca3af; font-size: 12px;">GRC Audit Platform — DataProtect</p>
+                </div>
+                <div style="background: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                    <h2 style="margin: 0 0 16px; font-size: 18px; color: #1a1a2e;">${titre}</h2>
+                    <p style="margin: 0 0 12px; color: #374151;">Bonjour <strong>${prenom} ${nom}</strong>,</p>
+                    <p style="margin: 0 0 24px; color: #374151;">${message}</p>
+                    <p style="margin: 0; color: #6b7280; font-size: 13px;">Cordialement,<br><strong style="color: #374151;">L'équipe DataProtect</strong></p>
+                </div>
+            </div>
+        `,
+    };
+    await transporter.sendMail(mailOptions);
+};
+
+module.exports = { sendTempPasswordEmail, sendResetPasswordEmail, sendNotificationEmail };

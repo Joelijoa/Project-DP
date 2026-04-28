@@ -53,6 +53,16 @@ const Audit = sequelize.define('Audit', {
         allowNull: true,
         defaultValue: null,
     },
+    statut_validation: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+        defaultValue: null,
+    },
+    commentaire_rejet: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null,
+    },
 }, {
     tableName: 'audits',
 });

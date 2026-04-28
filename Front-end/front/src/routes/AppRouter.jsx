@@ -20,6 +20,7 @@ import UtilisateursPage from '../pages/utilisateurs/UtilisateursPage';
 import JournauxPage from '../pages/journaux/JournauxPage';
 import ParametresPage from '../pages/parametres/ParametresPage';
 import ProfilPage from '../pages/profil/ProfilPage';
+import ValidationPage from '../pages/validation/ValidationPage';
 
 const AppRouter = () => {
     const { isAuthenticated } = useAuth();
@@ -50,6 +51,11 @@ const AppRouter = () => {
                     <Route path="/audits/:id" element={<AuditDetailPage />} />
                     <Route path="/referentiels" element={<ReferentielsPage />} />
                     <Route path="/entites" element={<EntitesPage />} />
+
+                    {/* Validation — admin + auditeur_senior */}
+                    <Route path="/validation" element={
+                        <ProtectedRoute roles={['admin', 'auditeur_senior']}><ValidationPage /></ProtectedRoute>
+                    } />
 
                     {/* Résultats & Suivi */}
                     <Route path="/resultats" element={<ResultatsPage />} />

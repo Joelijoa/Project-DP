@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA } from '../../services/endpoints/auditService';
-import { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction } from '../../services/endpoints/planActionService';
+import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA, soumettreAudit, validerAudit, rejeterAudit } from '../../services/endpoints/auditService';
+import { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, soumettreValidationPlan, validerPlanAction, rejeterPlanAction } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
 import DateInput from '../../components/common/DateInput';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../store/auth/AuthContext';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -158,11 +159,51 @@ const StatutBadge = ({ statut }) => {
     );
 };
 
+const VALIDATION_CONFIG = {
+    en_attente: { label: 'En attente de validation', bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200' },
+    valide:     { label: 'Validé',                   bg: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200' },
+    rejete:     { label: 'Rejeté',                   bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200'   },
+};
+
+const RejeterModal = ({ title, onConfirm, onCancel }) => {
+    const [commentaire, setCommentaire] = useState('');
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <h3 className="text-base font-semibold text-gray-900 mb-1">{title}</h3>
+                <p className="text-sm text-gray-500 mb-4">Ce commentaire sera visible par les auditeurs concernés.</p>
+                <textarea
+                    value={commentaire}
+                    onChange={e => setCommentaire(e.target.value)}
+                    rows={4}
+                    placeholder="Motif du rejet..."
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1"
+                    autoFocus
+                />
+                <div className="flex gap-2 mt-4">
+                    <button
+                        onClick={() => commentaire.trim() && onConfirm(commentaire.trim())}
+                        disabled={!commentaire.trim()}
+                        className="flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50"
+                        style={{ backgroundColor: '#cc0000' }}>
+                        Confirmer le rejet
+                    </button>
+                    <button onClick={onCancel}
+                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+                        Annuler
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── Page principale ───────────────────────────────────────────────────────────
 
 const AuditDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('description');
     const [audit, setAudit] = useState(null);
     const [referentiel, setReferentiel] = useState(null);
@@ -182,6 +223,10 @@ const AuditDetailPage = () => {
     const [savingSoa, setSavingSoa] = useState(false);
     // Plans d'actions
     const [planActions, setPlanActions] = useState([]);
+    // Validation workflow
+    const [validating, setValidating]           = useState(false);
+    const [showRejeterAudit, setShowRejeterAudit] = useState(false);
+    const [rejetingPlanId, setRejetingPlanId]   = useState(null);
 
     // Chargement initial
     useEffect(() => {
@@ -190,7 +235,7 @@ const AuditDetailPage = () => {
                 const [auditRes, evalsRes, usersRes] = await Promise.all([
                     getAuditById(id),
                     getEvaluations(id),
-                    getAllUsers(),
+                    user?.role !== 'auditeur_junior' ? getAllUsers() : Promise.resolve({ data: { users: [] } }),
                 ]);
                 const a = auditRes.data.audit;
                 setAudit(a);
@@ -299,6 +344,72 @@ const AuditDetailPage = () => {
         } catch {
             toast.error("Erreur lors de la suppression");
         }
+    };
+
+    // ── Validation audit ──────────────────────────────────────────────────────
+    const handleSoumettreAudit = async () => {
+        setValidating(true);
+        try {
+            await soumettreAudit(id);
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success('Audit soumis pour validation.');
+        } catch { toast.error('Erreur lors de la soumission.'); }
+        finally { setValidating(false); }
+    };
+
+    const handleValiderAudit = async () => {
+        setValidating(true);
+        try {
+            await validerAudit(id);
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success('Audit validé et clôturé.');
+        } catch { toast.error('Erreur lors de la validation.'); }
+        finally { setValidating(false); }
+    };
+
+    const handleRejeterAudit = async (commentaire) => {
+        setShowRejeterAudit(false);
+        setValidating(true);
+        try {
+            await rejeterAudit(id, commentaire);
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success('Audit rejeté.');
+        } catch { toast.error('Erreur lors du rejet.'); }
+        finally { setValidating(false); }
+    };
+
+    // ── Validation plans d'actions ────────────────────────────────────────────
+    const refreshPlans = async () => {
+        const res = await getPlanActions(id);
+        setPlanActions(res.data.plans_actions || []);
+    };
+
+    const handleSoumettrePlan = async (planId) => {
+        try {
+            await soumettreValidationPlan(id, planId);
+            await refreshPlans();
+            toast.success("Plan d'action soumis pour validation.");
+        } catch { toast.error('Erreur lors de la soumission.'); }
+    };
+
+    const handleValiderPlan = async (planId) => {
+        try {
+            await validerPlanAction(id, planId);
+            await refreshPlans();
+            toast.success("Plan d'action validé.");
+        } catch { toast.error('Erreur lors de la validation.'); }
+    };
+
+    const handleRejeterPlan = async (planId, commentaire) => {
+        setRejetingPlanId(null);
+        try {
+            await rejeterPlanAction(id, planId, commentaire);
+            await refreshPlans();
+            toast.success("Plan d'action rejeté.");
+        } catch { toast.error('Erreur lors du rejet.'); }
     };
 
     // Mise à jour d'une entrée SoA (ISO 27001)
@@ -468,7 +579,20 @@ const AuditDetailPage = () => {
     }
 
     const isISO = referentiel?.type === 'ISO27001';
-    const tabs = isISO ? TABS_ISO : TABS_DNSSI;
+
+    const isAssigned       = audit?.auditeurs?.some(a => a.id === user?.id) || audit?.createur?.id === user?.id;
+    const canSeeGraphs     = user?.role !== 'auditeur_junior' || isAssigned;
+    const isJunior         = user?.role === 'auditeur_junior';
+    const isSeniorOrAdmin  = user?.role === 'admin' || user?.role === 'auditeur_senior';
+    const canSoumettreAudit = isJunior && isAssigned && audit.statut_validation !== 'en_attente' && audit.statut_validation !== 'valide';
+    const canValiderRejeter = isSeniorOrAdmin && audit.statut_validation === 'en_attente';
+    const validationCfg     = VALIDATION_CONFIG[audit.statut_validation];
+
+    const GRAPH_TABS = [
+        'plans_actions',
+        ...(isISO ? ['synthese_iso', 'nc'] : ['synthese_mat', 'synthese_conf', 'avancement']),
+    ];
+    const tabs = (isISO ? TABS_ISO : TABS_DNSSI).filter(t => canSeeGraphs || !GRAPH_TABS.includes(t.id));
 
     return (
         <div>
@@ -481,9 +605,14 @@ const AuditDetailPage = () => {
                         </svg>
                     </Link>
                     <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <h1 className="text-xl font-semibold text-gray-900">{audit.nom}</h1>
                             <StatutBadge statut={audit.statut} />
+                            {validationCfg && (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${validationCfg.bg} ${validationCfg.text} ${validationCfg.border}`}>
+                                    {validationCfg.label}
+                                </span>
+                            )}
                         </div>
                         <p className="text-sm text-gray-500 mt-0.5">{audit.client} — {audit.referentiel?.nom}</p>
                     </div>
@@ -495,7 +624,7 @@ const AuditDetailPage = () => {
                             <div className="h-full rounded-full transition-all" style={{ width: `${totalMesures > 0 ? (totalEvaluated/totalMesures)*100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
                         </div>
                     </div>
-                    {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && (
+                    {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && !isJunior && (
                         <button
                             onClick={() => setShowClotureModal(true)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90"
@@ -507,8 +636,47 @@ const AuditDetailPage = () => {
                             Clôturer l'audit
                         </button>
                     )}
+                    {canSoumettreAudit && (
+                        <button onClick={handleSoumettreAudit} disabled={validating}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
+                            style={{ backgroundColor: '#d97706' }}>
+                            {validating ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                            }
+                            Soumettre pour validation
+                        </button>
+                    )}
+                    {canValiderRejeter && (
+                        <>
+                            <button onClick={handleValiderAudit} disabled={validating}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
+                                style={{ backgroundColor: '#16a34a' }}>
+                                {validating ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                }
+                                Valider
+                            </button>
+                            <button onClick={() => setShowRejeterAudit(true)} disabled={validating}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
+                                style={{ backgroundColor: '#cc0000' }}>
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                Rejeter
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
+
+            {/* Bannière rejet */}
+            {audit.statut_validation === 'rejete' && audit.commentaire_rejet && (
+                <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3">
+                    <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                    <div>
+                        <p className="text-xs font-semibold text-red-700">Audit rejeté — corrections requises</p>
+                        <p className="text-xs text-red-600 mt-0.5">{audit.commentaire_rejet}</p>
+                    </div>
+                </div>
+            )}
 
             {/* Onglets */}
             <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} tabStatus={tabStatus} />
@@ -530,9 +698,9 @@ const AuditDetailPage = () => {
                     onSave={handleSaveEvals}
                 />
             )}
-            {!isISO && activeTab === 'synthese_mat' && <TabSyntheseMaturite synthese={synthese} />}
-            {!isISO && activeTab === 'synthese_conf' && <TabSyntheseConformite synthese={synthese} totalConforme={totalConforme} totalPartiel={totalPartiel} totalNC={totalNC} tauxGlobal={tauxGlobal} />}
-            {!isISO && activeTab === 'avancement' && <TabAvancement referentiel={referentiel} localEvals={localEvals} synthese={synthese} />}
+            {!isISO && activeTab === 'synthese_mat' && canSeeGraphs && <TabSyntheseMaturite synthese={synthese} />}
+            {!isISO && activeTab === 'synthese_conf' && canSeeGraphs && <TabSyntheseConformite synthese={synthese} totalConforme={totalConforme} totalPartiel={totalPartiel} totalNC={totalNC} tauxGlobal={tauxGlobal} />}
+            {!isISO && activeTab === 'avancement' && canSeeGraphs && <TabAvancement referentiel={referentiel} localEvals={localEvals} synthese={synthese} />}
             {!isISO && activeTab === 'indicateurs' && (
                 <TabIndicateurs
                     indicateurs={indicateurs}
@@ -565,21 +733,26 @@ const AuditDetailPage = () => {
                     onSave={handleSaveEvals}
                 />
             )}
-            {isISO && activeTab === 'synthese_iso' && <TabSyntheseISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
-            {isISO && activeTab === 'nc' && <TabNC referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
+            {isISO && activeTab === 'synthese_iso' && canSeeGraphs && <TabSyntheseISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
+            {isISO && activeTab === 'nc' && canSeeGraphs && <TabNC referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
             {isISO && activeTab === 'indicateurs_iso' && <TabIndicateursISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} indicateurs={indicateurs} setIndicateurs={setIndicateurs} onSave={() => handleSaveInfo('indicateurs', indicateurs)} saving={savingInfo} />}
 
             {/* Plan d'actions — commun DNSSI + ISO */}
-            {activeTab === 'plans_actions' && (
+            {activeTab === 'plans_actions' && canSeeGraphs && (
                 <TabPlanActions
                     referentiel={referentiel}
                     planActions={planActions}
                     localEvals={localEvals}
                     soaMap={soaMap}
                     isISO={isISO}
+                    user={user}
+                    auditId={id}
                     onAdd={handleCreatePlanAction}
                     onUpdate={handleUpdatePlanAction}
                     onDelete={handleDeletePlanAction}
+                    onSoumettre={handleSoumettrePlan}
+                    onValider={handleValiderPlan}
+                    onRejeter={(planId) => setRejetingPlanId(planId)}
                 />
             )}
 
@@ -593,6 +766,21 @@ const AuditDetailPage = () => {
                 onConfirm={handleClotureAudit}
                 onCancel={() => setShowClotureModal(false)}
             />
+
+            {showRejeterAudit && (
+                <RejeterModal
+                    title="Rejeter l'audit"
+                    onConfirm={handleRejeterAudit}
+                    onCancel={() => setShowRejeterAudit(false)}
+                />
+            )}
+            {rejetingPlanId && (
+                <RejeterModal
+                    title="Rejeter le plan d'action"
+                    onConfirm={(commentaire) => handleRejeterPlan(rejetingPlanId, commentaire)}
+                    onCancel={() => setRejetingPlanId(null)}
+                />
+            )}
         </div>
     );
 };
@@ -1760,15 +1948,25 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
 
 const emptyPlanForm = { mesure_id: '', description_nc: '', action_corrective: '', responsable: '', delai: '', priorite: 'moyenne', statut: 'a_faire', kpi: '' };
 
-const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, onAdd, onUpdate, onDelete }) => {
+const PLAN_VALIDATION_CONFIG = {
+    en_attente: { label: 'En attente', bg: 'bg-amber-50',  text: 'text-amber-700'  },
+    valide:     { label: 'Validé',     bg: 'bg-green-50',  text: 'text-green-700'  },
+    rejete:     { label: 'Rejeté',     bg: 'bg-red-50',    text: 'text-red-700'    },
+};
+
+const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, user, onAdd, onUpdate, onDelete, onSoumettre, onValider, onRejeter }) => {
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({ ...emptyPlanForm });
     const [submitting, setSubmitting] = useState(false);
+    const [errors, setErrors] = useState({});
 
-    const setF = (k, v) => setForm(p => ({ ...p, [k]: v }));
+    const setF = (k, v) => {
+        setForm(p => ({ ...p, [k]: v }));
+        if (errors[k]) setErrors(p => ({ ...p, [k]: false }));
+    };
 
-    const resetForm = () => { setForm({ ...emptyPlanForm }); setEditingId(null); };
+    const resetForm = () => { setForm({ ...emptyPlanForm }); setEditingId(null); setErrors({}); };
 
     const handleEdit = (plan) => {
         setForm({
@@ -1782,11 +1980,21 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, o
             kpi: plan.kpi || '',
         });
         setEditingId(plan.id);
+        setErrors({});
         setShowForm(true);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const newErrors = {};
+        if (!editingId && !form.mesure_id) newErrors.mesure_id = true;
+        if (!form.action_corrective?.trim()) newErrors.action_corrective = true;
+        if (!form.responsable?.trim()) newErrors.responsable = true;
+        if (!form.delai) newErrors.delai = true;
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
         setSubmitting(true);
         try {
             if (editingId) {
@@ -1842,9 +2050,11 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, o
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {!editingId && (
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Mesure / Contrôle *</label>
-                                <select value={form.mesure_id} onChange={e => setF('mesure_id', e.target.value)} required
-                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1">
+                                <label className={`text-xs font-semibold uppercase tracking-wider ${errors.mesure_id ? 'text-red-500' : 'text-gray-500'}`}>
+                                    Mesure / Contrôle *
+                                </label>
+                                <select value={form.mesure_id} onChange={e => setF('mesure_id', e.target.value)}
+                                    className={`w-full mt-1 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 border ${errors.mesure_id ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}>
                                     <option value="">— Sélectionner une mesure —</option>
                                     {allMesures.map(m => (
                                         <option key={m.id} value={m.id}>
@@ -1852,6 +2062,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, o
                                         </option>
                                     ))}
                                 </select>
+                                {errors.mesure_id && <p className="mt-1 text-xs text-red-500">Veuillez sélectionner une mesure.</p>}
                             </div>
                         )}
 
@@ -1863,23 +2074,32 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, o
                         </div>
 
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Action corrective</label>
+                            <label className={`text-xs font-semibold uppercase tracking-wider ${errors.action_corrective ? 'text-red-500' : 'text-gray-500'}`}>
+                                Action corrective *
+                            </label>
                             <textarea value={form.action_corrective} onChange={e => setF('action_corrective', e.target.value)}
                                 rows={2} placeholder="Décrivez l'action à mettre en place..."
-                                className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1" />
+                                className={`w-full mt-1 text-sm rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 border ${errors.action_corrective ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`} />
+                            {errors.action_corrective && <p className="mt-1 text-xs text-red-500">Ce champ est requis.</p>}
                         </div>
 
                         <div className="grid grid-cols-3 gap-3">
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Responsable</label>
+                                <label className={`text-xs font-semibold uppercase tracking-wider ${errors.responsable ? 'text-red-500' : 'text-gray-500'}`}>
+                                    Responsable *
+                                </label>
                                 <input type="text" value={form.responsable} onChange={e => setF('responsable', e.target.value)}
                                     placeholder="Nom..."
-                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1" />
+                                    className={`w-full mt-1 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 border ${errors.responsable ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`} />
+                                {errors.responsable && <p className="mt-1 text-xs text-red-500">Requis.</p>}
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Délai</label>
+                                <label className={`text-xs font-semibold uppercase tracking-wider ${errors.delai ? 'text-red-500' : 'text-gray-500'}`}>
+                                    Délai *
+                                </label>
                                 <input type="date" value={form.delai} onChange={e => setF('delai', e.target.value)}
-                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1" />
+                                    className={`w-full mt-1 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 border ${errors.delai ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`} />
+                                {errors.delai && <p className="mt-1 text-xs text-red-500">Requis.</p>}
                             </div>
                             <div>
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Priorité</label>
@@ -1949,6 +2169,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, o
                                 <th className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Délai</th>
                                 <th className="text-center px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Priorité</th>
                                 <th className="text-center px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Statut</th>
+                                <th className="text-center px-4 py-3 font-semibold text-gray-500 uppercase tracking-wider">Validation</th>
                                 <th className="px-4 py-3" />
                             </tr>
                         </thead>
@@ -1973,6 +2194,40 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, o
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`inline-flex px-2 py-0.5 rounded font-medium ${st.bg} ${st.text}`}>{st.label}</span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            {(() => {
+                                                const vc = PLAN_VALIDATION_CONFIG[plan.statut_validation];
+                                                const isJuniorUser = user?.role === 'auditeur_junior';
+                                                const isSeniorAdminUser = user?.role === 'admin' || user?.role === 'auditeur_senior';
+                                                return (
+                                                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                                                        {vc
+                                                            ? <span className={`inline-flex px-2 py-0.5 rounded font-medium ${vc.bg} ${vc.text}`}>{vc.label}</span>
+                                                            : <span className="text-gray-400 text-xs">—</span>
+                                                        }
+                                                        {isJuniorUser && plan.statut_validation !== 'en_attente' && plan.statut_validation !== 'valide' && (
+                                                            <button onClick={() => onSoumettre(plan.id)}
+                                                                className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium">
+                                                                Soumettre
+                                                            </button>
+                                                        )}
+                                                        {isSeniorAdminUser && plan.statut_validation === 'en_attente' && (
+                                                            <>
+                                                                <button onClick={() => onValider(plan.id)}
+                                                                    className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 hover:bg-green-100 font-medium">✓</button>
+                                                                <button onClick={() => onRejeter(plan.id)}
+                                                                    className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-700 hover:bg-red-100 font-medium">✕</button>
+                                                            </>
+                                                        )}
+                                                        {plan.commentaire_rejet && (
+                                                            <span title={plan.commentaire_rejet} className="cursor-help text-red-400">
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1">

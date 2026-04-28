@@ -47,6 +47,16 @@ const PlanAction = sequelize.define('PlanAction', {
         type: DataTypes.STRING(255),
         allowNull: true,
     },
+    statut_validation: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+        defaultValue: null,
+    },
+    commentaire_rejet: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null,
+    },
 }, {
     tableName: 'plans_actions',
 });

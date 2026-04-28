@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAllAudits, getAuditById, getEvaluations } from '../../services/endpoints/auditService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
+import { useAuth } from '../../store/auth/AuthContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -414,6 +415,7 @@ const EmptyState = ({ audits, loadingList }) => (
 // ─── Page principale ──────────────────────────────────────────────────────────
 
 const ResultatsPage = () => {
+    const { user } = useAuth();
     const [audits, setAudits]           = useState([]);
     const [selectedId, setSelectedId]   = useState('');
     const [audit, setAudit]             = useState(null);
@@ -425,12 +427,18 @@ const ResultatsPage = () => {
     useEffect(() => {
         getAllAudits()
             .then(res => {
-                const data = res.data;
-                setAudits(Array.isArray(data) ? data : (data.audits || []));
+                let data = Array.isArray(res.data) ? res.data : (res.data.audits || []);
+                if (user?.role === 'auditeur_junior') {
+                    data = data.filter(a =>
+                        a.auditeurs?.some(au => au.id === user.id) ||
+                        a.createur?.id === user.id
+                    );
+                }
+                setAudits(data);
             })
             .catch(() => {})
             .finally(() => setLoadingList(false));
-    }, []);
+    }, [user]);
 
     useEffect(() => {
         if (!selectedId) { setAudit(null); setReferentiel(null); setSynthese([]); return; }

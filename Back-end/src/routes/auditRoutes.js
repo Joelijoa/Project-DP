@@ -9,9 +9,12 @@ const {
     deleteAudit,
     getEvaluations,
     saveEvaluations,
+    soumettreAudit,
+    validerAudit,
+    rejeterAudit,
 } = require('../controllers/auditController');
 const { getSoA, saveSoA } = require('../controllers/soaController');
-const { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction } = require('../controllers/planActionController');
+const { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, getAllPlanActions, soumettreValidationPlan, validerPlanAction, rejeterPlanAction } = require('../controllers/planActionController');
 
 /**
  * @swagger
@@ -23,6 +26,9 @@ const { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction } =
 // Liste tous les audits
 router.get('/', verifyToken, getAllAudits);
 
+// Vue globale de tous les plans d'actions (avant /:id pour éviter le conflit)
+router.get('/plans-actions', verifyToken, getAllPlanActions);
+
 // Créer un audit (admin + auditeurs seniors)
 router.post('/', verifyToken, verifyRole('admin', 'auditeur_senior'), createAudit);
 
@@ -30,7 +36,7 @@ router.post('/', verifyToken, verifyRole('admin', 'auditeur_senior'), createAudi
 router.get('/:id', verifyToken, getAuditById);
 
 // Modifier un audit
-router.put('/:id', verifyToken, verifyRole('admin', 'auditeur_senior'), updateAudit);
+router.put('/:id', verifyToken, updateAudit);
 
 // Supprimer un audit
 router.delete('/:id', verifyToken, verifyRole('admin'), deleteAudit);
@@ -44,6 +50,11 @@ router.put('/:id/evaluations', verifyToken, saveEvaluations);
 // Déclaration d'Applicabilité (ISO 27001)
 router.get('/:id/soa', verifyToken, getSoA);
 router.put('/:id/soa', verifyToken, saveSoA);
+
+// Workflow de validation
+router.put('/:id/soumettre', verifyToken, soumettreAudit);
+router.put('/:id/valider', verifyToken, verifyRole('admin', 'auditeur_senior'), validerAudit);
+router.put('/:id/rejeter', verifyToken, verifyRole('admin', 'auditeur_senior'), rejeterAudit);
 
 // ─── Plans d'actions ────────────────────────────────────────────────────────
 
@@ -201,5 +212,10 @@ router.put('/:id/plans-actions/:planId', verifyToken, updatePlanAction);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.delete('/:id/plans-actions/:planId', verifyToken, deletePlanAction);
+
+// Validation des plans d'actions
+router.put('/:id/plans-actions/:planId/soumettre', verifyToken, soumettreValidationPlan);
+router.put('/:id/plans-actions/:planId/valider', verifyToken, verifyRole('admin', 'auditeur_senior'), validerPlanAction);
+router.put('/:id/plans-actions/:planId/rejeter', verifyToken, verifyRole('admin', 'auditeur_senior'), rejeterPlanAction);
 
 module.exports = router;

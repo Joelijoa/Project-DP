@@ -97,7 +97,11 @@ const DashboardPage = () => {
                     ? allAudits.filter(aud => aud.auditeurs?.some(au => au.id === user.id))
                     : allAudits
                 );
-                setPlans(p.data.plans_actions || []);
+                const allPlans = p.data.plans_actions || [];
+                setPlans(isJunior
+                    ? allPlans.filter(plan => plan.audit?.auditeurs?.some(au => au.id === user.id))
+                    : allPlans
+                );
                 setReferentiels(r.data.referentiels || []);
             })
             .catch(() => {})

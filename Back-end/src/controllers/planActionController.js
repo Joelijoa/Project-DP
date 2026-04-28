@@ -1,5 +1,6 @@
-const { PlanAction, Audit, Mesure, User } = require('../models');
+const { PlanAction, Audit, Mesure, User, AuditAuditeur } = require('../models');
 const { log, getIp } = require('../services/logService');
+const { notifierUsers, notifierRole } = require('../services/notificationService');
 
 // GET /api/audits/:id/plans-actions
 const getPlanActions = async (req, res) => {
@@ -88,4 +89,79 @@ const getAllPlanActions = async (req, res) => {
     }
 };
 
-module.exports = { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, getAllPlanActions };
+// PUT /api/audits/:id/plans-actions/:planId/soumettre
+const soumettreValidationPlan = async (req, res) => {
+    try {
+        const plan = await PlanAction.findByPk(req.params.planId, {
+            include: [{ model: Audit, as: 'audit', attributes: ['id', 'nom'] }],
+        });
+        if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
+
+        if (plan.statut_validation === 'en_attente') {
+            return res.status(400).json({ message: 'Déjà en attente de validation.' });
+        }
+
+        await plan.update({ statut_validation: 'en_attente', commentaire_rejet: null });
+
+        notifierRole(
+            ['admin', 'auditeur_senior'],
+            'PLAN_EN_ATTENTE',
+            `Plan d'action en attente : ${plan.audit?.nom}`,
+            `Un plan d'action de l'audit "${plan.audit?.nom}" est en attente de validation.`,
+            plan.audit_id,
+            plan.id
+        ).catch(() => {});
+
+        log(req.user?.userId, 'SOUMETTRE_PLAN', 'plan_action', plan.id, `Audit #${plan.audit_id}`, getIp(req));
+        res.json({ message: "Plan d'action soumis pour validation." });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// PUT /api/audits/:id/plans-actions/:planId/valider
+const validerPlanAction = async (req, res) => {
+    try {
+        const plan = await PlanAction.findByPk(req.params.planId);
+        if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
+
+        await plan.update({ statut_validation: 'valide', commentaire_rejet: null });
+
+        const auditeurs = await AuditAuditeur.findAll({ where: { audit_id: plan.audit_id } });
+        const ids = auditeurs.map(a => a.user_id);
+        if (ids.length > 0) {
+            notifierUsers(ids, 'PLAN_VALIDE', "Plan d'action validé", `Un plan d'action de l'audit #${plan.audit_id} a été validé.`, plan.audit_id, plan.id).catch(() => {});
+        }
+
+        log(req.user?.userId, 'VALIDER_PLAN', 'plan_action', plan.id, null, getIp(req));
+        res.json({ message: "Plan d'action validé." });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// PUT /api/audits/:id/plans-actions/:planId/rejeter
+const rejeterPlanAction = async (req, res) => {
+    try {
+        const { commentaire } = req.body;
+        if (!commentaire) return res.status(400).json({ message: 'Un commentaire de rejet est requis.' });
+
+        const plan = await PlanAction.findByPk(req.params.planId);
+        if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
+
+        await plan.update({ statut_validation: 'rejete', commentaire_rejet: commentaire });
+
+        const auditeurs = await AuditAuditeur.findAll({ where: { audit_id: plan.audit_id } });
+        const ids = auditeurs.map(a => a.user_id);
+        if (ids.length > 0) {
+            notifierUsers(ids, 'PLAN_REJETE', "Plan d'action rejeté", `Un plan d'action a été rejeté. Motif : ${commentaire}`, plan.audit_id, plan.id).catch(() => {});
+        }
+
+        log(req.user?.userId, 'REJETER_PLAN', 'plan_action', plan.id, null, getIp(req));
+        res.json({ message: "Plan d'action rejeté." });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, getAllPlanActions, soumettreValidationPlan, validerPlanAction, rejeterPlanAction };

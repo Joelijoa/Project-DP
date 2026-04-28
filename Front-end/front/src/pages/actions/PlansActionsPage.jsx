@@ -1,8 +1,42 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../store/auth/AuthContext';
-import { getAllPlanActions, updatePlanAction, deletePlanAction } from '../../services/endpoints/planActionService';
+import { getAllPlanActions, updatePlanAction, deletePlanAction, soumettreValidationPlan, validerPlanAction, rejeterPlanAction } from '../../services/endpoints/planActionService';
 import { toast } from 'react-toastify';
+
+const PLAN_VALIDATION_CONFIG = {
+    en_attente: { label: 'En attente', bg: 'bg-amber-50',  text: 'text-amber-700' },
+    valide:     { label: 'Validé',     bg: 'bg-green-50',  text: 'text-green-700' },
+    rejete:     { label: 'Rejeté',     bg: 'bg-red-50',    text: 'text-red-700'   },
+};
+
+const RejeterPlanModal = ({ onConfirm, onCancel }) => {
+    const [commentaire, setCommentaire] = useState('');
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Rejeter le plan d'action</h3>
+                <p className="text-sm text-gray-500 mb-4">Ce commentaire sera visible par les auditeurs concernés.</p>
+                <textarea value={commentaire} onChange={e => setCommentaire(e.target.value)}
+                    rows={4} placeholder="Motif du rejet..."
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1"
+                    autoFocus />
+                <div className="flex gap-2 mt-4">
+                    <button onClick={() => commentaire.trim() && onConfirm(commentaire.trim())}
+                        disabled={!commentaire.trim()}
+                        className="flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50"
+                        style={{ backgroundColor: '#cc0000' }}>
+                        Confirmer le rejet
+                    </button>
+                    <button onClick={onCancel}
+                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+                        Annuler
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const PRIORITE_CONFIG = {
     haute:   { label: 'Haute',   bg: 'bg-red-50',    text: 'text-red-700' },
@@ -27,6 +61,8 @@ const PlansActionsPage = () => {
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [savingId, setSavingId] = useState(null);
+    const [rejetingPlanId, setRejetingPlanId] = useState(null);
+    const isSeniorOrAdmin = user?.role === 'admin' || user?.role === 'auditeur_senior';
 
     const load = async () => {
         try {
@@ -94,6 +130,31 @@ const PlansActionsPage = () => {
         } finally {
             setSavingId(null);
         }
+    };
+
+    const handleSoumettre = async (plan) => {
+        try {
+            await soumettreValidationPlan(plan.audit_id, plan.id);
+            await load();
+            toast.success("Plan d'action soumis pour validation.");
+        } catch { toast.error('Erreur lors de la soumission.'); }
+    };
+
+    const handleValider = async (plan) => {
+        try {
+            await validerPlanAction(plan.audit_id, plan.id);
+            await load();
+            toast.success("Plan d'action validé.");
+        } catch { toast.error('Erreur lors de la validation.'); }
+    };
+
+    const handleRejeter = async (plan, commentaire) => {
+        setRejetingPlanId(null);
+        try {
+            await rejeterPlanAction(plan.audit_id, plan.id, commentaire);
+            await load();
+            toast.success("Plan d'action rejeté.");
+        } catch { toast.error('Erreur lors du rejet.'); }
     };
 
     const handleDelete = async (plan) => {
@@ -193,6 +254,7 @@ const PlansActionsPage = () => {
                                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Délai</th>
                                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Priorité</th>
                                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut</th>
+                                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Validation</th>
                                     {!isJunior && <th className="px-4 py-3" />}
                                 </tr>
                             </thead>
@@ -274,6 +336,35 @@ const PlansActionsPage = () => {
                                                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${st.bg} ${st.text}`}>{st.label}</span>
                                                 )}
                                             </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <div className="flex items-center justify-center gap-1 flex-wrap">
+                                                    {(() => {
+                                                        const vc = PLAN_VALIDATION_CONFIG[plan.statut_validation];
+                                                        return vc
+                                                            ? <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${vc.bg} ${vc.text}`}>{vc.label}</span>
+                                                            : <span className="text-gray-400 text-xs">—</span>;
+                                                    })()}
+                                                    {isJunior && plan.statut_validation !== 'en_attente' && plan.statut_validation !== 'valide' && (
+                                                        <button onClick={() => handleSoumettre(plan)}
+                                                            className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium">
+                                                            Soumettre
+                                                        </button>
+                                                    )}
+                                                    {isSeniorOrAdmin && plan.statut_validation === 'en_attente' && (
+                                                        <>
+                                                            <button onClick={() => handleValider(plan)}
+                                                                className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 hover:bg-green-100 font-medium">✓</button>
+                                                            <button onClick={() => setRejetingPlanId(plan.id)}
+                                                                className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-700 hover:bg-red-100 font-medium">✕</button>
+                                                        </>
+                                                    )}
+                                                    {plan.commentaire_rejet && (
+                                                        <span title={plan.commentaire_rejet} className="cursor-help text-red-400">
+                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
                                             {!isJunior && (
                                             <td className="px-4 py-3">
                                                 {isEditing ? (
@@ -314,6 +405,12 @@ const PlansActionsPage = () => {
                     </div>
                 )}
             </div>
+        {rejetingPlanId && (
+            <RejeterPlanModal
+                onConfirm={(commentaire) => handleRejeter(plans.find(p => p.id === rejetingPlanId), commentaire)}
+                onCancel={() => setRejetingPlanId(null)}
+            />
+        )}
         </div>
     );
 };

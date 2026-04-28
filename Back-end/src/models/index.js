@@ -11,6 +11,7 @@ const PlanAction = require('./PlanAction');
 const SoA = require('./SoA');
 const Entite = require('./Entite');
 const Log = require('./Log');
+const Notification = require('./Notification');
 
 // ========== ASSOCIATIONS ==========
 
@@ -73,6 +74,13 @@ Audit.belongsTo(Entite, { foreignKey: 'entite_id', as: 'entite' });
 Log.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 User.hasMany(Log, { foreignKey: 'user_id', as: 'logs' });
 
+// Notification -> User
+Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
+
+// Notification -> Audit (optionnel)
+Notification.belongsTo(Audit, { foreignKey: 'audit_id', as: 'audit' });
+
 module.exports = {
     sequelize,
     User,
@@ -87,4 +95,5 @@ module.exports = {
     SoA,
     Entite,
     Log,
+    Notification,
 };
