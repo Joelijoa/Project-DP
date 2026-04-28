@@ -49,7 +49,11 @@ const AppRouter = () => {
                     <Route path="/audits" element={<AuditsListPage />} />
                     <Route path="/audits/nouveau" element={<NewAuditPage />} />
                     <Route path="/audits/:id" element={<AuditDetailPage />} />
-                    <Route path="/referentiels" element={<ReferentielsPage />} />
+                    <Route path="/referentiels" element={
+                        <ProtectedRoute roles={['admin', 'auditeur_senior', 'auditeur_junior']}>
+                            <ReferentielsPage />
+                        </ProtectedRoute>
+                    } />
                     <Route path="/entites" element={<EntitesPage />} />
 
                     {/* Validation — admin + auditeur_senior */}
@@ -59,7 +63,11 @@ const AppRouter = () => {
 
                     {/* Résultats & Suivi */}
                     <Route path="/resultats" element={<ResultatsPage />} />
-                    <Route path="/plans-actions" element={<PlansActionsPage />} />
+                    <Route path="/plans-actions" element={
+                        <ProtectedRoute roles={['admin', 'auditeur_senior', 'auditeur_junior']}>
+                            <PlansActionsPage />
+                        </ProtectedRoute>
+                    } />
                     <Route path="/indicateurs" element={<IndicateursPage />} />
                     <Route path="/rapports" element={<RapportsPage />} />
 

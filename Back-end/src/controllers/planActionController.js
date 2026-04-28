@@ -7,7 +7,9 @@ const getPlanActions = async (req, res) => {
     try {
         const audit = await Audit.findByPk(req.params.id);
         if (!audit) return res.status(404).json({ message: 'Audit introuvable' });
-
+        if (req.user.role === 'client' && audit.entite_id !== req.user.entite_id) {
+            return res.status(403).json({ message: 'Accès refusé.' });
+        }
         const plans = await PlanAction.findAll({
             where: { audit_id: req.params.id },
             include: [{ model: Mesure, as: 'mesure', attributes: ['id', 'code', 'description'] }],
@@ -74,10 +76,16 @@ const deletePlanAction = async (req, res) => {
 // GET /api/audits/plans-actions  (vue globale tous audits)
 const getAllPlanActions = async (req, res) => {
     try {
+        const auditWhere = {};
+        if (req.user.role === 'client') {
+            if (!req.user.entite_id) return res.json({ plans_actions: [] });
+            auditWhere.entite_id = req.user.entite_id;
+        }
         const plans = await PlanAction.findAll({
             include: [
                 { model: Mesure, as: 'mesure', attributes: ['id', 'code', 'description'] },
-                { model: Audit,  as: 'audit',  attributes: ['id', 'nom', 'client'],
+                { model: Audit,  as: 'audit',  where: Object.keys(auditWhere).length ? auditWhere : undefined,
+                  attributes: ['id', 'nom', 'client'],
                   include: [{ model: User, as: 'auditeurs', attributes: ['id'], through: { attributes: [] } }] },
             ],
             order: [['createdAt', 'DESC']],

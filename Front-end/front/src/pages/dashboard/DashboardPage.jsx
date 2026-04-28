@@ -161,7 +161,99 @@ const DashboardPage = () => {
       : n <= 7 ? { bg: 'bg-amber-400', text: 'text-amber-600', badge: 'bg-amber-50 text-amber-600 border-amber-100' }
       :          { bg: 'bg-green-500', text: 'text-green-600', badge: 'bg-green-50 text-green-600 border-green-100' };
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // ── Vue client simplifiée ─────────────────────────────────────────────────
+
+    if (isClient) {
+        const clientActionsOuvertes = plans.filter(p => p.statut === 'a_faire' || p.statut === 'en_cours');
+        return (
+            <div className="space-y-7">
+                {/* Greeting */}
+                <div>
+                    <h1 className="text-xl font-bold text-gray-900">
+                        Bonjour, {user?.prenom} {user?.nom} 👋
+                    </h1>
+                    <p className="text-sm text-gray-400 mt-0.5 capitalize">
+                        {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                </div>
+
+                {/* KPIs */}
+                <div>
+                    <SectionLabel>Vos audits</SectionLabel>
+                    <div className="grid grid-cols-3 gap-4">
+                        {[
+                            { label: 'Audits en cours', value: enCours, accent: true },
+                            { label: 'Audits terminés', value: termines, accent: false },
+                            { label: 'Actions ouvertes', value: clientActionsOuvertes.length, accent: false },
+                        ].map((s, i) => (
+                            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm"
+                                style={s.accent ? { borderLeft: '3px solid var(--brand-red)' } : {}}>
+                                {loading
+                                    ? <Sk className="h-8 w-16 mb-1.5" />
+                                    : <p className="text-3xl font-extrabold tracking-tight"
+                                        style={{ color: s.accent ? 'var(--brand-red)' : '#111827' }}>{s.value}</p>
+                                }
+                                <p className="text-xs text-gray-400 mt-1.5">{s.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Liste audits */}
+                <div>
+                    <SectionLabel>Vos audits récents</SectionLabel>
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        {loading ? <Spin /> : audits.length === 0 ? (
+                            <p className="text-sm text-gray-400 text-center py-10">Aucun audit associé à votre entité.</p>
+                        ) : (
+                            <div className="divide-y divide-gray-50">
+                                {audits.slice(0, 8).map(a => {
+                                    const cfg = STATUT_AUDIT[a.statut] || STATUT_AUDIT.brouillon;
+                                    return (
+                                        <Link key={a.id} to={`/audits/${a.id}`}
+                                            className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-gray-900 truncate">{a.nom}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">{a.referentiel?.nom}</p>
+                                            </div>
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${cfg.bg} ${cfg.text}`}>
+                                                {cfg.label}
+                                            </span>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Actions critiques */}
+                {clientActionsOuvertes.length > 0 && (
+                    <div>
+                        <SectionLabel>Plans d'actions en cours</SectionLabel>
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="divide-y divide-gray-50">
+                                {clientActionsOuvertes.slice(0, 5).map(p => {
+                                    const pc = PRIORITE[p.priorite];
+                                    return (
+                                        <div key={p.id} className="flex items-start gap-4 px-5 py-3.5">
+                                            {pc && <span className={`mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${pc.badge}`}>{pc.label}</span>}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm text-gray-800 truncate">{p.action_corrective || `Action #${p.id}`}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">{p.audit?.nom} · Resp. {p.responsable}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // ── Render (autres rôles) ─────────────────────────────────────────────────
 
     return (
         <div className="space-y-7">

@@ -70,6 +70,10 @@ Mesure.hasMany(SoA, { foreignKey: 'mesure_id', as: 'soa_entries' });
 Entite.hasMany(Audit, { foreignKey: 'entite_id', as: 'audits' });
 Audit.belongsTo(Entite, { foreignKey: 'entite_id', as: 'entite' });
 
+// User -> Entite (rôle client)
+User.belongsTo(Entite, { foreignKey: 'entite_id', as: 'entite' });
+Entite.hasMany(User, { foreignKey: 'entite_id', as: 'users' });
+
 // Log -> User
 Log.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 User.hasMany(Log, { foreignKey: 'user_id', as: 'logs' });

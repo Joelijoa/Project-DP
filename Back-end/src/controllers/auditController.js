@@ -14,7 +14,13 @@ const calcConformite = (niveau) => {
 // GET /api/audits
 const getAllAudits = async (req, res) => {
     try {
+        const where = {};
+        if (req.user.role === 'client') {
+            if (!req.user.entite_id) return res.json({ audits: [] });
+            where.entite_id = req.user.entite_id;
+        }
         const audits = await Audit.findAll({
+            where,
             include: [
                 { model: Referentiel, as: 'referentiel', attributes: ['id', 'nom', 'type'] },
                 { model: User, as: 'createur', attributes: ['id', 'nom', 'prenom'] },
@@ -39,6 +45,9 @@ const getAuditById = async (req, res) => {
             ],
         });
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
+        if (req.user.role === 'client' && audit.entite_id !== req.user.entite_id) {
+            return res.status(403).json({ message: 'Accès refusé.' });
+        }
         res.json({ audit });
     } catch (error) {
         res.status(500).json({ message: error.message });

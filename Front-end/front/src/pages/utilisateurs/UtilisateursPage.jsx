@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAllUsers, createUser, updateUser, deleteUser, resetPassword } from '../../services/endpoints/userService';
+import { getAllEntites } from '../../services/endpoints/entiteService';
 import { useAuth } from '../../store/auth/AuthContext';
 import { toast } from 'react-toastify';
 import ConfirmModal from '../../components/common/ConfirmModal';
@@ -20,7 +21,7 @@ const AVATAR_COLORS = {
     client:          '#10B981',
 };
 
-const emptyForm = { nom: '', prenom: '', email: '', role: 'auditeur_junior', organisation: '', telephone: '' };
+const emptyForm = { nom: '', prenom: '', email: '', role: 'auditeur_junior', organisation: '', telephone: '', entite_id: '' };
 
 const getInitials = (prenom = '', nom = '') =>
     ((prenom[0] ?? '') + (nom[0] ?? '')).toUpperCase() || '?';
@@ -32,6 +33,7 @@ const inputCls = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 foc
 const UtilisateursPage = () => {
     const { user: me } = useAuth();
     const [users, setUsers]             = useState([]);
+    const [entites, setEntites]         = useState([]);
     const [loading, setLoading]         = useState(true);
     const [search, setSearch]           = useState('');
     const [filterRole, setFilterRole]   = useState('');
@@ -45,8 +47,9 @@ const UtilisateursPage = () => {
 
     const load = async () => {
         try {
-            const res = await getAllUsers();
-            setUsers(res.data.users || []);
+            const [usersRes, entitesRes] = await Promise.all([getAllUsers(), getAllEntites()]);
+            setUsers(usersRes.data.users || []);
+            setEntites(entitesRes.data.entites || []);
         } catch {
             toast.error('Erreur lors du chargement des utilisateurs');
         } finally {
@@ -69,6 +72,7 @@ const UtilisateursPage = () => {
             nom: u.nom || '', prenom: u.prenom || '',
             email: u.email || '', role: u.role || 'auditeur_junior',
             organisation: u.organisation || '', telephone: u.telephone || '',
+            entite_id: u.entite_id || '',
             actif: u.actif ?? true,
         });
         setEditingId(u.id);
@@ -295,6 +299,7 @@ const UtilisateursPage = () => {
                     form={form} setF={setF}
                     editingId={editingId}
                     submitting={submitting}
+                    entites={entites}
                     onSubmit={handleSubmit}
                     onClose={() => { setShowForm(false); setEditingId(null); }}
                 />
@@ -340,7 +345,7 @@ const StatCard = ({ value, label, color = 'gray' }) => {
 };
 
 /* ── Form Modal ─────────────────────────────────────────────────────────────── */
-const UserFormModal = ({ form, setF, editingId, submitting, onSubmit, onClose }) => (
+const UserFormModal = ({ form, setF, editingId, submitting, entites, onSubmit, onClose }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg">
@@ -390,6 +395,17 @@ const UserFormModal = ({ form, setF, editingId, submitting, onSubmit, onClose })
                         <input type="text" value={form.telephone} onChange={e => setF('telephone', e.target.value)} placeholder="+212 6 00 00 00 00" className={inputCls} />
                     </Field>
                 </div>
+
+                {form.role === 'client' && (
+                    <Field label="Entité auditée" required>
+                        <select value={form.entite_id} onChange={e => setF('entite_id', e.target.value)} className={inputCls}>
+                            <option value="">— Sélectionner une entité —</option>
+                            {entites.map(e => (
+                                <option key={e.id} value={e.id}>{e.nom}</option>
+                            ))}
+                        </select>
+                    </Field>
+                )}
 
                 {editingId && (
                     <div className="flex items-center gap-3 py-1">

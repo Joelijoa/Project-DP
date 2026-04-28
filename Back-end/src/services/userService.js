@@ -26,6 +26,7 @@ const createUser = async (data) => {
         role: data.role,
         organisation: data.organisation || null,
         telephone: data.telephone || null,
+        entite_id: data.entite_id || null,
         must_change_password: true,
     });
 

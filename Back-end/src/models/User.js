@@ -57,6 +57,10 @@ const User = sequelize.define('User', {
         type: DataTypes.DATE,
         allowNull: true,
     },
+    entite_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+    },
 }, {
     tableName: 'users',
 });
