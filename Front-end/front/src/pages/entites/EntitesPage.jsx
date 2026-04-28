@@ -42,6 +42,9 @@ const getInitials = (nom = '') => {
 
 const getAvatarColor = (secteur) => SECTEUR_COLORS[secteur]?.avatar ?? '#9CA3AF';
 
+const isIncomplete = (entite) =>
+    !entite.secteur && !entite.ville && !entite.email && !entite.telephone;
+
 const InputField = ({ label, required, children }) => (
     <div>
         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
@@ -146,8 +149,9 @@ const EntitesPage = () => {
 
     const selected = selectedId ? entites.find(e => e.id === selectedId) : null;
 
-    const totalAudits   = entites.reduce((acc, e) => acc + (e.audits?.length ?? 0), 0);
-    const totalSecteurs = new Set(entites.map(e => e.secteur).filter(Boolean)).size;
+    const totalAudits    = entites.reduce((acc, e) => acc + (e.audits?.length ?? 0), 0);
+    const totalSecteurs  = new Set(entites.map(e => e.secteur).filter(Boolean)).size;
+    const incompleteCount = entites.filter(isIncomplete).length;
 
     return (
         <div>
@@ -168,11 +172,30 @@ const EntitesPage = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-5">
+            <div className="grid grid-cols-3 gap-4 mb-4">
                 <StatCard value={entites.length} label="Entités" icon="building" />
                 <StatCard value={totalAudits}    label="Audits liés" icon="clipboard" />
                 <StatCard value={totalSecteurs}  label="Secteurs" icon="tag" />
             </div>
+
+            {/* Bannière entités incomplètes */}
+            {incompleteCount > 0 && (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-5">
+                    <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-amber-800">
+                            {incompleteCount} entité{incompleteCount > 1 ? 's' : ''} à compléter
+                        </p>
+                        <p className="text-xs text-amber-700 mt-0.5">
+                            {incompleteCount > 1
+                                ? 'Ces entités ont été créées automatiquement depuis un audit. Cliquez sur le bouton modifier pour renseigner leurs informations.'
+                                : 'Cette entité a été créée automatiquement depuis un audit. Cliquez sur modifier pour renseigner ses informations.'}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Barre recherche + filtre */}
             <div className="flex gap-3 mb-4">
@@ -278,23 +301,41 @@ const StatCard = ({ value, label, icon }) => (
 
 /* ── Entité Card ────────────────────────────────────────────────── */
 const EntiteCard = ({ entite, isSelected, compact, onClick, onEdit, onDelete }) => {
-    const color  = getAvatarColor(entite.secteur);
-    const badge  = SECTEUR_COLORS[entite.secteur]?.badge ?? 'bg-gray-100 text-gray-600';
-    const audits = entite.audits?.length ?? 0;
+    const color      = getAvatarColor(entite.secteur);
+    const badge      = SECTEUR_COLORS[entite.secteur]?.badge ?? 'bg-gray-100 text-gray-600';
+    const audits     = entite.audits?.length ?? 0;
+    const incomplete = isIncomplete(entite);
 
     return (
         <div onClick={onClick}
-            className={`bg-white rounded-xl border cursor-pointer transition-all ${isSelected ? 'border-red-300 shadow-sm ring-1 ring-red-100' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}>
+            className={`bg-white rounded-xl border cursor-pointer transition-all ${isSelected ? 'border-red-300 shadow-sm ring-1 ring-red-100' : incomplete ? 'border-amber-200 hover:border-amber-300 hover:shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}>
             <div className="p-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                     {/* Avatar initiales */}
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-sm font-bold"
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-sm font-bold relative"
                         style={{ backgroundColor: color }}>
                         {getInitials(entite.nom)}
+                        {incomplete && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center">
+                                <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                </svg>
+                            </span>
+                        )}
                     </div>
 
                     <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{entite.nom}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{entite.nom}</p>
+                            {incomplete && (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                                    </svg>
+                                    À compléter
+                                </span>
+                            )}
+                        </div>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                             {entite.secteur && (
                                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge}`}>
@@ -343,8 +384,9 @@ const EntiteCard = ({ entite, isSelected, compact, onClick, onEdit, onDelete }) 
 
 /* ── Detail Panel ───────────────────────────────────────────────── */
 const DetailPanel = ({ entite, onClose, onEdit }) => {
-    const color = getAvatarColor(entite.secteur);
-    const badge = SECTEUR_COLORS[entite.secteur]?.badge ?? 'bg-gray-100 text-gray-600';
+    const color      = getAvatarColor(entite.secteur);
+    const badge      = SECTEUR_COLORS[entite.secteur]?.badge ?? 'bg-gray-100 text-gray-600';
+    const incomplete = isIncomplete(entite);
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden sticky top-4">
@@ -364,6 +406,28 @@ const DetailPanel = ({ entite, onClose, onEdit }) => {
                     style={{ backgroundColor: color }}>
                     {getInitials(entite.nom)}
                 </div>
+
+                {/* Bannière informations incomplètes */}
+                {incomplete && (
+                    <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 mb-4">
+                        <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-amber-800 mb-0.5">Informations incomplètes</p>
+                            <p className="text-xs text-amber-700 leading-relaxed">
+                                Cette entité a été créée automatiquement depuis un audit. Veuillez compléter ses informations (secteur, contact, adresse…).
+                            </p>
+                            <button onClick={onEdit}
+                                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-2">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                                </svg>
+                                Compléter maintenant
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex items-start justify-between mb-1">
                     <h2 className="text-base font-semibold text-gray-900 leading-tight">{entite.nom}</h2>

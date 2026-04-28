@@ -1,4 +1,4 @@
-const { Audit, User, Referentiel, Mesure, Evaluation, AuditAuditeur } = require('../models');
+const { Audit, User, Referentiel, Mesure, Evaluation, AuditAuditeur, Entite } = require('../models');
 const { log, getIp } = require('../services/logService');
 const { notifierUsers, notifierRole } = require('../services/notificationService');
 
@@ -61,6 +61,11 @@ const createAudit = async (req, res) => {
         if (!nom || !client || !referentiel_id) {
             return res.status(400).json({ message: 'nom, client et referentiel_id sont requis' });
         }
+        // Auto-create or find entity from client name
+        const [entite] = await Entite.findOrCreate({
+            where: { nom: client.trim() },
+            defaults: { nom: client.trim() },
+        });
         const audit = await Audit.create({
             nom,
             client,
@@ -68,6 +73,7 @@ const createAudit = async (req, res) => {
             date_debut: date_debut || null,
             date_fin: date_fin || null,
             referentiel_id,
+            entite_id: entite.id,
             identification: identification || null,
             created_by: req.user.userId,
             statut: 'brouillon',
@@ -85,7 +91,7 @@ const createAudit = async (req, res) => {
             ).catch(() => {});
         }
         log(req.user.userId, 'CREATE_AUDIT', 'audit', audit.id, audit.nom, getIp(req));
-        res.status(201).json({ message: 'Audit créé avec succès', audit });
+        res.status(201).json({ message: 'Audit créé avec succès', audit, entite_created: created });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -120,7 +126,7 @@ const updateAudit = async (req, res) => {
         const audit = await Audit.findByPk(req.params.id);
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
 
-        const { nom, client, perimetre, date_debut, date_fin, statut, identification, indicateurs, auditeurs_ids } = req.body;
+        const { nom, client, perimetre, date_debut, date_fin, statut, identification, indicateurs, entite_id, auditeurs_ids } = req.body;
         await audit.update({
             ...(nom !== undefined && { nom }),
             ...(client !== undefined && { client }),
@@ -130,6 +136,7 @@ const updateAudit = async (req, res) => {
             ...(statut !== undefined && { statut }),
             ...(identification !== undefined && { identification }),
             ...(indicateurs !== undefined && { indicateurs }),
+            ...(entite_id !== undefined && { entite_id: entite_id || null }),
         });
 
         if (auditeurs_ids !== undefined) {

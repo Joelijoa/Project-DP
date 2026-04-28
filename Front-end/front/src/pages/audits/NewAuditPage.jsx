@@ -7,9 +7,9 @@ import { toast } from 'react-toastify';
 
 const NewAuditPage = () => {
     const navigate = useNavigate();
-    const [loading, setLoading]         = useState(false);
+    const [loading, setLoading]           = useState(false);
     const [referentiels, setReferentiels] = useState([]);
-    const [users, setUsers]             = useState([]);
+    const [users, setUsers]               = useState([]);
     const [form, setForm] = useState({
         nom:            '',
         client:         '',
@@ -46,9 +46,9 @@ const NewAuditPage = () => {
 
     const validate = () => {
         const e = {};
-        if (!form.nom.trim())           e.nom = 'Le nom est requis';
-        if (!form.client.trim())        e.client = "L'entité auditée est requise";
-        if (!form.referentiel_id)       e.referentiel_id = 'Le référentiel est requis';
+        if (!form.nom.trim())    e.nom    = 'Le nom est requis';
+        if (!form.client.trim()) e.client = "L'entité auditée est requise";
+        if (!form.referentiel_id) e.referentiel_id = 'Le référentiel est requis';
         if (form.date_debut && form.date_fin && form.date_debut > form.date_fin)
             e.date_fin = 'La date de fin doit être après la date de début';
         setErrors(e);
@@ -70,6 +70,12 @@ const NewAuditPage = () => {
                 auditeurs_ids:  form.auditeurs_ids,
             });
             toast.success('Audit créé avec succès');
+            if (res.data.entite_created) {
+                toast.info(
+                    `L'entité "${form.client.trim()}" a été créée automatiquement. Pensez à compléter ses informations dans le menu "Entités auditées".`,
+                    { autoClose: 8000 }
+                );
+            }
             navigate(`/audits/${res.data.audit.id}`);
         } catch (err) {
             toast.error(`Erreur : ${err.response?.data?.message || err.message || 'Erreur inconnue'}`);
@@ -89,7 +95,7 @@ const NewAuditPage = () => {
             errors[field] ? 'border-red-300 focus:ring-red-200' : 'border-gray-200'
         }`;
 
-    const selectedRef = referentiels.find(r => String(r.id) === String(form.referentiel_id));
+    const selectedRef   = referentiels.find(r => String(r.id) === String(form.referentiel_id));
     const selectedUsers = users.filter(u => form.auditeurs_ids.includes(u.id));
     const isISO = selectedRef?.type === 'ISO27001';
 
@@ -134,14 +140,14 @@ const NewAuditPage = () => {
                                     {errors.nom && <p className="mt-1 text-xs text-red-500">{errors.nom}</p>}
                                 </div>
 
-                                {/* Client + Référentiel — 2 colonnes */}
+                                {/* Entité + Référentiel — 2 colonnes */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1.5">
                                             Entité / Client audité <span className="text-red-500">*</span>
                                         </label>
                                         <input type="text" value={form.client} onChange={e => set('client', e.target.value)}
-                                            placeholder="Dénomination de l'entité"
+                                            placeholder="Ex : Ministère des Finances"
                                             className={inputCls('client')}
                                             style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
                                         {errors.client && <p className="mt-1 text-xs text-red-500">{errors.client}</p>}
@@ -285,10 +291,12 @@ const NewAuditPage = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
                                     </svg>
                                     <div className="min-w-0">
-                                        <p className="text-[10px] text-gray-400 uppercase tracking-wide">Client / Entité</p>
-                                        <p className={form.client.trim() ? 'text-gray-800 font-medium' : 'text-gray-300 italic text-xs'}>
-                                            {form.client.trim() || 'Non renseigné'}
-                                        </p>
+                                        <p className="text-[10px] text-gray-400 uppercase tracking-wide">Entité / Client audité</p>
+                                        {form.client.trim() ? (
+                                            <p className="text-gray-800 font-medium">{form.client}</p>
+                                        ) : (
+                                            <p className="text-gray-300 italic text-xs">Non renseignée</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -374,7 +382,7 @@ const NewAuditPage = () => {
                             </div>
                         )}
 
-                        {/* Aide */}
+                        {/* Aide référentiel */}
                         {!selectedRef && (
                             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
                                 <p className="text-xs font-semibold text-blue-700 mb-1">Comment choisir son référentiel ?</p>
