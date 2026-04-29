@@ -95,7 +95,7 @@ router.get('/plans-actions', verifyToken, getAllPlanActions);
  *             $ref: '#/components/schemas/CreateAuditRequest'
  *     responses:
  *       201:
- *         description: Audit créé
+ *         description: Audit créé. Si le nom client ne correspond à aucune entité existante, une entité est créée automatiquement.
  *         content:
  *           application/json:
  *             schema:
@@ -103,6 +103,10 @@ router.get('/plans-actions', verifyToken, getAllPlanActions);
  *               properties:
  *                 audit:
  *                   $ref: '#/components/schemas/Audit'
+ *                 entite_created:
+ *                   type: boolean
+ *                   description: true si une nouvelle entité a été créée automatiquement depuis le nom client
+ *                   example: true
  *       400:
  *         description: Champs requis manquants
  *       401:

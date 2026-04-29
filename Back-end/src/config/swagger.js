@@ -63,6 +63,7 @@ const options = {
             statut_validation: { type: 'string', enum: ['en_attente', 'valide', 'rejete'], nullable: true, example: null },
             commentaire_rejet: { type: 'string', nullable: true, example: null },
             referentiel_id: { type: 'integer', example: 2 },
+            entite_id: { type: 'integer', nullable: true, example: 3, description: 'Entité auditée, auto-créée si nécessaire' },
             created_by: { type: 'integer', example: 1 },
             identification: { type: 'object', nullable: true, description: 'JSONB — informations organisme' },
             indicateurs: { type: 'object', nullable: true, description: 'JSONB — indicateurs SSI' },
@@ -120,8 +121,20 @@ const options = {
           type: 'object',
           properties: {
             mesure_id: { type: 'integer', example: 42 },
-            applicable: { type: 'boolean', example: true },
-            justification: { type: 'string', nullable: true, example: 'Requis par la politique de sécurité' },
+            applicable: { type: 'boolean', nullable: true, example: true },
+            raisons_inclusion: {
+              type: 'array',
+              items: { type: 'string', enum: ['legal', 'contractuel', 'risque', 'bonne_pratique'] },
+              example: ['legal', 'risque'],
+            },
+            justification_exclusion: { type: 'string', nullable: true, example: 'Hors périmètre organisationnel' },
+            statut_implementation: {
+              type: 'string',
+              nullable: true,
+              enum: ['implemente', 'partiel', 'planifie', 'non_implemente'],
+              example: 'implemente',
+            },
+            reference_document: { type: 'string', nullable: true, example: 'POL-SEC-001' },
           },
         },
         Notification: {
@@ -290,40 +303,20 @@ const options = {
         User: {
           type: 'object',
           properties: {
-            id: {
-              type: 'integer',
-              example: 1,
-            },
-            nom: {
-              type: 'string',
-              example: 'Dupont',
-            },
-            prenom: {
-              type: 'string',
-              example: 'Jean',
-            },
-            email: {
-              type: 'string',
-              format: 'email',
-              example: 'jean@example.com',
-            },
+            id: { type: 'integer', example: 1 },
+            nom: { type: 'string', example: 'Dupont' },
+            prenom: { type: 'string', example: 'Jean' },
+            email: { type: 'string', format: 'email', example: 'jean@example.com' },
             role: {
               type: 'string',
               enum: ['admin', 'auditeur_senior', 'auditeur_junior', 'client'],
               example: 'admin',
             },
-            organisation: {
-              type: 'string',
-              example: 'GRC Corp',
-            },
-            telephone: {
-              type: 'string',
-              example: '0600000000',
-            },
-            actif: {
-              type: 'boolean',
-              example: true,
-            },
+            organisation: { type: 'string', example: 'GRC Corp' },
+            telephone: { type: 'string', example: '0600000000' },
+            actif: { type: 'boolean', example: true },
+            must_change_password: { type: 'boolean', example: false },
+            entite_id: { type: 'integer', nullable: true, example: 3, description: 'Lié à une entité pour le rôle client' },
           },
         },
         CreateUserRequest: {
@@ -336,6 +329,7 @@ const options = {
             role: { type: 'string', enum: ['admin', 'auditeur_senior', 'auditeur_junior', 'client'], example: 'auditeur_junior' },
             organisation: { type: 'string', example: 'Entreprise X' },
             telephone: { type: 'string', example: '0600000000' },
+            entite_id: { type: 'integer', nullable: true, example: 3, description: 'Obligatoire si role=client' },
           },
         },
         UpdateUserRequest: {
@@ -348,6 +342,7 @@ const options = {
             organisation: { type: 'string', example: 'Entreprise Y' },
             telephone: { type: 'string', example: '0611111111' },
             actif: { type: 'boolean', example: true },
+            entite_id: { type: 'integer', nullable: true, example: 3, description: 'Lien entité pour le rôle client' },
           },
         },
         ErrorResponse: {

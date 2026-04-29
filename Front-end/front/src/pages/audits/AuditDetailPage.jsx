@@ -232,10 +232,11 @@ const AuditDetailPage = () => {
     useEffect(() => {
         const load = async () => {
             try {
+                const canFetchUsers = ['admin', 'auditeur_senior'].includes(user?.role);
                 const [auditRes, evalsRes, usersRes] = await Promise.all([
                     getAuditById(id),
                     getEvaluations(id),
-                    user?.role !== 'auditeur_junior' ? getAllUsers() : Promise.resolve({ data: { users: [] } }),
+                    canFetchUsers ? getAllUsers() : Promise.resolve({ data: { users: [] } }),
                 ]);
                 const a = auditRes.data.audit;
                 setAudit(a);
@@ -580,8 +581,9 @@ const AuditDetailPage = () => {
 
     const isISO = referentiel?.type === 'ISO27001';
 
+    const isClient         = user?.role === 'client';
     const isAssigned       = audit?.auditeurs?.some(a => a.id === user?.id) || audit?.createur?.id === user?.id;
-    const canSeeGraphs     = user?.role !== 'auditeur_junior' || isAssigned;
+    const canSeeGraphs     = user?.role !== 'auditeur_junior' || isAssigned || isClient;
     const isJunior         = user?.role === 'auditeur_junior';
     const isSeniorOrAdmin  = user?.role === 'admin' || user?.role === 'auditeur_senior';
     const canSoumettreAudit = isJunior && isAssigned && audit.statut_validation !== 'en_attente' && audit.statut_validation !== 'valide';
@@ -624,7 +626,7 @@ const AuditDetailPage = () => {
                             <div className="h-full rounded-full transition-all" style={{ width: `${totalMesures > 0 ? (totalEvaluated/totalMesures)*100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
                         </div>
                     </div>
-                    {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && !isJunior && (
+                    {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && !isJunior && !isClient && (
                         <button
                             onClick={() => setShowClotureModal(true)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90"
@@ -636,7 +638,7 @@ const AuditDetailPage = () => {
                             Clôturer l'audit
                         </button>
                     )}
-                    {canSoumettreAudit && (
+                    {canSoumettreAudit && !isClient && (
                         <button onClick={handleSoumettreAudit} disabled={validating}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
                             style={{ backgroundColor: '#d97706' }}>
@@ -646,7 +648,7 @@ const AuditDetailPage = () => {
                             Soumettre pour validation
                         </button>
                     )}
-                    {canValiderRejeter && (
+                    {canValiderRejeter && !isClient && (
                         <>
                             <button onClick={handleValiderAudit} disabled={validating}
                                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
@@ -678,12 +680,25 @@ const AuditDetailPage = () => {
                 </div>
             )}
 
+            {/* Bannière lecture seule client */}
+            {isClient && (
+                <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200">
+                    <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="text-sm text-blue-700">
+                        <strong>Mode lecture seule</strong> — Vous consultez les résultats de l'audit de votre entité.
+                    </p>
+                </div>
+            )}
+
             {/* Onglets */}
             <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} tabStatus={tabStatus} />
 
             {/* Contenu des onglets — communs */}
-            {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} />}
-            {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} />}
+            {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} readOnly={isClient} />}
+            {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />}
 
             {/* Onglets DNSSI */}
             {!isISO && activeTab === 'evaluation' && (
@@ -696,6 +711,7 @@ const AuditDetailPage = () => {
                     isDirty={isDirty}
                     saving={saving}
                     onSave={handleSaveEvals}
+                    readOnly={isClient}
                 />
             )}
             {!isISO && activeTab === 'synthese_mat' && canSeeGraphs && <TabSyntheseMaturite synthese={synthese} />}
@@ -708,6 +724,7 @@ const AuditDetailPage = () => {
                     synthese={synthese}
                     onSave={() => handleSaveInfo('indicateurs', indicateurs)}
                     saving={savingInfo}
+                    readOnly={isClient}
                 />
             )}
 
@@ -720,6 +737,7 @@ const AuditDetailPage = () => {
                     soaDirty={soaDirty}
                     savingSoa={savingSoa}
                     onSave={handleSaveSoA}
+                    readOnly={isClient}
                 />
             )}
             {isISO && activeTab === 'evaluation_iso' && (
@@ -731,11 +749,12 @@ const AuditDetailPage = () => {
                     isDirty={isDirty}
                     saving={saving}
                     onSave={handleSaveEvals}
+                    readOnly={isClient}
                 />
             )}
             {isISO && activeTab === 'synthese_iso' && canSeeGraphs && <TabSyntheseISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
             {isISO && activeTab === 'nc' && canSeeGraphs && <TabNC referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
-            {isISO && activeTab === 'indicateurs_iso' && <TabIndicateursISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} indicateurs={indicateurs} setIndicateurs={setIndicateurs} onSave={() => handleSaveInfo('indicateurs', indicateurs)} saving={savingInfo} />}
+            {isISO && activeTab === 'indicateurs_iso' && <TabIndicateursISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} indicateurs={indicateurs} setIndicateurs={setIndicateurs} onSave={() => handleSaveInfo('indicateurs', indicateurs)} saving={savingInfo} readOnly={isClient} />}
 
             {/* Plan d'actions — commun DNSSI + ISO */}
             {activeTab === 'plans_actions' && canSeeGraphs && (
@@ -753,6 +772,7 @@ const AuditDetailPage = () => {
                     onSoumettre={handleSoumettrePlan}
                     onValider={handleValiderPlan}
                     onRejeter={(planId) => setRejetingPlanId(planId)}
+                    readOnly={isClient}
                 />
             )}
 
@@ -894,7 +914,7 @@ const fmtISODate = (iso) => {
     return iso;
 };
 
-const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO, onSave, saving }) => {
+const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO, onSave, saving, readOnly }) => {
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState({
         nom:        audit.nom || '',
@@ -983,7 +1003,7 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO
             <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-gray-800">Informations de l'audit</h3>
-                    {!editing && (
+                    {!editing && !readOnly && (
                         <button
                             onClick={() => setEditing(true)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
@@ -996,7 +1016,7 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO
                     )}
                 </div>
 
-                {editing ? (
+                {editing && !readOnly ? (
                     <div>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             {[
@@ -1067,9 +1087,9 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO
 
 // ─── TAB 2 : Identification entité ou IIV ────────────────────────────────────
 
-const TabIdentification = ({ identification, setIdentification, onSave, saving, isISO }) => {
+const TabIdentification = ({ identification, setIdentification, onSave, saving, isISO, readOnly }) => {
     const isEmpty = !Object.values(identification).some(v => v && String(v).trim());
-    const [editing, setEditing] = useState(isEmpty);
+    const [editing, setEditing] = useState(!readOnly && isEmpty);
     const set = (k, v) => setIdentification(prev => ({ ...prev, [k]: v }));
 
     const handleSave = () => {
@@ -1097,15 +1117,17 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                     <div className="flex items-center justify-between mb-5">
                         <h2 className="text-sm font-semibold text-gray-800">{sectionTitle}</h2>
-                        <button
-                            onClick={() => setEditing(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                            </svg>
-                            Modifier
-                        </button>
+                        {!readOnly && (
+                            <button
+                                onClick={() => setEditing(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                                </svg>
+                                Modifier
+                            </button>
+                        )}
                     </div>
                     <div className="space-y-6">
                         <div>
@@ -1257,7 +1279,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
 
 // ─── TAB 3 : Évaluation MO DNSSI ─────────────────────────────────────────────
 
-const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpenDomaines, isDirty, saving, onSave }) => {
+const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpenDomaines, isDirty, saving, onSave, readOnly }) => {
     if (!referentiel) return <div className="text-gray-400 text-sm">Chargement du référentiel...</div>;
 
     const toggleDomaine = (id) => setOpenDomaines(prev => ({ ...prev, [id]: !prev[id] }));
@@ -1269,17 +1291,19 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
             <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-5 py-3">
                 <p className="text-sm text-gray-600">
                     <strong>2. Évaluation de la mise en œuvre des règles de la DNSSI</strong>
-                    {isDirty && <span className="ml-2 text-xs text-orange-500">— modifications non sauvegardées</span>}
+                    {isDirty && !readOnly && <span className="ml-2 text-xs text-orange-500">— modifications non sauvegardées</span>}
                 </p>
-                <button
-                    onClick={onSave}
-                    disabled={saving || !isDirty}
-                    className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white rounded-lg transition disabled:opacity-50"
-                    style={{ backgroundColor: 'var(--brand-red)' }}
-                >
-                    {saving ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-                    Sauvegarder
-                </button>
+                {!readOnly && (
+                    <button
+                        onClick={onSave}
+                        disabled={saving || !isDirty}
+                        className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white rounded-lg transition disabled:opacity-50"
+                        style={{ backgroundColor: 'var(--brand-red)' }}
+                    >
+                        {saving ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                        Sauvegarder
+                    </button>
+                )}
             </div>
 
             {/* Légende niveaux */}
@@ -1371,10 +1395,12 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                 <select
                                                                     value={niveau === null ? 'na' : String(niveau)}
                                                                     onChange={e => {
+                                                                        if (readOnly) return;
                                                                         const v = e.target.value === 'na' ? null : parseInt(e.target.value);
                                                                         setEval(mesure.id, 'niveau_maturite', v);
                                                                     }}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:border-transparent"
+                                                                    disabled={readOnly}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-default"
                                                                     style={{ '--tw-ring-color': 'var(--brand-red)' }}
                                                                 >
                                                                     <option value="na">N/A</option>
@@ -1676,7 +1702,7 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
 
 // ─── TAB 7 : Indicateurs de la SSI ──────────────────────────────────────────
 
-const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving }) => {
+const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving, readOnly }) => {
     const set = (k, v) => setIndicateurs(prev => ({ ...prev, [k]: v }));
 
     // Calcul automatique des indicateurs "auto"
@@ -1717,9 +1743,10 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving 
                                         <input
                                             type="number"
                                             value={indicateurs[key] || ''}
-                                            onChange={e => set(key, e.target.value)}
+                                            onChange={e => !readOnly && set(key, e.target.value)}
+                                            readOnly={readOnly}
                                             placeholder="—"
-                                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 text-right"
+                                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 text-right read-only:bg-gray-50 read-only:text-gray-600"
                                         />
                                         {unit && <span className="text-xs text-gray-400 flex-shrink-0">{unit}</span>}
                                     </div>
@@ -1738,17 +1765,19 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving 
                     })}
                 </div>
 
-                <div className="flex justify-end mt-5">
-                    <button
-                        onClick={onSave}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg transition disabled:opacity-60"
-                        style={{ backgroundColor: 'var(--brand-red)' }}
-                    >
-                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-                        Enregistrer les indicateurs
-                    </button>
-                </div>
+                {!readOnly && (
+                    <div className="flex justify-end mt-5">
+                        <button
+                            onClick={onSave}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg transition disabled:opacity-60"
+                            style={{ backgroundColor: 'var(--brand-red)' }}
+                        >
+                            {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                            Enregistrer les indicateurs
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1776,7 +1805,7 @@ const STATUT_PLAN_CONFIG = {
 
 // ─── TAB ISO 4 : Évaluation des contrôles ─────────────────────────────────────
 
-const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, saving, onSave }) => {
+const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, saving, onSave, readOnly }) => {
     const [openThemes, setOpenThemes] = useState({});
 
     useEffect(() => {
@@ -1892,11 +1921,13 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                                             <div className="flex items-center flex-shrink-0">
                                                                 {ISO_CONF_STATES.map((s, idx) => (
                                                                     <button key={s.value}
-                                                                        onClick={() => setEval(mesure.id, 'niveau_maturite', niveau === s.value ? null : s.value)}
+                                                                        onClick={() => !readOnly && setEval(mesure.id, 'niveau_maturite', niveau === s.value ? null : s.value)}
+                                                                        disabled={readOnly}
                                                                         className={`px-2.5 py-1 text-xs font-medium border transition
                                                                             ${idx === 0 ? 'rounded-l-md border-r-0' : ''}
                                                                             ${idx === ISO_CONF_STATES.length - 1 ? 'rounded-r-md' : ''}
                                                                             ${idx > 0 && idx < ISO_CONF_STATES.length - 1 ? 'border-r-0' : ''}
+                                                                            ${readOnly ? 'cursor-default' : ''}
                                                                             ${niveau === s.value ? s.activeCls : s.inactiveCls}`}
                                                                     >
                                                                         {s.label}
@@ -1908,13 +1939,15 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                                         {niveau !== null && (
                                                             <div className="mt-2 ml-24 grid grid-cols-2 gap-3">
                                                                 <input type="text" value={ev.commentaire || ''}
-                                                                    onChange={e => setEval(mesure.id, 'commentaire', e.target.value)}
-                                                                    placeholder="Observations..."
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none" />
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder={readOnly ? '—' : 'Observations...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
                                                                 <input type="text" value={ev.preuve || ''}
-                                                                    onChange={e => setEval(mesure.id, 'preuve', e.target.value)}
-                                                                    placeholder="Références / preuves..."
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none" />
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder={readOnly ? '—' : 'Références / preuves...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
                                                             </div>
                                                         )}
                                                     </div>
@@ -1930,7 +1963,7 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
             })}
 
             {/* Bouton flottant sauvegarde */}
-            {isDirty && (
+            {isDirty && !readOnly && (
                 <div className="sticky bottom-4 flex justify-end">
                     <button onClick={onSave} disabled={saving}
                         className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-xl shadow-lg transition disabled:opacity-60"
@@ -1954,7 +1987,7 @@ const PLAN_VALIDATION_CONFIG = {
     rejete:     { label: 'Rejeté',     bg: 'bg-red-50',    text: 'text-red-700'    },
 };
 
-const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, user, onAdd, onUpdate, onDelete, onSoumettre, onValider, onRejeter }) => {
+const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, user, onAdd, onUpdate, onDelete, onSoumettre, onValider, onRejeter, readOnly }) => {
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({ ...emptyPlanForm });
@@ -2031,18 +2064,20 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                         </span>
                     )}
                 </div>
-                <button onClick={() => { resetForm(); setShowForm(true); }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-lg transition"
-                    style={{ backgroundColor: 'var(--brand-red)' }}>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Ajouter une action
-                </button>
+                {!readOnly && (
+                    <button onClick={() => { resetForm(); setShowForm(true); }}
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-lg transition"
+                        style={{ backgroundColor: 'var(--brand-red)' }}>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Ajouter une action
+                    </button>
+                )}
             </div>
 
             {/* Formulaire */}
-            {showForm && (
+            {showForm && !readOnly && (
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                     <h3 className="text-sm font-semibold text-gray-800 mb-4">
                         {editingId ? "Modifier l'action" : 'Nouvelle action corrective'}
@@ -2206,13 +2241,13 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                                             ? <span className={`inline-flex px-2 py-0.5 rounded font-medium ${vc.bg} ${vc.text}`}>{vc.label}</span>
                                                             : <span className="text-gray-400 text-xs">—</span>
                                                         }
-                                                        {isJuniorUser && plan.statut_validation !== 'en_attente' && plan.statut_validation !== 'valide' && (
+                                                        {!readOnly && isJuniorUser && plan.statut_validation !== 'en_attente' && plan.statut_validation !== 'valide' && (
                                                             <button onClick={() => onSoumettre(plan.id)}
                                                                 className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium">
                                                                 Soumettre
                                                             </button>
                                                         )}
-                                                        {isSeniorAdminUser && plan.statut_validation === 'en_attente' && (
+                                                        {!readOnly && isSeniorAdminUser && plan.statut_validation === 'en_attente' && (
                                                             <>
                                                                 <button onClick={() => onValider(plan.id)}
                                                                     className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 hover:bg-green-100 font-medium">✓</button>
@@ -2229,22 +2264,24 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                                 );
                                             })()}
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-1">
-                                                <button onClick={() => handleEdit(plan)}
-                                                    className="p-1 text-gray-400 hover:text-blue-600 rounded" title="Modifier">
-                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                                                    </svg>
-                                                </button>
-                                                <button onClick={() => { if (window.confirm('Supprimer cette action ?')) onDelete(plan.id); }}
-                                                    className="p-1 text-gray-400 hover:text-red-600 rounded" title="Supprimer">
-                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </td>
+                                        {!readOnly && (
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => handleEdit(plan)}
+                                                        className="p-1 text-gray-400 hover:text-blue-600 rounded" title="Modifier">
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button onClick={() => { if (window.confirm('Supprimer cette action ?')) onDelete(plan.id); }}
+                                                        className="p-1 text-gray-400 hover:text-red-600 rounded" title="Supprimer">
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 );
                             })}
@@ -2439,7 +2476,7 @@ const TabNC = ({ referentiel, soaMap, localEvals }) => {
 
 // ─── TAB ISO 8 : Indicateurs SMSI ────────────────────────────────────────────
 
-const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIndicateurs, onSave, saving }) => {
+const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIndicateurs, onSave, saving, readOnly }) => {
     const set = (k, v) => setIndicateurs(prev => ({ ...prev, [k]: v }));
 
     const allMesures = referentiel?.domaines?.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []) ?? [];
@@ -2481,9 +2518,10 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                                         <input
                                             type="number"
                                             value={indicateurs[key] || ''}
-                                            onChange={e => set(key, e.target.value)}
+                                            onChange={e => !readOnly && set(key, e.target.value)}
+                                            readOnly={readOnly}
                                             placeholder="—"
-                                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 text-right"
+                                            className={`w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 text-right ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
                                             style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                         />
                                         {unit && <span className="text-xs text-gray-400 flex-shrink-0">{unit}</span>}
@@ -2494,6 +2532,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                     })}
                 </div>
 
+                {!readOnly && (
                 <div className="flex justify-end mt-5">
                     <button
                         onClick={onSave}
@@ -2505,6 +2544,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                         Enregistrer les indicateurs
                     </button>
                 </div>
+                )}
             </div>
         </div>
     );
@@ -2528,7 +2568,7 @@ const TabPlaceholder = ({ titre, texte }) => (
 
 // ─── TAB ISO 3 : Déclaration d'Applicabilité (SoA) ───────────────────────────
 
-const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave }) => {
+const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave, readOnly }) => {
     const [openThemes, setOpenThemes] = useState({});
 
     // Ouvrir le 1er thème par défaut
@@ -2646,14 +2686,16 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave 
                                                         {/* Toggle applicable */}
                                                         <div className="flex items-center gap-1 flex-shrink-0">
                                                             <button
-                                                                onClick={() => setSoaEntry(mesure.id, 'applicable', isApplicable === true ? null : true)}
-                                                                className={`px-2.5 py-1 text-xs font-medium rounded-l-md border transition ${isApplicable === true ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-500 border-gray-200 hover:border-green-400'}`}
+                                                                onClick={() => !readOnly && setSoaEntry(mesure.id, 'applicable', isApplicable === true ? null : true)}
+                                                                disabled={readOnly}
+                                                                className={`px-2.5 py-1 text-xs font-medium rounded-l-md border transition ${isApplicable === true ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-500 border-gray-200 hover:border-green-400'} ${readOnly ? 'cursor-default' : ''}`}
                                                             >
                                                                 Oui
                                                             </button>
                                                             <button
-                                                                onClick={() => setSoaEntry(mesure.id, 'applicable', isApplicable === false ? null : false)}
-                                                                className={`px-2.5 py-1 text-xs font-medium rounded-r-md border-t border-r border-b transition ${isApplicable === false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-200 hover:border-red-400'}`}
+                                                                onClick={() => !readOnly && setSoaEntry(mesure.id, 'applicable', isApplicable === false ? null : false)}
+                                                                disabled={readOnly}
+                                                                className={`px-2.5 py-1 text-xs font-medium rounded-r-md border-t border-r border-b transition ${isApplicable === false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-200 hover:border-red-400'} ${readOnly ? 'cursor-default' : ''}`}
                                                             >
                                                                 Non
                                                             </button>
@@ -2668,11 +2710,12 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave 
                                                                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Raisons d'inclusion</p>
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {RAISONS_INCLUSION.map(r => (
-                                                                        <label key={r.value} className="flex items-center gap-1.5 cursor-pointer">
+                                                                        <label key={r.value} className={`flex items-center gap-1.5 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}>
                                                                             <input
                                                                                 type="checkbox"
                                                                                 checked={raisons.includes(r.value)}
-                                                                                onChange={() => toggleRaison(mesure.id, r.value)}
+                                                                                onChange={() => !readOnly && toggleRaison(mesure.id, r.value)}
+                                                                                disabled={readOnly}
                                                                                 className="w-3 h-3 rounded accent-red-600"
                                                                             />
                                                                             <span className="text-xs text-gray-600">{r.label}</span>
@@ -2688,7 +2731,8 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave 
                                                                     <select
                                                                         value={entry.statut_implementation ?? ''}
                                                                         onChange={e => setSoaEntry(mesure.id, 'statut_implementation', e.target.value || null)}
-                                                                        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-1"
+                                                                        disabled={readOnly}
+                                                                        className={`w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-500 cursor-default' : 'bg-white'}`}
                                                                     >
                                                                         <option value="">— Sélectionner —</option>
                                                                         {Object.entries(STATUT_IMPL_CONFIG).map(([k, v]) => (
@@ -2704,8 +2748,9 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave 
                                                                         type="text"
                                                                         value={entry.reference_document ?? ''}
                                                                         onChange={e => setSoaEntry(mesure.id, 'reference_document', e.target.value || null)}
+                                                                        readOnly={readOnly}
                                                                         placeholder="Ex : POL-SEC-001"
-                                                                        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
+                                                                        className={`w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -2719,9 +2764,10 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave 
                                                             <textarea
                                                                 value={entry.justification_exclusion ?? ''}
                                                                 onChange={e => setSoaEntry(mesure.id, 'justification_exclusion', e.target.value || null)}
+                                                                readOnly={readOnly}
                                                                 placeholder="Expliquer pourquoi ce contrôle n'est pas applicable..."
                                                                 rows={2}
-                                                                className="w-full text-xs border border-orange-200 rounded-md px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1 resize-none"
+                                                                className={`w-full text-xs border border-orange-200 rounded-md px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1 resize-none ${readOnly ? 'text-gray-600 cursor-default' : ''}`}
                                                             />
                                                         </div>
                                                     )}
@@ -2737,7 +2783,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave 
             })}
 
             {/* Bouton flottant sauvegarde */}
-            {soaDirty && (
+            {soaDirty && !readOnly && (
                 <div className="sticky bottom-4 flex justify-end">
                     <button
                         onClick={onSave}

@@ -24,6 +24,7 @@ const AuditsListPage = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const isJunior = user?.role === 'auditeur_junior';
+    const isClient = user?.role === 'client';
     const [audits, setAudits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -73,10 +74,10 @@ const AuditsListPage = () => {
                 <div>
                     <h1 className="text-xl font-semibold text-gray-900">Audits</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        {isJunior ? 'Audits qui vous sont assignés' : 'Liste de tous les audits de conformité'}
+                        {isJunior ? 'Audits qui vous sont assignés' : isClient ? 'Audits de votre entité' : 'Liste de tous les audits de conformité'}
                     </p>
                 </div>
-                {!isJunior && (
+                {!isJunior && !isClient && (
                     <Link
                         to="/audits/nouveau"
                         className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition"
@@ -193,7 +194,7 @@ const AuditsListPage = () => {
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                                                 </svg>
                                             </Link>
-                                            {!isJunior && (
+                                            {!isJunior && !isClient && (
                                                 <button
                                                     onClick={() => setConfirmDelete(audit)}
                                                     className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
