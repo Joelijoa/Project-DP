@@ -47,14 +47,22 @@ const AppRouter = () => {
 
                     {/* Audit & Conformité */}
                     <Route path="/audits" element={<AuditsListPage />} />
-                    <Route path="/audits/nouveau" element={<NewAuditPage />} />
+                    <Route path="/audits/nouveau" element={
+                        <ProtectedRoute roles={['admin', 'auditeur_senior']}>
+                            <NewAuditPage />
+                        </ProtectedRoute>
+                    } />
                     <Route path="/audits/:id" element={<AuditDetailPage />} />
                     <Route path="/referentiels" element={
                         <ProtectedRoute roles={['admin', 'auditeur_senior', 'auditeur_junior']}>
                             <ReferentielsPage />
                         </ProtectedRoute>
                     } />
-                    <Route path="/entites" element={<EntitesPage />} />
+                    <Route path="/entites" element={
+                        <ProtectedRoute roles={['admin', 'auditeur_senior']}>
+                            <EntitesPage />
+                        </ProtectedRoute>
+                    } />
 
                     {/* Validation — admin + auditeur_senior */}
                     <Route path="/validation" element={
@@ -68,8 +76,16 @@ const AppRouter = () => {
                             <PlansActionsPage />
                         </ProtectedRoute>
                     } />
-                    <Route path="/indicateurs" element={<IndicateursPage />} />
-                    <Route path="/rapports" element={<RapportsPage />} />
+                    <Route path="/indicateurs" element={
+                        <ProtectedRoute roles={['admin', 'auditeur_senior']}>
+                            <IndicateursPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/rapports" element={
+                        <ProtectedRoute roles={['admin', 'auditeur_senior']}>
+                            <RapportsPage />
+                        </ProtectedRoute>
+                    } />
 
                     {/* Administration — admin uniquement */}
                     <Route path="/utilisateurs" element={

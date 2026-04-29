@@ -1,9 +1,20 @@
-const { Audit, SoA } = require('../models');
+const { Audit, SoA, User } = require('../models');
 
 // GET /api/audits/:id/soa
 const getSoA = async (req, res) => {
-    const audit = await Audit.findByPk(req.params.id);
+    const audit = await Audit.findByPk(req.params.id, {
+        include: [{ model: User, as: 'auditeurs', attributes: ['id'], through: { attributes: [] } }],
+    });
     if (!audit) return res.status(404).json({ message: 'Audit introuvable' });
+
+    if (req.user.role === 'client' && audit.entite_id !== req.user.entite_id) {
+        return res.status(403).json({ message: 'Accès refusé.' });
+    }
+    if (req.user.role === 'auditeur_junior') {
+        const isAssigned = audit.auditeurs?.some(a => a.id === req.user.userId)
+            || audit.created_by === req.user.userId;
+        if (!isAssigned) return res.status(403).json({ message: 'Vous n\'êtes pas assigné à cet audit.' });
+    }
 
     const entries = await SoA.findAll({ where: { audit_id: req.params.id } });
     res.json({ soa: entries });
@@ -16,8 +27,17 @@ const saveSoA = async (req, res) => {
         return res.status(400).json({ message: 'Le champ "entries" doit être un tableau' });
     }
 
-    const audit = await Audit.findByPk(req.params.id);
+    const audit = await Audit.findByPk(req.params.id, {
+        include: [{ model: User, as: 'auditeurs', attributes: ['id'], through: { attributes: [] } }],
+    });
     if (!audit) return res.status(404).json({ message: 'Audit introuvable' });
+
+    if (req.user.role === 'client') return res.status(403).json({ message: 'Accès refusé.' });
+    if (req.user.role === 'auditeur_junior') {
+        const isAssigned = audit.auditeurs?.some(a => a.id === req.user.userId)
+            || audit.created_by === req.user.userId;
+        if (!isAssigned) return res.status(403).json({ message: 'Vous n\'êtes pas assigné à cet audit.' });
+    }
 
     for (const entry of entries) {
         const [record, created] = await SoA.findOrCreate({

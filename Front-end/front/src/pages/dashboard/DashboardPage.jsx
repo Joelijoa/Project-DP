@@ -15,10 +15,9 @@ const STATUT_AUDIT = {
 };
 
 const PRIORITE = {
-    critique: { label: 'Critique', color: '#CC0000', badge: 'bg-red-50 text-red-700',     dot: 'bg-red-500' },
-    haute:    { label: 'Haute',    color: '#ea580c', badge: 'bg-orange-50 text-orange-700', dot: 'bg-orange-500' },
-    moyenne:  { label: 'Moyenne',  color: '#d97706', badge: 'bg-amber-50 text-amber-700',  dot: 'bg-amber-500' },
-    faible:   { label: 'Faible',   color: '#6b7280', badge: 'bg-gray-100 text-gray-600',  dot: 'bg-gray-400' },
+    haute:   { label: 'Haute',   color: '#CC0000', badge: 'bg-red-50 text-red-700',    dot: 'bg-red-500' },
+    moyenne: { label: 'Moyenne', color: '#d97706', badge: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
+    basse:   { label: 'Basse',   color: '#6b7280', badge: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' },
 };
 
 // ── SVG Donut ─────────────────────────────────────────────────────────────────
@@ -128,7 +127,7 @@ const DashboardPage = () => {
     const actionsCloturees  = plans.filter(p => p.statut === 'cloture').length;
     const cloturePct        = plans.length > 0 ? Math.round((actionsCloturees / plans.length) * 100) : 0;
 
-    const plansByPrio = ['critique', 'haute', 'moyenne', 'faible'].map(key => ({
+    const plansByPrio = ['haute', 'moyenne', 'basse'].map(key => ({
         key,
         ...PRIORITE[key],
         total:    plans.filter(p => p.priorite === key).length,
@@ -147,8 +146,7 @@ const DashboardPage = () => {
         .slice(0, 5);
 
     const actionsCritiques = plans
-        .filter(p => (p.priorite === 'critique' || p.priorite === 'haute') && (p.statut === 'a_faire' || p.statut === 'en_cours'))
-        .sort((a, b) => (a.priorite === 'critique' ? -1 : 1))
+        .filter(p => p.priorite === 'haute' && (p.statut === 'a_faire' || p.statut === 'en_cours'))
         .slice(0, 5);
 
     const recents = [...audits]
@@ -515,7 +513,7 @@ const DashboardPage = () => {
                                     </svg>
                                 </div>
                                 <p className="text-sm text-gray-500 font-medium">Tout est sous contrôle</p>
-                                <p className="text-xs text-gray-400 mt-0.5">Aucune action critique ou haute ouverte</p>
+                                <p className="text-xs text-gray-400 mt-0.5">Aucune action haute priorité ouverte</p>
                             </div>
                         ) : (
                             <div className="space-y-2.5">

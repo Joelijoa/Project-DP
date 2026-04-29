@@ -45,9 +45,17 @@ const getAuditById = async (req, res) => {
             ],
         });
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
+
         if (req.user.role === 'client' && audit.entite_id !== req.user.entite_id) {
             return res.status(403).json({ message: 'Accès refusé.' });
         }
+
+        if (req.user.role === 'auditeur_junior') {
+            const isAssigned = audit.auditeurs?.some(a => a.id === req.user.userId)
+                || audit.created_by === req.user.userId;
+            if (!isAssigned) return res.status(403).json({ message: 'Vous n\'êtes pas assigné à cet audit.' });
+        }
+
         res.json({ audit });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -184,6 +192,20 @@ const deleteAudit = async (req, res) => {
 // GET /api/audits/:id/evaluations
 const getEvaluations = async (req, res) => {
     try {
+        const audit = await Audit.findByPk(req.params.id, {
+            include: [{ model: User, as: 'auditeurs', attributes: ['id'], through: { attributes: [] } }],
+        });
+        if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
+
+        if (req.user.role === 'client' && audit.entite_id !== req.user.entite_id) {
+            return res.status(403).json({ message: 'Accès refusé.' });
+        }
+        if (req.user.role === 'auditeur_junior') {
+            const isAssigned = audit.auditeurs?.some(a => a.id === req.user.userId)
+                || audit.created_by === req.user.userId;
+            if (!isAssigned) return res.status(403).json({ message: 'Vous n\'êtes pas assigné à cet audit.' });
+        }
+
         const evaluations = await Evaluation.findAll({
             where: { audit_id: req.params.id },
             include: [{ model: Mesure, as: 'mesure', attributes: ['id', 'code', 'description', 'niveau_cible', 'objectif_id'] }],
@@ -198,8 +220,17 @@ const getEvaluations = async (req, res) => {
 const saveEvaluations = async (req, res) => {
     try {
         const audit_id = parseInt(req.params.id);
-        const audit = await Audit.findByPk(audit_id);
+        const audit = await Audit.findByPk(audit_id, {
+            include: [{ model: User, as: 'auditeurs', attributes: ['id'], through: { attributes: [] } }],
+        });
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
+
+        if (req.user.role === 'client') return res.status(403).json({ message: 'Accès refusé.' });
+        if (req.user.role === 'auditeur_junior') {
+            const isAssigned = audit.auditeurs?.some(a => a.id === req.user.userId)
+                || audit.created_by === req.user.userId;
+            if (!isAssigned) return res.status(403).json({ message: 'Vous n\'êtes pas assigné à cet audit.' });
+        }
 
         const { evaluations } = req.body;
         if (!Array.isArray(evaluations)) {

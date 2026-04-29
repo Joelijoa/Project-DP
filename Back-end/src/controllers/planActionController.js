@@ -2,14 +2,26 @@ const { PlanAction, Audit, Mesure, User, AuditAuditeur } = require('../models');
 const { log, getIp } = require('../services/logService');
 const { notifierUsers, notifierRole } = require('../services/notificationService');
 
+// Vérifie qu'un utilisateur peut accéder à l'audit (client entite, junior assigné)
+const checkAuditAccess = async (auditId, user) => {
+    const audit = await Audit.findByPk(auditId, {
+        include: [{ model: User, as: 'auditeurs', attributes: ['id'], through: { attributes: [] } }],
+    });
+    if (!audit) return { error: 404, message: 'Audit introuvable' };
+    if (user.role === 'client' && audit.entite_id !== user.entite_id)
+        return { error: 403, message: 'Accès refusé.' };
+    if (user.role === 'auditeur_junior') {
+        const isAssigned = audit.auditeurs?.some(a => a.id === user.userId) || audit.created_by === user.userId;
+        if (!isAssigned) return { error: 403, message: 'Vous n\'êtes pas assigné à cet audit.' };
+    }
+    return { audit };
+};
+
 // GET /api/audits/:id/plans-actions
 const getPlanActions = async (req, res) => {
     try {
-        const audit = await Audit.findByPk(req.params.id);
-        if (!audit) return res.status(404).json({ message: 'Audit introuvable' });
-        if (req.user.role === 'client' && audit.entite_id !== req.user.entite_id) {
-            return res.status(403).json({ message: 'Accès refusé.' });
-        }
+        const { audit, error, message } = await checkAuditAccess(req.params.id, req.user);
+        if (error) return res.status(error).json({ message });
         const plans = await PlanAction.findAll({
             where: { audit_id: req.params.id },
             include: [{ model: Mesure, as: 'mesure', attributes: ['id', 'code', 'description'] }],
@@ -25,8 +37,9 @@ const getPlanActions = async (req, res) => {
 // POST /api/audits/:id/plans-actions
 const createPlanAction = async (req, res) => {
     try {
-        const audit = await Audit.findByPk(req.params.id);
-        if (!audit) return res.status(404).json({ message: 'Audit introuvable' });
+        const { error, message } = await checkAuditAccess(req.params.id, req.user);
+        if (error) return res.status(error).json({ message });
+        if (req.user.role === 'client') return res.status(403).json({ message: 'Accès refusé.' });
 
         const { mesure_id, description_nc, action_corrective, responsable, delai, priorite, kpi } = req.body;
         const plan = await PlanAction.create({
@@ -45,6 +58,9 @@ const createPlanAction = async (req, res) => {
 // PUT /api/audits/:id/plans-actions/:planId
 const updatePlanAction = async (req, res) => {
     try {
+        if (req.user.role === 'client') return res.status(403).json({ message: 'Accès refusé.' });
+        const { error, message } = await checkAuditAccess(req.params.id, req.user);
+        if (error) return res.status(error).json({ message });
         const plan = await PlanAction.findByPk(req.params.planId);
         if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
 
@@ -61,6 +77,9 @@ const updatePlanAction = async (req, res) => {
 // DELETE /api/audits/:id/plans-actions/:planId
 const deletePlanAction = async (req, res) => {
     try {
+        if (req.user.role === 'client') return res.status(403).json({ message: 'Accès refusé.' });
+        const { error, message } = await checkAuditAccess(req.params.id, req.user);
+        if (error) return res.status(error).json({ message });
         const plan = await PlanAction.findByPk(req.params.planId);
         if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
 
