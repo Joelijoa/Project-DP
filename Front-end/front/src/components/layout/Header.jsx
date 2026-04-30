@@ -11,28 +11,6 @@ const roleLabels = {
     client: 'Client',
 };
 
-const pageTitles = {
-    '/dashboard': 'Tableau de bord',
-    '/audits': 'Audits',
-    '/audits/nouveau': 'Nouvel audit',
-    '/referentiels': 'Référentiels',
-    '/entites': 'Entités auditées',
-    '/resultats': 'Graphiques & Rosace',
-    '/plans-actions': "Plans d'actions",
-    '/validation': 'En attente de validation',
-    '/indicateurs': 'Indicateurs SSI',
-    '/rapports': 'Rapports & Exports',
-    '/utilisateurs': 'Gestion des utilisateurs',
-    '/parametres': 'Paramètres',
-    '/profil': 'Mon profil',
-};
-
-const getPageTitle = (pathname) => {
-    if (pageTitles[pathname]) return pageTitles[pathname];
-    if (pathname.startsWith('/audits/')) return 'Audits';
-    if (pathname.startsWith('/utilisateurs/')) return 'Gestion des utilisateurs';
-    return 'Plateforme Audit GRC';
-};
 
 const TYPE_ICONS = {
     AUDIT_ASSIGNE:   { color: 'text-blue-600',   bg: 'bg-blue-50'   },
@@ -176,23 +154,31 @@ const NotificationBell = () => {
 
 // ── Header ────────────────────────────────────────────────────────────────────
 
+const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
 const Header = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const isDashboard = location.pathname === '/dashboard';
 
     const handleLogoutConfirmed = () => {
         logout();
         navigate('/login');
     };
 
-    const currentTitle = getPageTitle(location.pathname);
-
     return (
         <>
             <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
-                <h2 className="text-sm font-medium text-gray-800">{currentTitle}</h2>
+                {isDashboard ? (
+                    <p className="text-sm font-medium text-gray-800">Tableau de bord</p>
+                ) : (
+                    <div>
+                        <p className="text-sm font-semibold text-gray-800">Bonjour, {user?.prenom} {user?.nom}</p>
+                        <p className="text-xs text-gray-400 capitalize">{today}</p>
+                    </div>
+                )}
 
                 <div className="flex items-center gap-3">
                     {/* Cloche */}

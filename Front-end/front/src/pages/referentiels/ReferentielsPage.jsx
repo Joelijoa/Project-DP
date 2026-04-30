@@ -184,46 +184,66 @@ const ReferentielsPage = () => {
                             <button
                                 key={ref.id}
                                 onClick={() => selectReferentiel(ref)}
-                                className="text-left rounded-xl border-2 p-5 transition-all hover:shadow-md"
+                                className="text-left rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg"
                                 style={{
-                                    borderColor: isActive ? cfg.color : cfg.border,
-                                    backgroundColor: isActive ? cfg.bg : '#fff',
+                                    borderColor: isActive ? cfg.color : '#E5E7EB',
+                                    boxShadow: isActive ? `0 0 0 3px ${cfg.bg}, 0 0 0 4px ${cfg.border}` : undefined,
                                 }}
                             >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <span
-                                            className="inline-block text-xs font-semibold px-2 py-0.5 rounded mb-2"
-                                            style={{ backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
-                                        >
-                                            {cfg.label}
-                                        </span>
-                                        <h3 className="text-sm font-semibold text-gray-900">{ref.nom}</h3>
-                                        {ref.version && (
-                                            <p className="text-xs text-gray-400 mt-0.5">Version {ref.version}</p>
-                                        )}
-                                        {ref.description && (
-                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{ref.description}</p>
-                                        )}
+                                <div className="p-5" style={{ backgroundColor: isActive ? cfg.bg : '#fff' }}>
+                                    {/* Header */}
+                                    <div className="flex items-start justify-between gap-3 mb-4">
+                                        <div className="flex-1 min-w-0">
+                                            <span
+                                                className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-md mb-2 tracking-wide uppercase"
+                                                style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                                            >
+                                                {cfg.label}
+                                            </span>
+                                            <h3 className="text-sm font-semibold text-gray-900 leading-snug">{ref.nom}</h3>
+                                            {ref.version && (
+                                                <p className="text-xs text-gray-400 mt-0.5">Version {ref.version}</p>
+                                            )}
+                                            {ref.description && (
+                                                <p className="text-xs text-gray-500 mt-1.5 line-clamp-2 leading-relaxed">{ref.description}</p>
+                                            )}
+                                        </div>
+                                        {/* Icône cadenas/shield */}
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: cfg.bg }}>
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} style={{ color: cfg.color }}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                                            </svg>
+                                        </div>
                                     </div>
-                                    <div className="text-right shrink-0">
+
+                                    {/* Stats */}
+                                    <div className="flex items-center gap-2 mb-4">
                                         {s ? (
-                                            <div className="space-y-0.5">
-                                                <p className="text-xs text-gray-500"><span className="font-semibold text-gray-800">{s.domaines}</span> domaines</p>
-                                                <p className="text-xs text-gray-500"><span className="font-semibold text-gray-800">{s.objectifs}</span> objectifs</p>
-                                                <p className="text-xs text-gray-500"><span className="font-semibold text-gray-800">{s.mesures}</span> mesures</p>
-                                            </div>
+                                            <>
+                                                {[
+                                                    { val: s.domaines,  lbl: 'domaines'  },
+                                                    { val: s.objectifs, lbl: 'objectifs' },
+                                                    { val: s.mesures,   lbl: 'mesures'   },
+                                                ].map(({ val, lbl }) => (
+                                                    <div key={lbl} className="flex-1 text-center py-2 rounded-xl" style={{ backgroundColor: isActive ? '#fff' : cfg.bg }}>
+                                                        <p className="text-base font-bold leading-none" style={{ color: cfg.color }}>{val}</p>
+                                                        <p className="text-[10px] text-gray-500 mt-0.5">{lbl}</p>
+                                                    </div>
+                                                ))}
+                                            </>
                                         ) : (
-                                            <div className="w-4 h-4 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: cfg.color }} />
+                                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                                                <div className="w-3.5 h-3.5 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: cfg.color }} />
+                                                Chargement des stats...
+                                            </div>
                                         )}
                                     </div>
-                                </div>
-                                <div className="mt-3 flex items-center gap-1 text-xs font-medium" style={{ color: cfg.color }}>
-                                    {isActive ? (
-                                        <><ChevronDown /><span>Masquer l'arborescence</span></>
-                                    ) : (
-                                        <><ChevronRight /><span>Voir l'arborescence</span></>
-                                    )}
+
+                                    {/* Footer toggle */}
+                                    <div className="flex items-center gap-1.5 text-xs font-semibold pt-3 border-t" style={{ color: cfg.color, borderColor: isActive ? cfg.border : '#F3F4F6' }}>
+                                        {isActive ? <ChevronDown /> : <ChevronRight />}
+                                        <span>{isActive ? "Masquer l'arborescence" : "Voir l'arborescence"}</span>
+                                    </div>
                                 </div>
                             </button>
                         );

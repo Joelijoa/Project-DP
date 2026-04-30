@@ -2652,6 +2652,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                         {isOpen && (
                             <div className="border-t border-gray-100">
                                 {theme.objectifs?.map(objectif => {
+                                    if (!objectif.mesures?.length) return null;
                                     const objDesc = stripObjectifPrefix(objectif.description || '');
                                     return (
                                     <div key={objectif.id} className="border-b border-gray-50 last:border-0">
