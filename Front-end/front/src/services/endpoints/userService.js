@@ -7,4 +7,6 @@ export const getUserById   = (id)         => api.get(`/users/${id}`);
 export const createUser    = (data)       => api.post('/users', data);
 export const updateUser    = (id, data)   => api.put(`/users/${id}`, data);
 export const deleteUser    = (id)         => api.delete(`/users/${id}`);
-export const resetPassword = (id)         => api.post(`/users/${id}/reset-password`);
+export const resetPassword      = (id)     => api.post(`/users/${id}/reset-password`);
+export const getPreferences     = ()       => api.get('/users/me/preferences');
+export const updatePreferences  = (prefs)  => api.put('/users/me/preferences', { notification_prefs: prefs });

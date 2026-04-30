@@ -23,7 +23,7 @@ const pageTitles = {
     '/indicateurs': 'Indicateurs SSI',
     '/rapports': 'Rapports & Exports',
     '/utilisateurs': 'Gestion des utilisateurs',
-    '/parametres': 'Parametres',
+    '/parametres': 'Paramètres',
     '/profil': 'Mon profil',
 };
 

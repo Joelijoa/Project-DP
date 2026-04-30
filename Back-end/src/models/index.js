@@ -1,5 +1,6 @@
 const sequelize = require('../config/sequelize');
 const User = require('./User');
+const Setting = require('./Setting');
 const Referentiel = require('./Referentiel');
 const Domaine = require('./Domaine');
 const Objectif = require('./Objectif');
@@ -92,6 +93,7 @@ Notification.belongsTo(Audit, { foreignKey: 'audit_id', as: 'audit' });
 module.exports = {
     sequelize,
     User,
+    Setting,
     Referentiel,
     Domaine,
     Objectif,

@@ -124,6 +124,11 @@ const menuSections = [
         items: [
             { path: '/utilisateurs', label: 'Utilisateurs', icon: 'users' },
             { path: '/journaux', label: "Journaux d'activité", icon: 'journal' },
+        ],
+    },
+    {
+        title: 'COMPTE',
+        items: [
             { path: '/parametres', label: 'Paramètres', icon: 'settings' },
         ],
     },

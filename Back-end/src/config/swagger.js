@@ -354,6 +354,28 @@ const options = {
             entite_id: { type: 'integer', nullable: true, example: 3, description: 'Lien entité pour le rôle client' },
           },
         },
+        Setting: {
+          type: 'object',
+          description: 'Paramètres de configuration de l\'application',
+          properties: {
+            org_nom: { type: 'string', nullable: true, example: 'DataProtect SA' },
+            org_email: { type: 'string', format: 'email', nullable: true, example: 'contact@dataprotect.ma' },
+            emails_enabled: { type: 'string', enum: ['true', 'false'], nullable: true, example: 'true', description: 'Activer/désactiver les emails de notification globalement' },
+          },
+        },
+        NotificationPrefs: {
+          type: 'object',
+          description: 'Préférences de notifications par type d\'événement (true = recevoir l\'email, false = ne pas recevoir)',
+          properties: {
+            AUDIT_ASSIGNE:      { type: 'boolean', default: true, example: true },
+            AUDIT_EN_ATTENTE:   { type: 'boolean', default: true, example: true },
+            AUDIT_VALIDE:       { type: 'boolean', default: true, example: true },
+            AUDIT_REJETE:       { type: 'boolean', default: true, example: true },
+            PLAN_EN_ATTENTE:    { type: 'boolean', default: true, example: true },
+            PLAN_VALIDE:        { type: 'boolean', default: true, example: true },
+            PLAN_REJETE:        { type: 'boolean', default: true, example: true },
+          },
+        },
         ErrorResponse: {
           type: 'object',
           properties: {

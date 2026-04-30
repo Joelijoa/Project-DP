@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const userService = require('../services/userService');
 const { log, getIp } = require('../services/logService');
+const { User } = require('../models');
 
 const getProfile = async (req, res) => {
     try {
@@ -116,7 +117,33 @@ const resetPassword = async (req, res) => {
     }
 };
 
+const getPreferences = async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.userId, { attributes: ['id', 'notification_prefs'] });
+        if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+        res.json({ notification_prefs: user.notification_prefs || {} });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const updatePreferences = async (req, res) => {
+    try {
+        const { notification_prefs } = req.body;
+        if (!notification_prefs || typeof notification_prefs !== 'object') {
+            return res.status(400).json({ message: 'Corps invalide : { notification_prefs: { ... } } attendu' });
+        }
+        const user = await User.findByPk(req.user.userId);
+        if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+        await user.update({ notification_prefs });
+        res.json({ message: 'Préférences de notifications mises à jour', notification_prefs });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getProfile, updateProfile, getAdminZone, createUser, getAllUsers,
     getUserById, updateUser, deleteUser, changePassword, resetPassword,
+    getPreferences, updatePreferences,
 };

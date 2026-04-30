@@ -61,6 +61,11 @@ const User = sequelize.define('User', {
         type: DataTypes.INTEGER,
         allowNull: true,
     },
+    notification_prefs: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: null,
+    },
 }, {
     tableName: 'users',
 });

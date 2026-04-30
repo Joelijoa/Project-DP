@@ -13,6 +13,8 @@ const {
     deleteUser,
     changePassword,
     resetPassword,
+    getPreferences,
+    updatePreferences,
 } = require('../controllers/userController');
 
 /**
@@ -120,6 +122,55 @@ router.post('/change-password', verifyToken, changePasswordValidation, changePas
  *         description: Droits insuffisants
  */
 router.get('/', verifyToken, verifyRole('admin', 'auditeur_senior'), getAllUsers);
+
+/**
+ * @swagger
+ * /api/users/me/preferences:
+ *   get:
+ *     summary: Récupérer ses préférences de notifications
+ *     description: Retourne les préférences de notifications de l'utilisateur connecté.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Préférences récupérées
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 notification_prefs:
+ *                   $ref: '#/components/schemas/NotificationPrefs'
+ *       401:
+ *         description: Token manquant ou invalide
+ */
+router.get('/me/preferences', verifyToken, getPreferences);
+
+/**
+ * @swagger
+ * /api/users/me/preferences:
+ *   put:
+ *     summary: Mettre à jour ses préférences de notifications
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notification_prefs:
+ *                 $ref: '#/components/schemas/NotificationPrefs'
+ *     responses:
+ *       200:
+ *         description: Préférences mises à jour
+ *       400:
+ *         description: Corps invalide
+ */
+router.put('/me/preferences', verifyToken, updatePreferences);
 
 /**
  * @swagger

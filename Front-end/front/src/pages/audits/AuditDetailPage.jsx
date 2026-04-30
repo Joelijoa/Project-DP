@@ -597,7 +597,9 @@ const AuditDetailPage = () => {
     const tabs = (isISO ? TABS_ISO : TABS_DNSSI).filter(t => canSeeGraphs || !GRAPH_TABS.includes(t.id));
 
     return (
-        <div>
+        <div className="-mx-6 -mt-6">
+            {/* ── Bloc sticky : en-tête + bannières + onglets ── */}
+            <div className="sticky z-20 bg-gray-50 px-6 pt-6 pb-3 shadow-sm" style={{ top: '-1.5rem' }}>
             {/* En-tête */}
             <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-3">
@@ -695,7 +697,9 @@ const AuditDetailPage = () => {
 
             {/* Onglets */}
             <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} tabStatus={tabStatus} />
+            </div>{/* fin sticky */}
 
+            <div className="px-6 pt-4 pb-6">
             {/* Contenu des onglets — communs */}
             {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} readOnly={isClient || isJunior} />}
             {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />}
@@ -801,6 +805,7 @@ const AuditDetailPage = () => {
                     onCancel={() => setRejetingPlanId(null)}
                 />
             )}
+            </div>{/* fin contenu */}
         </div>
     );
 };

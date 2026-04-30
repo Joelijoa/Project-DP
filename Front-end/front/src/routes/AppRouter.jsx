@@ -94,9 +94,7 @@ const AppRouter = () => {
                     <Route path="/journaux" element={
                         <ProtectedRoute roles={['admin']}><JournauxPage /></ProtectedRoute>
                     } />
-                    <Route path="/parametres" element={
-                        <ProtectedRoute roles={['admin']}><ParametresPage /></ProtectedRoute>
-                    } />
+                    <Route path="/parametres" element={<ParametresPage />} />
 
                     {/* Profil */}
                     <Route path="/profil" element={<ProfilPage />} />
