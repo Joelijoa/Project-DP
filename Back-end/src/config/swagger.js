@@ -228,6 +228,15 @@ const options = {
             commentaire_rejet: { type: 'string', nullable: true, example: null },
             criticite: { type: 'number', format: 'float', example: 4.5 },
             kpi: { type: 'string', example: 'Taux de couverture des comptes gérés par IAM' },
+            created_by: { type: 'integer', nullable: true, example: 2, description: 'ID de l\'utilisateur ayant créé le plan' },
+            createur: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'integer', example: 2 },
+                role: { type: 'string', example: 'auditeur_junior' },
+              },
+            },
             mesure: {
               type: 'object',
               properties: {
