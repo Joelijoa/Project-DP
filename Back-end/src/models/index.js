@@ -58,6 +58,10 @@ Audit.hasMany(PlanAction, { foreignKey: 'audit_id', as: 'plans_actions' });
 PlanAction.belongsTo(Mesure, { foreignKey: 'mesure_id', as: 'mesure' });
 Mesure.hasMany(PlanAction, { foreignKey: 'mesure_id', as: 'plans_actions' });
 
+// PlanAction -> Créateur (User)
+PlanAction.belongsTo(User, { foreignKey: 'created_by', as: 'createur' });
+User.hasMany(PlanAction, { foreignKey: 'created_by', as: 'plans_crees' });
+
 // SoA -> Audit
 SoA.belongsTo(Audit, { foreignKey: 'audit_id', as: 'audit' });
 Audit.hasMany(SoA, { foreignKey: 'audit_id', as: 'soa_entries' });

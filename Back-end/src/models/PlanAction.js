@@ -57,6 +57,10 @@ const PlanAction = sequelize.define('PlanAction', {
         allowNull: true,
         defaultValue: null,
     },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+    },
 }, {
     tableName: 'plans_actions',
 });

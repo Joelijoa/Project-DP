@@ -24,10 +24,21 @@ const getPlanActions = async (req, res) => {
         if (error) return res.status(error).json({ message });
         const plans = await PlanAction.findAll({
             where: { audit_id: req.params.id },
-            include: [{ model: Mesure, as: 'mesure', attributes: ['id', 'code', 'description'] }],
+            include: [
+                { model: Mesure, as: 'mesure', attributes: ['id', 'code', 'description'] },
+                { model: User, as: 'createur', attributes: ['id', 'role'] },
+            ],
             order: [['createdAt', 'DESC']],
         });
-        res.json({ plans_actions: plans });
+        const visible = plans.filter(p => {
+            const createdByJunior = p.createur?.role === 'auditeur_junior';
+            const notSubmitted = p.statut_validation === null;
+            if (createdByJunior && notSubmitted) {
+                return p.created_by === req.user.userId;
+            }
+            return true;
+        });
+        res.json({ plans_actions: visible });
     } catch (error) {
         console.error('[PlanAction] getPlanActions:', error.message);
         res.status(500).json({ message: error.message });
@@ -46,6 +57,7 @@ const createPlanAction = async (req, res) => {
             audit_id: parseInt(req.params.id),
             mesure_id, description_nc, action_corrective, responsable, delai, priorite, kpi,
             statut: 'a_faire',
+            created_by: req.user.userId,
         });
         log(req.user?.userId, 'CREATE_PLAN_ACTION', 'plan_action', plan.id, `Audit #${req.params.id}`, getIp(req));
         res.status(201).json({ plan_action: plan });

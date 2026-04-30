@@ -494,7 +494,7 @@ const AuditDetailPage = () => {
         return referentiel.domaines.map(domaine => {
             const mesures = domaine.objectifs.flatMap(o => o.mesures);
             const total = mesures.length;
-            const evaluated = mesures.filter(m => localEvals[m.id]?.niveau_maturite !== null && localEvals[m.id]?.niveau_maturite !== undefined);
+            const evaluated = mesures.filter(m => localEvals[m.id] !== undefined);
             const scores = evaluated.map(m => localEvals[m.id]?.niveau_maturite ?? 0);
             const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 
@@ -2241,7 +2241,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                                             ? <span className={`inline-flex px-2 py-0.5 rounded font-medium ${vc.bg} ${vc.text}`}>{vc.label}</span>
                                                             : <span className="text-gray-400 text-xs">—</span>
                                                         }
-                                                        {!readOnly && isJuniorUser && plan.statut_validation !== 'en_attente' && plan.statut_validation !== 'valide' && (
+                                                        {!readOnly && isJuniorUser && plan.created_by === user?.id && plan.statut_validation !== 'en_attente' && plan.statut_validation !== 'valide' && (
                                                             <button onClick={() => onSoumettre(plan.id)}
                                                                 className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium">
                                                                 Soumettre

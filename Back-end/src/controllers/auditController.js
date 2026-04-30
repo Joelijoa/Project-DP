@@ -70,7 +70,7 @@ const createAudit = async (req, res) => {
             return res.status(400).json({ message: 'nom, client et referentiel_id sont requis' });
         }
         // Auto-create or find entity from client name
-        const [entite] = await Entite.findOrCreate({
+        const [entite, created] = await Entite.findOrCreate({
             where: { nom: client.trim() },
             defaults: { nom: client.trim() },
         });
