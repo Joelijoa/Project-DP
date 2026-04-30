@@ -144,7 +144,11 @@ const ParametresPage = () => {
             {/* En-tête */}
             <div className="mb-6">
                 <h1 className="text-xl font-semibold text-gray-900">Paramètres</h1>
-                <p className="text-sm text-gray-500 mt-0.5">Gérez vos préférences et la configuration de la plateforme</p>
+                <p className="text-sm text-gray-500 mt-0.5">
+                    {isAdmin
+                        ? 'Gérez vos préférences de notifications et la configuration globale de la plateforme.'
+                        : 'Gérez vos préférences de notifications.'}
+                </p>
             </div>
 
             {/* ── Section 1 : Préférences notifications ── */}

@@ -168,7 +168,7 @@ const DashboardPage = () => {
                 {/* Greeting */}
                 <div>
                     <h1 className="text-xl font-bold text-gray-900">
-                        Bonjour, {user?.prenom} {user?.nom} 👋
+                        Bonjour, {user?.prenom} {user?.nom}
                     </h1>
                     <p className="text-sm text-gray-400 mt-0.5 capitalize">
                         {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -260,7 +260,7 @@ const DashboardPage = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900">
-                        Bonjour, {user?.prenom} {user?.nom} 👋
+                        Bonjour, {user?.prenom} {user?.nom}
                     </h1>
                     <p className="text-sm text-gray-400 mt-0.5 capitalize">
                         {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}

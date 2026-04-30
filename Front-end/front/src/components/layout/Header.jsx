@@ -15,8 +15,8 @@ const pageTitles = {
     '/dashboard': 'Tableau de bord',
     '/audits': 'Audits',
     '/audits/nouveau': 'Nouvel audit',
-    '/referentiels': 'Referentiels',
-    '/entites': 'Entites auditees',
+    '/referentiels': 'Référentiels',
+    '/entites': 'Entités auditées',
     '/resultats': 'Graphiques & Rosace',
     '/plans-actions': "Plans d'actions",
     '/validation': 'En attente de validation',
@@ -25,6 +25,13 @@ const pageTitles = {
     '/utilisateurs': 'Gestion des utilisateurs',
     '/parametres': 'Paramètres',
     '/profil': 'Mon profil',
+};
+
+const getPageTitle = (pathname) => {
+    if (pageTitles[pathname]) return pageTitles[pathname];
+    if (pathname.startsWith('/audits/')) return 'Audits';
+    if (pathname.startsWith('/utilisateurs/')) return 'Gestion des utilisateurs';
+    return 'Plateforme Audit GRC';
 };
 
 const TYPE_ICONS = {
@@ -180,7 +187,7 @@ const Header = () => {
         navigate('/login');
     };
 
-    const currentTitle = pageTitles[location.pathname] || 'Plateforme Audit GRC';
+    const currentTitle = getPageTitle(location.pathname);
 
     return (
         <>
