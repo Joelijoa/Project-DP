@@ -21,10 +21,14 @@ const Evaluation = sequelize.define('Evaluation', {
         validate: { min: 0, max: 5 },
     },
     conformite: {
-        type: DataTypes.ENUM('conforme', 'partiel', 'non_conforme', 'na'),
+        type: DataTypes.ENUM('conforme', 'partiel', 'non_conforme', 'nc_mineure', 'nc_majeure', 'na'),
         defaultValue: 'na',
     },
     commentaire: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
+    recommandation: {
         type: DataTypes.TEXT,
         allowNull: true,
     },

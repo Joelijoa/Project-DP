@@ -247,6 +247,7 @@ const saveEvaluations = async (req, res) => {
                     niveau_maturite: ev.niveau_maturite,
                     conformite,
                     commentaire: ev.commentaire || null,
+                    recommandation: ev.recommandation || null,
                     preuve: ev.preuve || null,
                     updated_by: req.user.userId,
                 },
@@ -256,6 +257,7 @@ const saveEvaluations = async (req, res) => {
                     niveau_maturite: ev.niveau_maturite,
                     conformite,
                     commentaire: ev.commentaire || null,
+                    recommandation: ev.recommandation || null,
                     preuve: ev.preuve || null,
                     updated_by: req.user.userId,
                 });
