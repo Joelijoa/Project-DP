@@ -54,8 +54,9 @@ const TABS_DNSSI = [
 const TABS_ISO = [
     { id: 'description',    label: "Description de l'audit" },
     { id: 'identification', label: "Identification de l'organisme" },
+    { id: 'exigences_smsi', label: 'Exigences SMSI (§4-10)' },
     { id: 'soa',            label: "Déclaration d'Applicabilité" },
-    { id: 'evaluation_iso', label: 'Évaluation des contrôles' },
+    { id: 'evaluation_iso', label: 'Évaluation Annexe A' },
     { id: 'plans_actions',  label: "Plan d'actions" },
     { id: 'synthese_iso',   label: 'Synthèse par thème' },
     { id: 'nc',             label: 'Non-conformités' },
@@ -300,6 +301,7 @@ const AuditDetailPage = () => {
                 mesure_id: ev.mesure_id,
                 niveau_maturite: ev.niveau_maturite ?? null,
                 commentaire: ev.commentaire || null,
+                recommandation: ev.recommandation || null,
                 preuve: ev.preuve || null,
             }));
             await saveEvaluations(id, evals);
@@ -324,6 +326,20 @@ const AuditDetailPage = () => {
             toast.success("Action corrective créée");
         } catch {
             toast.error("Erreur lors de la création");
+        }
+    };
+
+    const handleBulkCreatePlanAction = async (dataList) => {
+        try {
+            const created = [];
+            for (const data of dataList) {
+                const res = await createPlanAction(id, data);
+                created.push(res.data.plan_action);
+            }
+            setPlanActions(prev => [...created, ...prev]);
+            toast.success(`${created.length} action(s) générée(s) depuis les recommandations.`);
+        } catch {
+            toast.error('Erreur lors de la génération automatique');
         }
     };
 
@@ -733,6 +749,17 @@ const AuditDetailPage = () => {
             )}
 
             {/* Onglets ISO 27001 */}
+            {isISO && activeTab === 'exigences_smsi' && (
+                <TabExigencesSMSI
+                    referentiel={referentiel}
+                    localEvals={localEvals}
+                    setEval={setEval}
+                    isDirty={isDirty}
+                    saving={saving}
+                    onSave={handleSaveEvals}
+                    readOnly={isClient}
+                />
+            )}
             {isISO && activeTab === 'soa' && (
                 <TabSoA
                     referentiel={referentiel}
@@ -771,6 +798,7 @@ const AuditDetailPage = () => {
                     user={user}
                     auditId={id}
                     onAdd={handleCreatePlanAction}
+                    onBulkAdd={handleBulkCreatePlanAction}
                     onUpdate={handleUpdatePlanAction}
                     onDelete={handleDeletePlanAction}
                     onSoumettre={handleSoumettrePlan}
@@ -1371,8 +1399,9 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                     <th className="text-left px-5 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Règle</th>
                                                     <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Niveau maturité</th>
                                                     <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Conformité</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-52">Commentaire</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Justificatif N/A</th>
+                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Constat</th>
+                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Recommandation</th>
+                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Preuves / Références</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1424,21 +1453,35 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                 <input
                                                                     type="text"
                                                                     value={ev.commentaire || ''}
-                                                                    onChange={e => setEval(mesure.id, 'commentaire', e.target.value)}
-                                                                    placeholder="Commentaire..."
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder={readOnly ? '—' : 'Constat...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default"
                                                                 />
                                                             </td>
                                                             <td className="px-3 py-2">
-                                                                {isNA && (
-                                                                    <input
-                                                                        type="text"
-                                                                        value={ev.preuve || ''}
-                                                                        onChange={e => setEval(mesure.id, 'preuve', e.target.value)}
-                                                                        placeholder="Justifier la non-applicabilité..."
-                                                                        className="w-full text-xs border border-orange-200 rounded-md px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1"
-                                                                    />
-                                                                )}
+                                                                <input
+                                                                    type="text"
+                                                                    value={ev.recommandation || ''}
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder={readOnly ? '—' : 'Recommandation...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default"
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={ev.preuve || ''}
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder={readOnly ? '—' : isNA ? 'Justifier la non-applicabilité...' : 'Références / preuves...'}
+                                                                    className={`w-full text-xs border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-default ${
+                                                                        isNA && !readOnly
+                                                                            ? 'border-orange-200 bg-orange-50 read-only:bg-gray-50'
+                                                                            : 'border-gray-200 read-only:bg-gray-50 read-only:text-gray-600'
+                                                                    }`}
+                                                                />
                                                             </td>
                                                         </tr>
                                                     );
@@ -1641,7 +1684,8 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
                                 <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-r border-gray-100 w-24">Règle</th>
                                 <th className="text-center px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-r border-gray-100 w-32">Conformité</th>
                                 <th className="text-center px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-r border-gray-100 w-32">Maturité</th>
-                                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Commentaire</th>
+                                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-r border-gray-100">Constat</th>
+                                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Recommandation</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1649,7 +1693,7 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
                                 <>
                                     {/* Ligne d'en-tête domaine */}
                                     <tr key={`dom-${domaine.id}`} className="bg-gray-100/70">
-                                        <td colSpan={5} className="px-4 py-2 border-b border-gray-200">
+                                        <td colSpan={6} className="px-4 py-2 border-b border-gray-200">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[10px] font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>
                                                     {domaine.code}
@@ -1690,7 +1734,8 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
                                                             {niveauLabel(niveau)}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-2.5 text-gray-500">{ev.commentaire || <span className="text-gray-300">—</span>}</td>
+                                                    <td className="px-4 py-2.5 text-gray-500 border-r border-gray-100">{ev.commentaire || <span className="text-gray-300">—</span>}</td>
+                                                    <td className="px-4 py-2.5 text-gray-500">{ev.recommandation || <span className="text-gray-300">—</span>}</td>
                                                 </tr>
                                             );
                                         });
@@ -1791,9 +1836,9 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
 // ─── Constantes ISO évaluation ────────────────────────────────────────────────
 
 const ISO_CONF_STATES = [
-    { value: 5, label: 'Conforme',      activeCls: 'bg-green-600 text-white border-green-600',  inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-green-400' },
-    { value: 2, label: 'Partiel',       activeCls: 'bg-yellow-500 text-white border-yellow-500', inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-yellow-400' },
-    { value: 0, label: 'Non conforme',  activeCls: 'bg-red-600 text-white border-red-600',       inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-red-400' },
+    { value: 5, label: 'Conforme',    activeCls: 'bg-green-600 text-white border-green-600',   inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-green-400' },
+    { value: 2, label: 'NC mineure',  activeCls: 'bg-orange-500 text-white border-orange-500', inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-orange-400' },
+    { value: 0, label: 'NC majeure',  activeCls: 'bg-red-600 text-white border-red-600',       inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-red-400' },
 ];
 
 const PRIORITE_CONFIG = {
@@ -1806,6 +1851,157 @@ const STATUT_PLAN_CONFIG = {
     a_faire:  { label: 'À faire',  bg: 'bg-gray-100',  text: 'text-gray-600' },
     en_cours: { label: 'En cours', bg: 'bg-blue-50',   text: 'text-blue-700' },
     cloture:  { label: 'Clôturé',  bg: 'bg-green-50',  text: 'text-green-700' },
+};
+
+// ─── TAB ISO : Exigences SMSI §4-10 ──────────────────────────────────────────
+
+const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, onSave, readOnly }) => {
+    const [openSections, setOpenSections] = useState({});
+
+    useEffect(() => {
+        const mainBody = referentiel?.domaines?.filter(d => !d.code.startsWith('A.')) ?? [];
+        if (mainBody.length > 0) setOpenSections({ [mainBody[0].id]: true });
+    }, [referentiel]);
+
+    const toggleSection = (id) => setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
+
+    const mainBodyDomaines = referentiel?.domaines?.filter(d => !d.code.startsWith('A.')) ?? [];
+    const allMesures = mainBodyDomaines.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []);
+
+    const conforme  = allMesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+    const ncMineure = allMesures.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
+    const ncMajeure = allMesures.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+    const evaluated = conforme + ncMineure + ncMajeure;
+
+    if (mainBodyDomaines.length === 0) {
+        return (
+            <div className="space-y-4">
+                <TabInfo text="Les exigences SMSI §4-10 ne sont pas encore chargées. Veuillez relancer le seed ISO 27001:2022." />
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <TabInfo text="Évaluez la conformité de l'organisme aux exigences obligatoires du corps principal ISO 27001:2022 (§4 à §10). Ces exigences s'appliquent à toutes les organisations certifiées — aucune exclusion n'est permise." />
+
+            {/* KPIs */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                    { label: 'Exigences totales', value: allMesures.length, sub: `${evaluated} évaluées`, color: '#111827' },
+                    { label: 'Conformes',   value: conforme,   color: '#16a34a' },
+                    { label: 'NC mineures', value: ncMineure,  color: '#ea580c' },
+                    { label: 'NC majeures', value: ncMajeure,  color: '#dc2626' },
+                ].map((kpi, i) => (
+                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
+                        <p className="text-3xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
+                        {kpi.sub && <p className="text-xs text-gray-400">{kpi.sub}</p>}
+                    </div>
+                ))}
+            </div>
+
+            {/* Accordion par section §4-10 */}
+            {mainBodyDomaines.map(section => {
+                const isOpen = !!openSections[section.id];
+                const sectionMesures = section.objectifs?.flatMap(o => o.mesures ?? []) ?? [];
+                const sectionEval = sectionMesures.filter(m =>
+                    localEvals[m.id]?.niveau_maturite !== null && localEvals[m.id]?.niveau_maturite !== undefined
+                ).length;
+
+                return (
+                    <div key={section.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <button onClick={() => toggleSection(section.id)}
+                            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>
+                                    §{section.code}
+                                </span>
+                                <span className="text-sm font-semibold text-gray-800">{section.nom}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-500">{sectionEval}/{sectionMesures.length} évaluées</span>
+                                <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </div>
+                        </button>
+
+                        {isOpen && (
+                            <div className="border-t border-gray-100 divide-y divide-gray-50">
+                                {section.objectifs?.map(obj => (
+                                    <div key={obj.id} className="px-5 py-4">
+                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{obj.description}</p>
+                                        <div className="space-y-3">
+                                            {obj.mesures?.map(mesure => {
+                                                const ev = localEvals[mesure.id] || {};
+                                                const niveau = ev.niveau_maturite ?? null;
+                                                return (
+                                                    <div key={mesure.id} className="rounded-lg border border-gray-100 bg-gray-50/40 p-3">
+                                                        <div className="flex items-start gap-3">
+                                                            <span className="font-mono text-[11px] text-gray-400 flex-shrink-0 w-16 pt-0.5">{mesure.code}</span>
+                                                            <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description}</p>
+                                                            <div className="flex items-center flex-shrink-0">
+                                                                {ISO_CONF_STATES.map((s, idx) => (
+                                                                    <button key={s.value}
+                                                                        onClick={() => !readOnly && setEval(mesure.id, 'niveau_maturite', niveau === s.value ? null : s.value)}
+                                                                        disabled={readOnly}
+                                                                        className={`px-2.5 py-1 text-xs font-medium border transition
+                                                                            ${idx === 0 ? 'rounded-l-md border-r-0' : ''}
+                                                                            ${idx === ISO_CONF_STATES.length - 1 ? 'rounded-r-md' : ''}
+                                                                            ${idx > 0 && idx < ISO_CONF_STATES.length - 1 ? 'border-r-0' : ''}
+                                                                            ${readOnly ? 'cursor-default' : ''}
+                                                                            ${niveau === s.value ? s.activeCls : s.inactiveCls}`}
+                                                                    >
+                                                                        {s.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        {niveau !== null && (
+                                                            <div className="mt-2 ml-[76px] grid grid-cols-3 gap-3">
+                                                                <input type="text" value={ev.commentaire || ''}
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder={readOnly ? '—' : 'Constat...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
+                                                                <input type="text" value={ev.recommandation || ''}
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder={readOnly ? '—' : 'Recommandation...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
+                                                                <input type="text" value={ev.preuve || ''}
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder={readOnly ? '—' : 'Références / preuves...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+
+            {/* Bouton flottant sauvegarde */}
+            {isDirty && !readOnly && (
+                <div className="sticky bottom-4 flex justify-end">
+                    <button onClick={onSave} disabled={saving}
+                        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-xl shadow-lg transition disabled:opacity-60"
+                        style={{ backgroundColor: 'var(--brand-red)' }}>
+                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                        Sauvegarder l'évaluation
+                    </button>
+                </div>
+            )}
+        </div>
+    );
 };
 
 // ─── TAB ISO 4 : Évaluation des contrôles ─────────────────────────────────────
@@ -1821,9 +2017,11 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
 
     const toggleTheme = (id) => setOpenThemes(prev => ({ ...prev, [id]: !prev[id] }));
 
-    const allApplicable = referentiel?.domaines?.flatMap(d =>
+    const annexeDomaines = referentiel?.domaines?.filter(d => d.code.startsWith('A.')) ?? [];
+
+    const allApplicable = annexeDomaines.flatMap(d =>
         d.objectifs?.flatMap(o => o.mesures?.filter(m => soaMap[m.id]?.applicable === true) ?? []) ?? []
-    ) ?? [];
+    );
 
     if (allApplicable.length === 0) {
         return (
@@ -1834,22 +2032,22 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
         );
     }
 
-    const conforme    = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
-    const partiel     = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
-    const nonConforme = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
-    const evaluated   = conforme + partiel + nonConforme;
+    const conforme   = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+    const ncMineure  = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
+    const ncMajeure  = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+    const evaluated  = conforme + ncMineure + ncMajeure;
 
     return (
         <div className="space-y-4">
-            <TabInfo text="Évaluez la conformité de chaque contrôle ISO 27001:2022 applicable défini dans la SoA. Pour chaque contrôle, indiquez s'il est Conforme, Partiellement conforme ou Non conforme, puis ajoutez vos observations et références de preuves." />
+            <TabInfo text="Évaluez la conformité de chaque contrôle ISO 27001:2022 applicable défini dans la SoA. Pour chaque contrôle, indiquez s'il est Conforme, NC mineure ou NC majeure, puis ajoutez votre constat et vos recommandations." />
 
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Contrôles applicables', value: allApplicable.length, sub: `${evaluated} évalués`, color: '#111827' },
-                    { label: 'Conformes',   value: conforme,    color: '#16a34a' },
-                    { label: 'Partiels',    value: partiel,     color: '#d97706' },
-                    { label: 'Non conformes', value: nonConforme, color: '#dc2626' },
+                    { label: 'Conformes',   value: conforme,   color: '#16a34a' },
+                    { label: 'NC mineures', value: ncMineure,  color: '#ea580c' },
+                    { label: 'NC majeures', value: ncMajeure,  color: '#dc2626' },
                 ].map((kpi, i) => (
                     <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
@@ -1859,8 +2057,8 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                 ))}
             </div>
 
-            {/* Accordion par thème */}
-            {referentiel?.domaines?.map(theme => {
+            {/* Accordion par thème — Annexe A uniquement */}
+            {annexeDomaines.map(theme => {
                 const isOpen = !!openThemes[theme.id];
                 const themeMesures = theme.objectifs?.flatMap(o =>
                     o.mesures?.filter(m => soaMap[m.id]?.applicable === true) ?? []) ?? [];
@@ -1940,13 +2138,18 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                                                 ))}
                                                             </div>
                                                         </div>
-                                                        {/* Commentaire + preuve si évalué */}
+                                                        {/* Constat + recommandation + preuve si évalué */}
                                                         {niveau !== null && (
-                                                            <div className="mt-2 ml-24 grid grid-cols-2 gap-3">
+                                                            <div className="mt-2 ml-24 grid grid-cols-3 gap-3">
                                                                 <input type="text" value={ev.commentaire || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
                                                                     readOnly={readOnly}
-                                                                    placeholder={readOnly ? '—' : 'Observations...'}
+                                                                    placeholder={readOnly ? '—' : 'Constat...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
+                                                                <input type="text" value={ev.recommandation || ''}
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder={readOnly ? '—' : 'Recommandation...'}
                                                                     className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
                                                                 <input type="text" value={ev.preuve || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
@@ -1992,12 +2195,14 @@ const PLAN_VALIDATION_CONFIG = {
     rejete:     { label: 'Rejeté',     bg: 'bg-red-50',    text: 'text-red-700'    },
 };
 
-const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, user, onAdd, onUpdate, onDelete, onSoumettre, onValider, onRejeter, readOnly }) => {
+const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, user, onAdd, onBulkAdd, onUpdate, onDelete, onSoumettre, onValider, onRejeter, readOnly }) => {
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({ ...emptyPlanForm });
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
+    const [generating, setGenerating] = useState(false);
+    const [showGenConfirm, setShowGenConfirm] = useState(false);
 
     const setF = (k, v) => {
         setForm(p => ({ ...p, [k]: v }));
@@ -2049,37 +2254,142 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
 
     const allMesures = referentiel?.domaines?.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []) ?? [];
 
-    // Mesures non conformes (pour mettre en évidence dans le dropdown)
-    const nonConfIds = new Set(allMesures.filter(m => {
+    // Map mesure_id → code du domaine parent (pour distinguer §4-10 vs Annexe A)
+    const mesureDomainCode = {};
+    referentiel?.domaines?.forEach(d => {
+        d.objectifs?.forEach(o => o.mesures?.forEach(m => { mesureDomainCode[m.id] = d.code; }));
+    });
+
+    const isNCMesure = (m) => {
         const n = localEvals[m.id]?.niveau_maturite;
-        return isISO ? (soaMap[m.id]?.applicable === true && n === 0) : (n !== null && n !== undefined && n <= 1);
-    }).map(m => m.id));
+        if (n === null || n === undefined) return false;
+        if (!isISO) return n <= 1;
+        const domCode = mesureDomainCode[m.id] ?? '';
+        if (domCode.startsWith('A.')) return soaMap[m.id]?.applicable === true && (n === 0 || n === 2);
+        return n === 0 || n === 2; // §4-10 : pas de filtre SoA
+    };
+
+    const getPriorite = (m) => {
+        if (!isISO) return 'haute';
+        return localEvals[m.id]?.niveau_maturite === 0 ? 'haute' : 'moyenne';
+    };
+
+    // Mesures non conformes (pour mettre en évidence dans le dropdown)
+    const nonConfIds = new Set(allMesures.filter(isNCMesure).map(m => m.id));
+
+    // Mesures NC avec recommandation sans plan d'action existant
+    const existingMesureIds = new Set(planActions.map(p => p.mesure_id));
+    const toGenerate = allMesures.filter(m =>
+        isNCMesure(m) &&
+        !existingMesureIds.has(m.id) &&
+        !!localEvals[m.id]?.recommandation?.trim()
+    );
+
+    const handleGenerate = async () => {
+        setShowGenConfirm(false);
+        setGenerating(true);
+        try {
+            const dataList = toGenerate.map(m => ({
+                mesure_id: m.id,
+                description_nc: localEvals[m.id]?.commentaire || '',
+                action_corrective: localEvals[m.id]?.recommandation,
+                responsable: '',
+                delai: '',
+                priorite: getPriorite(m),
+                statut: 'a_faire',
+                kpi: '',
+            }));
+            await onBulkAdd(dataList);
+        } finally {
+            setGenerating(false);
+        }
+    };
 
     return (
         <div className="space-y-4">
             <TabInfo text="Définissez les actions correctives pour traiter les non-conformités identifiées lors de l'évaluation. Chaque action est associée à une mesure, un responsable, un délai et une priorité de traitement." />
 
             {/* Barre d'action */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
                     <span className="text-sm text-gray-600">{planActions.length} action(s) définie(s)</span>
                     {nonConfIds.size > 0 && (
                         <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-50 text-red-700">
-                            {nonConfIds.size} mesure(s) non conforme(s)
+                            {nonConfIds.size} mesure(s) NC
                         </span>
                     )}
                 </div>
                 {!readOnly && (
-                    <button onClick={() => { resetForm(); setShowForm(true); }}
-                        className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-lg transition"
-                        style={{ backgroundColor: 'var(--brand-red)' }}>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Ajouter une action
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {toGenerate.length > 0 && (
+                            <button
+                                onClick={() => setShowGenConfirm(v => !v)}
+                                disabled={generating}
+                                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100 transition disabled:opacity-60"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                                </svg>
+                                Générer depuis les recommandations ({toGenerate.length})
+                            </button>
+                        )}
+                        <button onClick={() => { resetForm(); setShowForm(true); setShowGenConfirm(false); }}
+                            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-lg transition"
+                            style={{ backgroundColor: 'var(--brand-red)' }}>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            Ajouter une action
+                        </button>
+                    </div>
                 )}
             </div>
+
+            {/* Panneau de confirmation génération */}
+            {showGenConfirm && !readOnly && (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                        </svg>
+                        <div className="flex-1">
+                            <p className="text-sm font-semibold text-orange-800">
+                                {toGenerate.length} action(s) seront créées automatiquement
+                            </p>
+                            <p className="text-xs text-orange-600 mt-0.5">
+                                Depuis les recommandations des mesures NC sans plan d'action existant. Le responsable et le délai sont à compléter ensuite.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="max-h-40 overflow-y-auto space-y-1.5 border border-orange-200 rounded-lg bg-white p-2">
+                        {toGenerate.map(m => {
+                            const ev = localEvals[m.id];
+                            const isMAJ = ev?.niveau_maturite === 0;
+                            return (
+                                <div key={m.id} className="flex items-start gap-2 text-xs">
+                                    <span className="font-mono text-gray-500 flex-shrink-0 w-24">{m.code}</span>
+                                    <span className={`flex-shrink-0 px-1.5 py-0.5 rounded font-medium ${isMAJ ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700'}`}>
+                                        {isISO ? (isMAJ ? 'NC maj.' : 'NC min.') : 'NC'}
+                                    </span>
+                                    <span className="text-gray-600 truncate">{ev?.recommandation}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={handleGenerate} disabled={generating}
+                            className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white rounded-lg disabled:opacity-60 transition"
+                            style={{ backgroundColor: '#d97706' }}>
+                            {generating && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            Confirmer la génération
+                        </button>
+                        <button onClick={() => setShowGenConfirm(false)}
+                            className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                            Annuler
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Formulaire */}
             {showForm && !readOnly && (
@@ -2300,49 +2610,98 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
 
 // ─── TAB ISO 6 : Synthèse par thème ──────────────────────────────────────────
 
+const SyntheseTable = ({ rows, caption }) => (
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="text-sm font-semibold text-gray-800 mb-5">{caption}</h2>
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/60">
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Section</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Évaluées</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-green-600">Conformes</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-orange-600">NC mineures</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-red-600">NC majeures</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Taux (%)</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                    {rows.map(t => (
+                        <tr key={t.id} className="hover:bg-gray-50/40">
+                            <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>{t.code}</span>
+                                    <span className="text-xs font-medium text-gray-700">{t.nom}</span>
+                                </div>
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-600 text-xs">{t.evaluated}/{t.total}</td>
+                            <td className="px-4 py-3 text-center text-green-700 font-semibold text-xs">{t.conforme}</td>
+                            <td className="px-4 py-3 text-center text-orange-600 font-semibold text-xs">{t.ncMineure}</td>
+                            <td className="px-4 py-3 text-center text-red-700 font-semibold text-xs">{t.ncMajeure}</td>
+                            <td className="px-4 py-3 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <div className="h-full rounded-full" style={{ width: `${t.taux}%`, backgroundColor: t.taux >= 75 ? '#16a34a' : t.taux >= 50 ? '#d97706' : '#dc2626' }} />
+                                    </div>
+                                    <span className="text-xs font-semibold text-gray-700">{t.taux}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    </div>
+);
+
 const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
     if (!referentiel) return <div className="text-gray-400 text-sm">Chargement...</div>;
 
-    const themes = referentiel.domaines.map(theme => {
-        const mesures = theme.objectifs.flatMap(o => o.mesures);
-        const applicable = mesures.filter(m => soaMap[m.id]?.applicable === true);
-        const conforme    = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
-        const partiel     = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
-        const nonConforme = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
-        const evaluated   = conforme + partiel + nonConforme;
-        const taux = evaluated > 0 ? Math.round(((conforme + partiel * 0.5) / evaluated) * 100) : 0;
-        return { ...theme, total: mesures.length, applicable: applicable.length, conforme, partiel, nonConforme, evaluated, taux };
+    const mainBodyDomaines = referentiel.domaines.filter(d => !d.code.startsWith('A.'));
+    const annexeDomaines   = referentiel.domaines.filter(d =>  d.code.startsWith('A.'));
+
+    // §4-10 : toutes les mesures (pas de SoA)
+    const smsiRows = mainBodyDomaines.map(d => {
+        const mesures   = d.objectifs.flatMap(o => o.mesures);
+        const conforme  = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+        const ncMineure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
+        const ncMajeure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+        const evaluated = conforme + ncMineure + ncMajeure;
+        const taux = evaluated > 0 ? Math.round(((conforme + ncMineure * 0.5) / evaluated) * 100) : 0;
+        return { ...d, total: mesures.length, evaluated, conforme, ncMineure, ncMajeure, taux };
     });
 
-    const totApp = themes.reduce((s, t) => s + t.applicable, 0);
-    const totConf = themes.reduce((s, t) => s + t.conforme, 0);
-    const totPart = themes.reduce((s, t) => s + t.partiel, 0);
-    const totNC   = themes.reduce((s, t) => s + t.nonConforme, 0);
-    const totEval = themes.reduce((s, t) => s + t.evaluated, 0);
-    const tauxGlobal = totEval > 0 ? Math.round(((totConf + totPart * 0.5) / totEval) * 100) : 0;
+    // Annexe A : filtrée par SoA
+    const annexeRows = annexeDomaines.map(d => {
+        const mesures   = d.objectifs.flatMap(o => o.mesures).filter(m => soaMap[m.id]?.applicable === true);
+        const conforme  = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+        const ncMineure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
+        const ncMajeure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+        const evaluated = conforme + ncMineure + ncMajeure;
+        const taux = evaluated > 0 ? Math.round(((conforme + ncMineure * 0.5) / evaluated) * 100) : 0;
+        return { ...d, total: mesures.length, evaluated, conforme, ncMineure, ncMajeure, taux };
+    });
 
-    if (totApp === 0) {
-        return (
-            <div className="space-y-4">
-                <TabInfo text="Complétez la Déclaration d'Applicabilité puis l'évaluation des contrôles pour voir la synthèse par thème." />
-                <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
-                    <p className="text-sm text-gray-500">Aucun contrôle applicable défini.</p>
-                </div>
-            </div>
-        );
-    }
+    const allRows  = [...smsiRows, ...annexeRows];
+    const totConf  = allRows.reduce((s, t) => s + t.conforme,  0);
+    const totMin   = allRows.reduce((s, t) => s + t.ncMineure, 0);
+    const totMaj   = allRows.reduce((s, t) => s + t.ncMajeure, 0);
+    const totEval  = allRows.reduce((s, t) => s + t.evaluated, 0);
+    const tauxGlobal = totEval > 0 ? Math.round(((totConf + totMin * 0.5) / totEval) * 100) : 0;
+
+    const hasAnySoA = annexeRows.some(t => t.total > 0);
 
     return (
         <div className="space-y-4">
-            <TabInfo text="Synthèse de la conformité ISO 27001:2022 regroupée par thème (A.5 Organisationnel, A.6 Personnes, A.7 Physique, A.8 Technologique). Seuls les contrôles applicables définis dans la SoA sont pris en compte." />
+            <TabInfo text="Synthèse globale de la conformité ISO 27001:2022 — exigences du corps principal (§4-10) et contrôles de l'Annexe A (SoA)." />
 
             {/* KPIs globaux */}
             <div className="grid grid-cols-4 gap-4">
                 {[
                     { label: 'Taux global', value: `${tauxGlobal}%`, color: tauxGlobal >= 75 ? '#16a34a' : tauxGlobal >= 50 ? '#d97706' : '#dc2626', accent: true },
-                    { label: 'Conformes',      value: totConf, color: '#16a34a' },
-                    { label: 'Partiels',       value: totPart, color: '#d97706' },
-                    { label: 'Non conformes',  value: totNC,   color: '#dc2626' },
+                    { label: 'Conformes',   value: totConf, color: '#16a34a' },
+                    { label: 'NC mineures', value: totMin,  color: '#ea580c' },
+                    { label: 'NC majeures', value: totMaj,  color: '#dc2626' },
                 ].map((k, i) => (
                     <div key={i} className="bg-white rounded-xl border border-gray-200 p-4" style={k.accent ? { borderTopWidth: '3px', borderTopColor: k.color } : {}}>
                         <p className="text-xs font-medium text-gray-500">{k.label}</p>
@@ -2351,48 +2710,26 @@ const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
                 ))}
             </div>
 
-            {/* Tableau par thème */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-sm font-semibold text-gray-800 mb-5">Conformité par thème ISO 27001:2022</h2>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-gray-100 bg-gray-50/60">
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Thème</th>
-                                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Applicables</th>
-                                <th className="text-center px-4 py-3 text-xs font-semibold text-green-600">Conformes</th>
-                                <th className="text-center px-4 py-3 text-xs font-semibold text-yellow-600">Partiels</th>
-                                <th className="text-center px-4 py-3 text-xs font-semibold text-red-600">Non conformes</th>
-                                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Taux (%)</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {themes.map(t => (
-                                <tr key={t.id} className="hover:bg-gray-50/40">
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>{t.code}</span>
-                                            <span className="text-xs font-medium text-gray-700">{t.nom}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-center text-gray-600 text-xs">{t.applicable}/{t.total}</td>
-                                    <td className="px-4 py-3 text-center text-green-700 font-semibold text-xs">{t.conforme}</td>
-                                    <td className="px-4 py-3 text-center text-yellow-700 font-semibold text-xs">{t.partiel}</td>
-                                    <td className="px-4 py-3 text-center text-red-700 font-semibold text-xs">{t.nonConforme}</td>
-                                    <td className="px-4 py-3 text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                <div className="h-full rounded-full" style={{ width: `${t.taux}%`, backgroundColor: t.taux >= 75 ? '#16a34a' : t.taux >= 50 ? '#d97706' : '#dc2626' }} />
-                                            </div>
-                                            <span className="text-xs font-semibold text-gray-700">{t.taux}%</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            {/* §4-10 */}
+            {smsiRows.length > 0 && (
+                <SyntheseTable rows={smsiRows} caption="Exigences SMSI — Corps principal §4-10 (toutes applicables)" />
+            )}
+            {smsiRows.length === 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Exigences SMSI — Corps principal §4-10</p>
+                    <p className="text-xs text-gray-400">Non disponible — lancez le seed ISO 27001:2022 pour ajouter les exigences §4-10.</p>
                 </div>
-            </div>
+            )}
+
+            {/* Annexe A */}
+            {hasAnySoA ? (
+                <SyntheseTable rows={annexeRows.filter(t => t.total > 0)} caption="Annexe A — Contrôles applicables (SoA)" />
+            ) : (
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Annexe A — Contrôles</p>
+                    <p className="text-xs text-gray-400">Complétez la Déclaration d'Applicabilité pour voir la synthèse Annexe A.</p>
+                </div>
+            )}
         </div>
     );
 };
@@ -2405,15 +2742,21 @@ const TabNC = ({ referentiel, soaMap, localEvals }) => {
     const ncList = referentiel.domaines.flatMap(theme =>
         theme.objectifs.flatMap(obj =>
             (obj.mesures || [])
-                .filter(m => soaMap[m.id]?.applicable === true && localEvals[m.id]?.niveau_maturite === 0)
-                .map(m => ({ ...m, theme, obj }))
+                .filter(m => {
+                    const n = localEvals[m.id]?.niveau_maturite;
+                    const isNC = n === 0 || n === 2;
+                    if (!isNC) return false;
+                    // §4-10 : toujours applicables ; Annexe A : filtrée par SoA
+                    return theme.code.startsWith('A.') ? soaMap[m.id]?.applicable === true : true;
+                })
+                .map(m => ({ ...m, theme, obj, ncType: localEvals[m.id]?.niveau_maturite === 0 ? 'majeure' : 'mineure' }))
         )
     );
 
     if (ncList.length === 0) {
         return (
             <div className="space-y-4">
-                <TabInfo text="Ce registre liste tous les contrôles ISO 27001 applicables évalués comme Non conformes. Il sert de base pour définir les actions correctives dans le Plan d'actions." />
+                <TabInfo text="Ce registre liste tous les contrôles ISO 27001 applicables évalués comme NC mineure ou NC majeure. Il sert de base pour définir les actions correctives dans le Plan d'actions." />
                 <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                     <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
                         <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -2421,7 +2764,7 @@ const TabNC = ({ referentiel, soaMap, localEvals }) => {
                         </svg>
                     </div>
                     <p className="text-sm font-medium text-gray-700">Aucune non-conformité enregistrée</p>
-                    <p className="text-xs text-gray-400 mt-1">Tous les contrôles applicables évalués sont conformes ou partiellement conformes.</p>
+                    <p className="text-xs text-gray-400 mt-1">Tous les contrôles applicables évalués sont conformes.</p>
                 </div>
             </div>
         );
@@ -2437,16 +2780,26 @@ const TabNC = ({ referentiel, soaMap, localEvals }) => {
 
     return (
         <div className="space-y-4">
-            <TabInfo text="Ce registre liste tous les contrôles ISO 27001 applicables évalués comme Non conformes. Utilisez le Plan d'actions pour définir les actions correctives associées." />
+            <TabInfo text="Ce registre liste tous les contrôles ISO 27001 applicables évalués comme NC mineure ou NC majeure. Utilisez le Plan d'actions pour définir les actions correctives associées." />
 
             {/* Compteur */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                    <span className="text-lg font-bold text-red-600">{ncList.length}</span>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                        <span className="text-lg font-bold text-red-600">{ncList.length}</span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-800">Non-conformité(s) identifiée(s)</p>
+                        <p className="text-xs text-gray-500">NC mineures + NC majeures</p>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-sm font-semibold text-gray-800">Non-conformité(s) identifiée(s)</p>
-                    <p className="text-xs text-gray-500">Contrôles applicables évalués à « Non conforme »</p>
+                <div className="flex items-center gap-3 ml-auto">
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 font-medium">
+                        {ncList.filter(m => m.ncType === 'mineure').length} NC mineures
+                    </span>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-red-50 text-red-700 font-medium">
+                        {ncList.filter(m => m.ncType === 'majeure').length} NC majeures
+                    </span>
                 </div>
             </div>
 
@@ -2467,8 +2820,11 @@ const TabNC = ({ referentiel, soaMap, localEvals }) => {
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs text-gray-700 leading-relaxed">{m.description || m.obj?.description || ''}</p>
                                         {ev.commentaire && <p className="text-xs text-gray-400 mt-1 italic">"{ev.commentaire}"</p>}
+                                        {ev.recommandation && <p className="text-xs text-blue-500 mt-1">↳ {ev.recommandation}</p>}
                                     </div>
-                                    <span className="shrink-0 text-xs px-2 py-0.5 rounded bg-red-50 text-red-700 font-medium">Non conforme</span>
+                                    <span className={`shrink-0 text-xs px-2 py-0.5 rounded font-medium ${m.ncType === 'majeure' ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700'}`}>
+                                        {m.ncType === 'majeure' ? 'NC majeure' : 'NC mineure'}
+                                    </span>
                                 </div>
                             );
                         })}
