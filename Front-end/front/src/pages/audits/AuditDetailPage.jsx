@@ -39,8 +39,8 @@ const PhasesStepper = ({ phase, canChange, onPrev, changing }) => {
                                 <div className="h-px w-4 flex-shrink-0" style={{ backgroundColor: i <= idx ? 'var(--brand-red)' : '#e5e7eb' }} />
                             )}
                             <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${done ? 'bg-green-100 text-green-700' :
-                                    current ? 'text-white' :
-                                        'bg-gray-100 text-gray-400'
+                                current ? 'text-white' :
+                                    'bg-gray-100 text-gray-400'
                                 }`} style={current ? { backgroundColor: 'var(--brand-red)' } : {}}>
                                 {done ? '✓ ' : ''}{p.label}
                             </span>
@@ -996,14 +996,8 @@ const AuditDetailPage = () => {
                                 </div>
                             </div>
                         )}
-                        <DepotDocuments
+                        <RevueDocuments
                             documents={documents}
-                            uploading={uploading}
-                            currentUserId={user?.id}
-                            isSeniorOrAdmin={isSeniorOrAdmin}
-                            readOnly={!isClient}
-                            onUpload={handleUploadDocuments}
-                            onDelete={handleDeleteDocument}
                             onDownload={handleDownloadDocument}
                             onFetchBlob={handleFetchDocBlob}
                         />
@@ -1219,8 +1213,8 @@ const TabNav = ({ activeTab, setActiveTab, tabs, tabStatus = {} }) => {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id
-                                ? 'border-current -mb-px'
-                                : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
+                            ? 'border-current -mb-px'
+                            : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
                             }`}
                         style={activeTab === tab.id ? { color: 'var(--brand-red)', borderColor: 'var(--brand-red)' } : {}}
                     >
@@ -1545,7 +1539,6 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
             </div>
         );
     }
-
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
             <div className="flex items-center justify-between">
@@ -2095,8 +2088,8 @@ const TabCadrage = ({ audit, referentiel, identification, setIdentification, onS
                             type="button"
                             onClick={() => set('type_audit', opt.value)}
                             className={`px-4 py-3 rounded-lg border text-sm font-medium transition text-left ${identification.type_audit === opt.value
-                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                                 }`}
                         >
                             {opt.label}
@@ -2334,6 +2327,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
     );
 };
 
+
 // ─── TAB 3 : Évaluation MO DNSSI ─────────────────────────────────────────────
 
 const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpenDomaines, isDirty, saving, onSave, readOnly }) => {
@@ -2501,8 +2495,8 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                         readOnly={readOnly}
                                                                         placeholder={readOnly ? '—' : isNA ? 'Justifier la non-applicabilité...' : 'Références / preuves...'}
                                                                         className={`w-full text-xs border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-default ${isNA && !readOnly
-                                                                                ? 'border-orange-200 bg-orange-50 read-only:bg-gray-50'
-                                                                                : 'border-gray-200 read-only:bg-gray-50 read-only:text-gray-600'
+                                                                            ? 'border-orange-200 bg-orange-50 read-only:bg-gray-50'
+                                                                            : 'border-gray-200 read-only:bg-gray-50 read-only:text-gray-600'
                                                                             }`}
                                                                     />
                                                                 </td>
