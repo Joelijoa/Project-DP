@@ -13,6 +13,7 @@ const SoA = require('./SoA');
 const Entite = require('./Entite');
 const Log = require('./Log');
 const Notification = require('./Notification');
+const Document = require('./Document');
 
 // ========== ASSOCIATIONS ==========
 
@@ -90,6 +91,14 @@ User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
 // Notification -> Audit (optionnel)
 Notification.belongsTo(Audit, { foreignKey: 'audit_id', as: 'audit' });
 
+// Document -> Audit
+Document.belongsTo(Audit, { foreignKey: 'audit_id', as: 'audit' });
+Audit.hasMany(Document, { foreignKey: 'audit_id', as: 'documents' });
+
+// Document -> User (uploader)
+Document.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
+User.hasMany(Document, { foreignKey: 'uploaded_by', as: 'documents_uploades' });
+
 module.exports = {
     sequelize,
     User,
@@ -106,4 +115,5 @@ module.exports = {
     Entite,
     Log,
     Notification,
+    Document,
 };

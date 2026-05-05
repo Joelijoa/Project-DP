@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA, soumettreAudit, validerAudit, rejeterAudit } from '../../services/endpoints/auditService';
+import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA, soumettreAudit, validerAudit, rejeterAudit, changerPhase, getDocuments, uploadDocuments, deleteDocument, downloadDocument } from '../../services/endpoints/auditService';
 import { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, soumettreValidationPlan, validerPlanAction, rejeterPlanAction } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
@@ -16,6 +16,51 @@ const stripObjectifPrefix = (str = '') => str.replace(/^Objectif\s+\d+\s*:\s*/i,
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
+const PHASES_DEF = [
+    { id: 'cadrage',            label: 'Cadrage' },
+    { id: 'prerequis',          label: 'Prérequis' },
+    { id: 'revue_documentaire', label: 'Revue doc.' },
+    { id: 'realisation',        label: 'Réalisation' },
+    { id: 'termine',            label: 'Terminé' },
+];
+
+const PhasesStepper = ({ phase, canChange, onPrev, changing }) => {
+    const currentIdx = PHASES_DEF.findIndex(p => p.id === phase);
+    const idx = currentIdx < 0 ? 0 : currentIdx;
+    return (
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-white rounded-lg border border-gray-100">
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+                {PHASES_DEF.map((p, i) => {
+                    const done    = i < idx;
+                    const current = i === idx;
+                    return (
+                        <div key={p.id} className="flex items-center gap-1">
+                            {i > 0 && (
+                                <div className="h-px w-4 flex-shrink-0" style={{ backgroundColor: i <= idx ? 'var(--brand-red)' : '#e5e7eb' }} />
+                            )}
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${
+                                done    ? 'bg-green-100 text-green-700' :
+                                current ? 'text-white'                  :
+                                          'bg-gray-100 text-gray-400'
+                            }`} style={current ? { backgroundColor: 'var(--brand-red)' } : {}}>
+                                {done ? '✓ ' : ''}{p.label}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+            {canChange && idx > 0 && (
+                <div className="ml-2 pl-2 border-l border-gray-100">
+                    <button onClick={onPrev} disabled={changing}
+                        className="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50 transition">
+                        ← Reculer
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const NIVEAUX = [
     { value: null,  label: 'N/A',         color: 'text-gray-400' },
     { value: 0,     label: 'Aucun',       color: 'text-red-600' },
@@ -30,6 +75,8 @@ const CONFORMITE_CONFIG = {
     conforme:     { label: 'Totale',       bg: 'bg-green-50',  text: 'text-green-700' },
     partiel:      { label: 'Partielle',    bg: 'bg-yellow-50', text: 'text-yellow-700' },
     non_conforme: { label: 'Non conforme', bg: 'bg-red-50',    text: 'text-red-700' },
+    nc_mineure:   { label: 'NC mineure',   bg: 'bg-orange-50', text: 'text-orange-700' },
+    nc_majeure:   { label: 'NC majeure',   bg: 'bg-red-50',    text: 'text-red-700' },
     na:           { label: 'N/A',          bg: 'bg-gray-100',  text: 'text-gray-500' },
 };
 
@@ -129,6 +176,13 @@ const calcConformite = (niveau) => {
     return 'conforme';
 };
 
+const isoConformite = (niveau) => {
+    if (niveau === null || niveau === undefined) return 'na';
+    if (niveau === 5) return 'conforme';
+    if (niveau === 2) return 'nc_mineure';
+    return 'nc_majeure';
+};
+
 const niveauLabel = (v) => NIVEAUX.find(n => n.value === v)?.label ?? 'N/A';
 
 // ─── Sous-composants ───────────────────────────────────────────────────────────
@@ -226,6 +280,9 @@ const AuditDetailPage = () => {
     const [planActions, setPlanActions] = useState([]);
     // Validation workflow
     const [validating, setValidating]           = useState(false);
+    const [changingPhase, setChangingPhase]     = useState(false);
+    const [documents, setDocuments]             = useState([]);
+    const [uploading, setUploading]             = useState(false);
     const [showRejeterAudit, setShowRejeterAudit] = useState(false);
     const [rejetingPlanId, setRejetingPlanId]   = useState(null);
 
@@ -283,6 +340,52 @@ const AuditDetailPage = () => {
         };
         load();
     }, [id]);
+
+    // Chargement documents (prerequis + revue_documentaire)
+    useEffect(() => {
+        if (!audit?.phase) return;
+        if (audit.phase === 'prerequis' || audit.phase === 'revue_documentaire') {
+            getDocuments(id).then(r => setDocuments(r.data.documents || [])).catch(() => {});
+        }
+    }, [audit?.phase, id]);
+
+    const handleUploadDocuments = async (files) => {
+        if (!files || files.length === 0) return;
+        setUploading(true);
+        try {
+            const fd = new FormData();
+            Array.from(files).forEach(f => fd.append('fichiers', f));
+            const res = await uploadDocuments(id, fd);
+            setDocuments(prev => [...(res.data.documents || []), ...prev]);
+            toast.success(`${res.data.documents.length} fichier(s) déposé(s).`);
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Erreur lors du dépôt.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleDeleteDocument = async (docId) => {
+        try {
+            await deleteDocument(id, docId);
+            setDocuments(prev => prev.filter(d => d.id !== docId));
+            toast.success('Document supprimé.');
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Erreur lors de la suppression.');
+        }
+    };
+
+    const handleDownloadDocument = async (docId, nomOriginal) => {
+        try {
+            const res = await downloadDocument(id, docId);
+            const url = URL.createObjectURL(new Blob([res.data]));
+            const a = document.createElement('a');
+            a.href = url; a.download = nomOriginal; a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            toast.error('Erreur lors du téléchargement.');
+        }
+    };
 
     // Mise à jour d'une évaluation locale
     const setEval = (mesureId, field, value) => {
@@ -373,6 +476,21 @@ const AuditDetailPage = () => {
             toast.success('Audit soumis pour validation.');
         } catch { toast.error('Erreur lors de la soumission.'); }
         finally { setValidating(false); }
+    };
+
+    const handleChangerPhase = async (direction) => {
+        const phases = PHASES_DEF.map(p => p.id);
+        const currentIdx = phases.indexOf(audit.phase || 'cadrage');
+        const newPhase = phases[currentIdx + direction];
+        if (!newPhase) return;
+        setChangingPhase(true);
+        try {
+            await changerPhase(id, newPhase);
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success(`Phase : ${PHASES_DEF[currentIdx + direction].label}`);
+        } catch { toast.error('Erreur lors du changement de phase.'); }
+        finally { setChangingPhase(false); }
     };
 
     const handleValiderAudit = async () => {
@@ -638,12 +756,14 @@ const AuditDetailPage = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    {(audit.phase === 'realisation' || audit.phase === 'termine') && (
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-gray-500">{totalEvaluated}/{totalMesures} mesures évaluées</span>
                         <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                             <div className="h-full rounded-full transition-all" style={{ width: `${totalMesures > 0 ? (totalEvaluated/totalMesures)*100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
                         </div>
                     </div>
+                    )}
                     {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && !isJunior && !isClient && (
                         <button
                             onClick={() => setShowClotureModal(true)}
@@ -711,11 +831,121 @@ const AuditDetailPage = () => {
                 </div>
             )}
 
-            {/* Onglets */}
-            <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} tabStatus={tabStatus} />
+            {/* Stepper phases */}
+            <PhasesStepper
+                phase={audit.phase || 'cadrage'}
+                canChange={isSeniorOrAdmin}
+                onPrev={() => handleChangerPhase(-1)}
+                changing={changingPhase}
+            />
+
+            {/* Onglets — uniquement en réalisation/terminé */}
+            {(audit.phase === 'realisation' || audit.phase === 'termine') && (
+                <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} tabStatus={tabStatus} />
+            )}
             </div>{/* fin sticky */}
 
             <div className="px-6 pt-4 pb-6">
+
+            {/* Phase cadrage */}
+            {audit.phase === 'cadrage' && (
+                <div className="space-y-5">
+                    <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200">
+                        <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                        <div>
+                            <p className="text-sm font-semibold text-blue-800">Phase de cadrage</p>
+                            <p className="text-xs text-blue-600 mt-0.5">Définissez le périmètre, les objectifs et l'équipe. Passez à "Prérequis" une fois la planification finalisée.</p>
+                        </div>
+                    </div>
+                    <TabCadrage audit={audit} referentiel={referentiel} identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} readOnly={isClient} />
+                    <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />
+                    {isSeniorOrAdmin && (
+                        <div className="flex justify-end pt-2">
+                            <button
+                                onClick={() => handleChangerPhase(1)}
+                                disabled={changingPhase}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                            >
+                                {changingPhase ? 'En cours…' : 'Valider le cadrage — Passer aux Prérequis'}
+                                {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Phase prérequis */}
+            {audit.phase === 'prerequis' && (
+                <div className="space-y-4">
+                    <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-orange-50 border border-orange-200">
+                        <svg className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                        <div>
+                            <p className="text-sm font-semibold text-orange-800">Phase prérequis — Documents client</p>
+                            <p className="text-xs text-orange-600 mt-0.5">Le client dépose les documents nécessaires. L'auditeur pourra les consulter en revue documentaire.</p>
+                        </div>
+                    </div>
+                    <DocList
+                        documents={documents}
+                        readOnly={false}
+                        uploading={uploading}
+                        currentUserId={user?.id}
+                        isSeniorOrAdmin={isSeniorOrAdmin}
+                        onUpload={handleUploadDocuments}
+                        onDelete={handleDeleteDocument}
+                        onDownload={handleDownloadDocument}
+                    />
+                    {isSeniorOrAdmin && (
+                        <div className="flex justify-end pt-2">
+                            <button
+                                onClick={() => handleChangerPhase(1)}
+                                disabled={changingPhase}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-600 text-white text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                            >
+                                {changingPhase ? 'En cours…' : 'Valider les prérequis — Passer à la Revue documentaire'}
+                                {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Phase revue documentaire */}
+            {audit.phase === 'revue_documentaire' && (
+                <div className="space-y-4">
+                    <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-purple-50 border border-purple-200">
+                        <svg className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <div>
+                            <p className="text-sm font-semibold text-purple-800">Revue documentaire</p>
+                            <p className="text-xs text-purple-600 mt-0.5">Consultez les documents déposés par le client avant de démarrer la réalisation de l'audit.</p>
+                        </div>
+                    </div>
+                    <DocList
+                        documents={documents}
+                        readOnly={true}
+                        uploading={false}
+                        currentUserId={user?.id}
+                        isSeniorOrAdmin={isSeniorOrAdmin}
+                        onUpload={null}
+                        onDelete={null}
+                        onDownload={handleDownloadDocument}
+                    />
+                    {isSeniorOrAdmin && (
+                        <div className="flex justify-end pt-2">
+                            <button
+                                onClick={() => handleChangerPhase(1)}
+                                disabled={changingPhase}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                            >
+                                {changingPhase ? 'En cours…' : 'Valider la revue — Démarrer la Réalisation'}
+                                {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Onglets — phases réalisation et terminé uniquement */}
+            {(audit.phase === 'realisation' || audit.phase === 'termine') && (<>
             {/* Contenu des onglets — communs */}
             {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} readOnly={isClient || isJunior} />}
             {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />}
@@ -807,6 +1037,7 @@ const AuditDetailPage = () => {
                     readOnly={isClient}
                 />
             )}
+            </>)}
 
             <ConfirmModal
                 isOpen={showClotureModal}
@@ -1113,6 +1344,241 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO
                         ))}
                     </dl>
                 )}
+            </div>
+        </div>
+    );
+};
+
+// ─── Documents client ─────────────────────────────────────────────────────────
+
+const FILE_ICONS = {
+    'application/pdf': '📄',
+    'application/msword': '📝',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '📝',
+    'application/vnd.ms-excel': '📊',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '📊',
+    'image/jpeg': '🖼️',
+    'image/png': '🖼️',
+};
+const fileIcon = (mime) => FILE_ICONS[mime] || '📎';
+const fmtSize  = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} o`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+};
+
+const DocList = ({ documents, readOnly, uploading, currentUserId, isSeniorOrAdmin, onUpload, onDelete, onDownload }) => {
+    const inputRef = useRef(null);
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-800">Documents client</h2>
+                {!readOnly && (
+                    <>
+                        <button
+                            onClick={() => inputRef.current?.click()}
+                            disabled={uploading}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                            {uploading ? 'Dépôt…' : 'Déposer des fichiers'}
+                        </button>
+                        <input
+                            ref={inputRef}
+                            type="file"
+                            multiple
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
+                            className="hidden"
+                            onChange={e => { onUpload(e.target.files); e.target.value = ''; }}
+                        />
+                    </>
+                )}
+            </div>
+
+            {documents.length === 0 ? (
+                <div className="py-10 text-center text-gray-400">
+                    <svg className="w-8 h-8 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    <p className="text-sm font-medium">Aucun document déposé</p>
+                    {!readOnly && <p className="text-xs mt-1">PDF, Word, Excel, image — max 10 Mo par fichier</p>}
+                </div>
+            ) : (
+                <ul className="divide-y divide-gray-100">
+                    {documents.map(doc => {
+                        const canDelete = !readOnly && (doc.uploaded_by === currentUserId || isSeniorOrAdmin);
+                        return (
+                            <li key={doc.id} className="flex items-center gap-3 py-3">
+                                <span className="text-xl flex-shrink-0">{fileIcon(doc.type_mime)}</span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-800 truncate">{doc.nom_original}</p>
+                                    <p className="text-xs text-gray-400">{fmtSize(doc.taille)} · {new Date(doc.createdAt).toLocaleDateString('fr-FR')}</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <button
+                                        onClick={() => onDownload(doc.id, doc.nom_original)}
+                                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                        title="Télécharger"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                    </button>
+                                    {canDelete && (
+                                        <button
+                                            onClick={() => onDelete(doc.id)}
+                                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                            title="Supprimer"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                        </button>
+                                    )}
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+        </div>
+    );
+};
+
+// ─── TAB CADRAGE : Périmètre & Planification ─────────────────────────────────
+
+const TYPE_AUDIT_OPTIONS = [
+    { value: 'diagnostique', label: 'Audit diagnostique' },
+    { value: 'a_blanc',      label: 'Audit à blanc' },
+    { value: 'conformite',   label: 'Audit de conformité' },
+];
+
+const TabCadrage = ({ audit, referentiel, identification, setIdentification, onSave, saving, readOnly }) => {
+    const hasData = !!(identification.type_audit || identification.perimetre_physique || identification.perimetre_logique || identification.perimetre_organisationnel);
+    const [editing, setEditing] = useState(!readOnly && !hasData);
+    const set = (k, v) => setIdentification(prev => ({ ...prev, [k]: v }));
+
+    const typeLabel = TYPE_AUDIT_OPTIONS.find(t => t.value === identification.type_audit)?.label;
+
+    const handleSave = () => { onSave(); setEditing(false); };
+
+    const SectionTitle = ({ children }) => (
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">{children}</h3>
+    );
+    const InfoRow = ({ label, value }) => !value ? null : (
+        <div>
+            <dt className="text-xs font-medium text-gray-500">{label}</dt>
+            <dd className="text-sm text-gray-800 mt-0.5">{value}</dd>
+        </div>
+    );
+
+    if (!editing) {
+        return (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-gray-800">Cadrage de l'audit</h2>
+                    {!readOnly && (
+                        <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
+                            Modifier
+                        </button>
+                    )}
+                </div>
+                <div>
+                    <SectionTitle>Informations générales</SectionTitle>
+                    <dl className="grid grid-cols-2 gap-3">
+                        <InfoRow label="Nom de l'audit" value={audit.nom} />
+                        <InfoRow label="Client" value={audit.client} />
+                        <InfoRow label="Référentiel" value={referentiel?.nom} />
+                        <InfoRow label="Type d'audit" value={typeLabel || '—'} />
+                        <InfoRow label="Date début" value={audit.date_debut} />
+                        <InfoRow label="Date fin" value={audit.date_fin} />
+                    </dl>
+                </div>
+                <div>
+                    <SectionTitle>Périmètre</SectionTitle>
+                    <dl className="space-y-3">
+                        <InfoRow label="Périmètre physique" value={identification.perimetre_physique} />
+                        <InfoRow label="Périmètre logique" value={identification.perimetre_logique} />
+                        <InfoRow label="Périmètre organisationnel" value={identification.perimetre_organisationnel} />
+                    </dl>
+                    {!identification.perimetre_physique && !identification.perimetre_logique && !identification.perimetre_organisationnel && (
+                        <p className="text-xs text-gray-400 italic">Périmètre non encore défini.</p>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-800">Cadrage de l'audit</h2>
+                {hasData && (
+                    <button onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>
+                )}
+            </div>
+
+            {/* Infos générales (lecture seule) */}
+            <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Informations générales</h3>
+                <dl className="grid grid-cols-2 gap-3 text-sm">
+                    <div><dt className="text-xs font-medium text-gray-500">Nom</dt><dd className="text-gray-800 mt-0.5">{audit.nom}</dd></div>
+                    <div><dt className="text-xs font-medium text-gray-500">Client</dt><dd className="text-gray-800 mt-0.5">{audit.client}</dd></div>
+                    <div><dt className="text-xs font-medium text-gray-500">Référentiel</dt><dd className="text-gray-800 mt-0.5">{referentiel?.nom || '—'}</dd></div>
+                    <div><dt className="text-xs font-medium text-gray-500">Dates</dt><dd className="text-gray-800 mt-0.5">{audit.date_debut || '—'} → {audit.date_fin || '—'}</dd></div>
+                </dl>
+            </div>
+
+            {/* Type d'audit */}
+            <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Type d'audit</h3>
+                <div className="grid grid-cols-3 gap-3">
+                    {TYPE_AUDIT_OPTIONS.map(opt => (
+                        <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => set('type_audit', opt.value)}
+                            className={`px-4 py-3 rounded-lg border text-sm font-medium transition text-left ${
+                                identification.type_audit === opt.value
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Périmètre */}
+            <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Périmètre</h3>
+                <div className="space-y-4">
+                    {[
+                        { key: 'perimetre_physique',        label: 'Périmètre physique',        placeholder: 'Sites, bâtiments, équipements physiques concernés…' },
+                        { key: 'perimetre_logique',         label: 'Périmètre logique',         placeholder: 'Systèmes, réseaux, applications, bases de données…' },
+                        { key: 'perimetre_organisationnel', label: 'Périmètre organisationnel', placeholder: 'Entités, directions, processus métier concernés…' },
+                    ].map(({ key, label, placeholder }) => (
+                        <div key={key}>
+                            <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
+                            <textarea
+                                rows={3}
+                                value={identification[key] || ''}
+                                onChange={e => set(key, e.target.value)}
+                                placeholder={placeholder}
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
+                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
+                >
+                    {saving ? 'Enregistrement…' : 'Enregistrer le cadrage'}
+                </button>
             </div>
         </div>
     );
@@ -1450,23 +1916,23 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                 <ConformiteBadge conformite={conformite} />
                                                             </td>
                                                             <td className="px-3 py-2">
-                                                                <input
-                                                                    type="text"
+                                                                <textarea
                                                                     value={ev.commentaire || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
                                                                     readOnly={readOnly}
+                                                                    rows={2}
                                                                     placeholder={readOnly ? '—' : 'Constat...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default"
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
                                                                 />
                                                             </td>
                                                             <td className="px-3 py-2">
-                                                                <input
-                                                                    type="text"
+                                                                <textarea
                                                                     value={ev.recommandation || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
                                                                     readOnly={readOnly}
+                                                                    rows={2}
                                                                     placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default"
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
                                                                 />
                                                             </td>
                                                             <td className="px-3 py-2">
@@ -1709,7 +2175,7 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
                                         return mesures.map((mesure, idx) => {
                                             const ev = localEvals[mesure.id] || {};
                                             const niveau = ev.niveau_maturite ?? null;
-                                            const conformite = calcConformite(niveau);
+                                            const conformite = isoConformite(niveau);
                                             return (
                                                 <tr key={mesure.id} className="hover:bg-blue-50/20 border-b border-gray-50">
                                                     {/* Cellule fusionnée objectif — seulement sur la 1re ligne */}
@@ -1960,16 +2426,18 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                                                         </div>
                                                         {niveau !== null && (
                                                             <div className="mt-2 ml-[76px] grid grid-cols-3 gap-3">
-                                                                <input type="text" value={ev.commentaire || ''}
+                                                                <textarea value={ev.commentaire || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
                                                                     readOnly={readOnly}
+                                                                    rows={2}
                                                                     placeholder={readOnly ? '—' : 'Constat...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
-                                                                <input type="text" value={ev.recommandation || ''}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
+                                                                <textarea value={ev.recommandation || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
                                                                     readOnly={readOnly}
+                                                                    rows={2}
                                                                     placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
                                                                 <input type="text" value={ev.preuve || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
                                                                     readOnly={readOnly}
@@ -2141,16 +2609,18 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                                         {/* Constat + recommandation + preuve si évalué */}
                                                         {niveau !== null && (
                                                             <div className="mt-2 ml-24 grid grid-cols-3 gap-3">
-                                                                <input type="text" value={ev.commentaire || ''}
+                                                                <textarea value={ev.commentaire || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
                                                                     readOnly={readOnly}
+                                                                    rows={2}
                                                                     placeholder={readOnly ? '—' : 'Constat...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
-                                                                <input type="text" value={ev.recommandation || ''}
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
+                                                                <textarea value={ev.recommandation || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
                                                                     readOnly={readOnly}
+                                                                    rows={2}
                                                                     placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
                                                                 <input type="text" value={ev.preuve || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
                                                                     readOnly={readOnly}

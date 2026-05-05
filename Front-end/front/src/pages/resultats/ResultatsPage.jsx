@@ -134,14 +134,14 @@ const RadarChart = ({ synthese }) => {
 
 // ─── Graphique : Donut conformité ─────────────────────────────────────────────
 
-const DonutConformite = ({ conforme, partiel, non_conforme, na }) => {
+const DonutConformite = ({ conforme, partiel, non_conforme, na, isISO = false }) => {
     const total = conforme + partiel + non_conforme + na;
     if (total === 0) return null;
 
     const segments = [
         { value: conforme,     color: '#16a34a', label: 'Conformes' },
-        { value: partiel,      color: '#d97706', label: 'Partiels' },
-        { value: non_conforme, color: '#CC0000', label: 'Non conformes' },
+        { value: partiel,      color: '#d97706', label: isISO ? 'NC mineures' : 'Partiels' },
+        { value: non_conforme, color: '#CC0000', label: isISO ? 'NC majeures' : 'Non conformes' },
         { value: na,           color: '#d1d5db', label: 'N/A' },
     ];
 
@@ -187,7 +187,7 @@ const DonutConformite = ({ conforme, partiel, non_conforme, na }) => {
 
 // ─── Graphique : Barres empilées par domaine ──────────────────────────────────
 
-const BarresEmpilees = ({ synthese }) => {
+const BarresEmpilees = ({ synthese, isISO = false }) => {
     const maxTotal = Math.max(...synthese.map(d => d.total), 1);
 
     return (
@@ -208,8 +208,8 @@ const BarresEmpilees = ({ synthese }) => {
                         </div>
                         <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
                             {conf > 0  && <div style={{ width: `${conf}%`,  backgroundColor: '#16a34a' }} title={`Conformes: ${d.conforme}`} />}
-                            {part > 0  && <div style={{ width: `${part}%`,  backgroundColor: '#d97706' }} title={`Partiels: ${d.partiel}`} />}
-                            {nc > 0    && <div style={{ width: `${nc}%`,    backgroundColor: '#CC0000' }} title={`NC: ${d.non_conforme}`} />}
+                            {part > 0  && <div style={{ width: `${part}%`,  backgroundColor: '#d97706' }} title={`${isISO ? 'NC mineures' : 'Partiels'}: ${d.partiel}`} />}
+                            {nc > 0    && <div style={{ width: `${nc}%`,    backgroundColor: '#CC0000' }} title={`${isISO ? 'NC majeures' : 'NC'}: ${d.non_conforme}`} />}
                             {naP > 0   && <div style={{ width: `${naP}%`,   backgroundColor: '#e5e7eb' }} title={`N/A: ${d.na}`} />}
                         </div>
                     </div>
@@ -218,8 +218,8 @@ const BarresEmpilees = ({ synthese }) => {
             <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
                 {[
                     { color: '#16a34a', label: 'Conformes' },
-                    { color: '#d97706', label: 'Partiels' },
-                    { color: '#CC0000', label: 'Non conformes' },
+                    { color: '#d97706', label: isISO ? 'NC mineures' : 'Partiels' },
+                    { color: '#CC0000', label: isISO ? 'NC majeures' : 'Non conformes' },
                     { color: '#e5e7eb', label: 'N/A', border: true },
                 ].map(l => (
                     <span key={l.label} className="flex items-center gap-1.5 text-[10px] text-gray-500">
@@ -574,7 +574,7 @@ const ResultatsPage = () => {
                             <div className="col-span-2 flex flex-col gap-5">
                                 <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center">
                                     <h2 className="text-sm font-semibold text-gray-800 mb-3 self-start">Répartition de conformité</h2>
-                                    <DonutConformite conforme={totalConforme} partiel={totalPartiel} non_conforme={totalNC} na={totalNA} />
+                                    <DonutConformite conforme={totalConforme} partiel={totalPartiel} non_conforme={totalNC} na={totalNA} isISO={isISO} />
                                 </div>
                                 <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center">
                                     <h2 className="text-sm font-semibold text-gray-800 mb-1 self-start">Score global de maturité</h2>
@@ -588,15 +588,15 @@ const ResultatsPage = () => {
                         <div className="grid grid-cols-2 gap-5">
                             <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center">
                                 <h2 className="text-sm font-semibold text-gray-800 mb-3 self-start">Répartition de conformité (Annexe A)</h2>
-                                <p className="text-[10px] text-gray-400 self-start mb-4">Contrôles applicables évalués — Conformes / Partiels / Non conformes / N/A</p>
-                                <DonutConformite conforme={totalConforme} partiel={totalPartiel} non_conforme={totalNC} na={totalNA} />
+                                <p className="text-[10px] text-gray-400 self-start mb-4">Contrôles applicables évalués — Conformes / NC mineures / NC majeures / N/A</p>
+                                <DonutConformite conforme={totalConforme} partiel={totalPartiel} non_conforme={totalNC} na={totalNA} isISO={isISO} />
                             </div>
                             <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center">
                                 <h2 className="text-sm font-semibold text-gray-800 mb-1 self-start">Taux de conformité global</h2>
                                 <p className="text-[10px] text-gray-400 self-start mb-2">Score moyen pondéré sur les contrôles applicables</p>
                                 <JaugeScore score={globalScore} />
                                 <p className="text-[10px] text-gray-400 mt-3 text-center max-w-xs">
-                                    Pour ISO 27001, la rosace de maturité n'est pas applicable — l'évaluation utilise uniquement Conforme / Partiel / Non conforme.
+                                    Pour ISO 27001, la rosace de maturité n'est pas applicable — l'évaluation utilise uniquement Conforme / NC mineure / NC majeure.
                                 </p>
                             </div>
                         </div>
@@ -607,7 +607,7 @@ const ResultatsPage = () => {
                         {/* Barres empilées */}
                         <div className="col-span-3 bg-white rounded-xl border border-gray-200 p-6">
                             <h2 className="text-sm font-semibold text-gray-800 mb-4">Répartition conformité par domaine</h2>
-                            <BarresEmpilees synthese={synthese} />
+                            <BarresEmpilees synthese={synthese} isISO={isISO} />
                         </div>
 
                         {/* Score bars */}
@@ -662,7 +662,7 @@ const ResultatsPage = () => {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-gray-100">
-                                        {['Domaine', 'Score moy.', 'Niveau', 'Conformes', 'Partiels', 'Non-conformes', 'N/A', 'Taux conformité'].map((h, i) => (
+                                        {['Domaine', 'Score moy.', 'Niveau', 'Conformes', isISO ? 'NC mineures' : 'Partiels', isISO ? 'NC majeures' : 'Non-conformes', 'N/A', 'Taux conformité'].map((h, i) => (
                                             <th key={i} className={`text-xs font-semibold text-gray-500 pb-2.5 ${i === 0 ? 'text-left pr-4' : 'text-center px-3'}`}>{h}</th>
                                         ))}
                                     </tr>

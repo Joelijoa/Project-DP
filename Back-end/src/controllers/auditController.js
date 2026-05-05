@@ -366,4 +366,39 @@ const rejeterAudit = async (req, res) => {
     }
 };
 
-module.exports = { getAllAudits, getAuditById, createAudit, updateAudit, deleteAudit, getEvaluations, saveEvaluations, soumettreAudit, validerAudit, rejeterAudit };
+const PHASES = ['cadrage', 'prerequis', 'revue_documentaire', 'realisation', 'termine'];
+
+// PUT /api/audits/:id/phase
+const changerPhase = async (req, res) => {
+    try {
+        const { phase } = req.body;
+        if (!PHASES.includes(phase)) {
+            return res.status(400).json({ message: 'Phase invalide.' });
+        }
+        const audit = await Audit.findByPk(req.params.id);
+        if (!audit) return res.status(404).json({ message: 'Audit non trouvé.' });
+
+        const currentIdx = PHASES.indexOf(audit.phase || 'cadrage');
+        const newIdx = PHASES.indexOf(phase);
+        if (Math.abs(newIdx - currentIdx) !== 1) {
+            return res.status(400).json({ message: 'Vous ne pouvez avancer ou reculer que d\'une phase à la fois.' });
+        }
+
+        const oldPhase = audit.phase;
+        await audit.update({ phase });
+        await log('phase_changed', `Phase de l'audit "${audit.nom}" : ${oldPhase} → ${phase}`, req.user.userId, getIp(req));
+
+        const updated = await Audit.findByPk(req.params.id, {
+            include: [
+                { model: User, as: 'createur', attributes: ['id', 'nom', 'prenom'] },
+                { model: User, as: 'auditeurs', attributes: ['id', 'nom', 'prenom', 'email'], through: { attributes: [] } },
+                { model: require('../models').Referentiel, as: 'referentiel', attributes: ['id', 'nom', 'type'] },
+            ],
+        });
+        res.json({ audit: updated });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { getAllAudits, getAuditById, createAudit, updateAudit, deleteAudit, getEvaluations, saveEvaluations, soumettreAudit, validerAudit, rejeterAudit, changerPhase };

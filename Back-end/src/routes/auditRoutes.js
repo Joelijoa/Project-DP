@@ -1,6 +1,41 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs   = require('fs');
+const multer = require('multer');
 const { verifyToken, verifyRole } = require('../middlewares/authMiddleware');
+const { getDocuments, uploadDocuments, deleteDocument, downloadDocument } = require('../controllers/documentController');
+
+// ─── Multer config ────────────────────────────────────────────────────────────
+const UPLOADS_DIR = path.join(__dirname, '../../uploads/documents');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+    filename:    (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+});
+
+const ALLOWED_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg', 'image/png', 'text/plain',
+];
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) =>
+        ALLOWED_TYPES.includes(file.mimetype)
+            ? cb(null, true)
+            : cb(new Error('Type de fichier non autorisé (PDF, Word, Excel, image, txt).'), false),
+});
+
 const {
     getAllAudits,
     getAuditById,
@@ -12,6 +47,7 @@ const {
     soumettreAudit,
     validerAudit,
     rejeterAudit,
+    changerPhase,
 } = require('../controllers/auditController');
 const { getSoA, saveSoA } = require('../controllers/soaController');
 const { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, getAllPlanActions, soumettreValidationPlan, validerPlanAction, rejeterPlanAction } = require('../controllers/planActionController');
@@ -433,6 +469,15 @@ router.put('/:id/valider', verifyToken, verifyRole('admin', 'auditeur_senior'), 
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.put('/:id/rejeter', verifyToken, verifyRole('admin', 'auditeur_senior'), rejeterAudit);
+
+router.put('/:id/phase', verifyToken, verifyRole('admin', 'auditeur_senior'), changerPhase);
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+router.get   ('/:id/documents',                verifyToken, getDocuments);
+router.post  ('/:id/documents',                verifyToken, upload.array('fichiers', 10), uploadDocuments);
+router.delete('/:id/documents/:docId',         verifyToken, deleteDocument);
+router.get   ('/:id/documents/:docId/download', verifyToken, downloadDocument);
 
 // ─── Plans d'actions ────────────────────────────────────────────────────────
 

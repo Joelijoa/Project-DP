@@ -63,6 +63,11 @@ const Audit = sequelize.define('Audit', {
         allowNull: true,
         defaultValue: null,
     },
+    phase: {
+        type: DataTypes.ENUM('cadrage', 'prerequis', 'revue_documentaire', 'realisation', 'termine'),
+        allowNull: false,
+        defaultValue: 'cadrage',
+    },
 }, {
     tableName: 'audits',
 });
