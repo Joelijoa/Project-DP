@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA, soumettreAudit, validerAudit, rejeterAudit, changerPhase, getDocuments, uploadDocuments, deleteDocument, downloadDocument } from '../../services/endpoints/auditService';
+import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA, soumettreAudit, validerAudit, rejeterAudit, changerPhase, getDocuments, uploadDocuments, deleteDocument, downloadDocument, soumettreValidationPlanning, repondreValidationPlanning, soumettreValidationRapport, repondreValidationRapport } from '../../services/endpoints/auditService';
 import { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, soumettreValidationPlan, validerPlanAction, rejeterPlanAction } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
@@ -384,6 +384,36 @@ const AuditDetailPage = () => {
             URL.revokeObjectURL(url);
         } catch {
             toast.error('Erreur lors du téléchargement.');
+        }
+    };
+
+    const handleFetchDocBlob = async (docId) => {
+        const res = await downloadDocument(id, docId);
+        return res.data;
+    };
+
+    const [validatingClient, setValidatingClient] = useState(false);
+
+    const handleValidationClient = async (type, action, commentaire) => {
+        setValidatingClient(true);
+        try {
+            const fn = type === 'planning'
+                ? (action === 'soumettre' ? soumettreValidationPlanning : repondreValidationPlanning)
+                : (action === 'soumettre' ? soumettreValidationRapport  : repondreValidationRapport);
+            const res = action === 'soumettre'
+                ? await fn(id)
+                : await fn(id, action, commentaire);
+            setAudit(prev => ({ ...prev, ...res.data.audit }));
+            const msgs = {
+                soumettre: 'Soumis au client pour validation.',
+                valider: 'Planning validé.',
+                demander_modification: 'Demande de modification envoyée.',
+            };
+            toast.success(msgs[action] || 'Mis à jour.');
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Erreur.');
+        } finally {
+            setValidatingClient(false);
         }
     };
 
@@ -859,6 +889,22 @@ const AuditDetailPage = () => {
                     </div>
                     <TabCadrage audit={audit} referentiel={referentiel} identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} readOnly={isClient} />
                     <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />
+                    <PlanningAuditCard
+                        audit={audit}
+                        identification={identification}
+                        setIdentification={setIdentification}
+                        onSave={() => handleSaveInfo('identification', identification)}
+                        saving={savingInfo}
+                        readOnly={isClient}
+                    />
+                    <ValidationClientCard
+                        type="planning"
+                        validation={audit.validation_planning}
+                        isSeniorOrAdmin={isSeniorOrAdmin}
+                        isClient={isClient}
+                        onAction={handleValidationClient}
+                        loading={validatingClient}
+                    />
                     {isSeniorOrAdmin && (
                         <div className="flex justify-end pt-2">
                             <button
@@ -877,22 +923,42 @@ const AuditDetailPage = () => {
             {/* Phase prérequis */}
             {audit.phase === 'prerequis' && (
                 <div className="space-y-4">
-                    <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-orange-50 border border-orange-200">
-                        <svg className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                        <div>
-                            <p className="text-sm font-semibold text-orange-800">Phase prérequis — Documents client</p>
-                            <p className="text-xs text-orange-600 mt-0.5">Le client dépose les documents nécessaires. L'auditeur pourra les consulter en revue documentaire.</p>
+                    {/* Bandeau rôle-spécifique */}
+                    {isClient ? (
+                        <div className="flex items-start gap-4 p-5 rounded-xl bg-orange-50 border border-orange-200">
+                            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-orange-900">Action requise — Dépôt des documents</p>
+                                <p className="text-xs text-orange-700 mt-1">Veuillez déposer tous les documents nécessaires à l'audit (politiques, procédures, rapports précédents…). L'équipe d'audit pourra ensuite les examiner.</p>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-orange-50 border border-orange-200">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <div>
+                                    <p className="text-sm font-semibold text-orange-800">En attente des documents du client</p>
+                                    <p className="text-xs text-orange-600 mt-0.5">Le client doit déposer les prérequis avant de pouvoir passer à la revue documentaire.</p>
+                                </div>
+                            </div>
+                            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${documents.length > 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600'}`}>
+                                {documents.length > 0 ? `${documents.length} fichier(s) reçu(s)` : 'Aucun fichier'}
+                            </span>
+                        </div>
+                    )}
                     <DocList
                         documents={documents}
-                        readOnly={false}
+                        mode="depot"
+                        readOnly={!isClient}
                         uploading={uploading}
                         currentUserId={user?.id}
                         isSeniorOrAdmin={isSeniorOrAdmin}
                         onUpload={handleUploadDocuments}
                         onDelete={handleDeleteDocument}
                         onDownload={handleDownloadDocument}
+                        onFetchBlob={handleFetchDocBlob}
                     />
                     {isSeniorOrAdmin && (
                         <div className="flex justify-end pt-2">
@@ -912,15 +978,29 @@ const AuditDetailPage = () => {
             {/* Phase revue documentaire */}
             {audit.phase === 'revue_documentaire' && (
                 <div className="space-y-4">
-                    <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-purple-50 border border-purple-200">
-                        <svg className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        <div>
-                            <p className="text-sm font-semibold text-purple-800">Revue documentaire</p>
-                            <p className="text-xs text-purple-600 mt-0.5">Consultez les documents déposés par le client avant de démarrer la réalisation de l'audit.</p>
+                    {/* Bandeau rôle-spécifique */}
+                    {isClient ? (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-50 border border-purple-200">
+                            <svg className="w-5 h-5 text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <div>
+                                <p className="text-sm font-semibold text-purple-800">Documents transmis — Revue en cours</p>
+                                <p className="text-xs text-purple-600 mt-0.5">L'équipe d'audit examine vos documents. Vous serez notifié à la prochaine étape.</p>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex items-start gap-4 p-5 rounded-xl bg-purple-50 border border-purple-200">
+                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-purple-900">Revue documentaire — Lecture des fichiers</p>
+                                <p className="text-xs text-purple-700 mt-1">Examinez les {documents.length > 0 ? `${documents.length} document(s) déposé(s)` : 'documents déposés'} par le client. Utilisez l'icône œil pour visualiser chaque fichier dans la plateforme.</p>
+                            </div>
+                        </div>
+                    )}
                     <DocList
                         documents={documents}
+                        mode="revue"
                         readOnly={true}
                         uploading={false}
                         currentUserId={user?.id}
@@ -928,6 +1008,7 @@ const AuditDetailPage = () => {
                         onUpload={null}
                         onDelete={null}
                         onDownload={handleDownloadDocument}
+                        onFetchBlob={handleFetchDocBlob}
                     />
                     {isSeniorOrAdmin && (
                         <div className="flex justify-end pt-2">
@@ -941,6 +1022,20 @@ const AuditDetailPage = () => {
                             </button>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Validation rapport final — phase terminé */}
+            {audit.phase === 'termine' && (
+                <div className="mb-4">
+                    <ValidationClientCard
+                        type="rapport"
+                        validation={audit.validation_rapport}
+                        isSeniorOrAdmin={isSeniorOrAdmin}
+                        isClient={isClient}
+                        onAction={handleValidationClient}
+                        loading={validatingClient}
+                    />
                 </div>
             )}
 
@@ -1349,6 +1444,319 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO
     );
 };
 
+// ─── Planning de l'audit ─────────────────────────────────────────────────────
+
+const ETAPES_DEF = [
+    'Cadrage',
+    'Prérequis / Collecte documents',
+    'Revue documentaire',
+    'Réalisation',
+    'Rendu du rapport',
+];
+
+const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, saving, readOnly }) => {
+    const planning = identification.planning || {};
+    const hasData = !!(planning.objectifs || planning.methodes || planning.documents_attendus || (planning.etapes || []).some(e => e.date_debut || e.date_fin));
+
+    const [editing, setEditing] = useState(!readOnly && !hasData);
+
+    const setP = (key, val) => setIdentification(prev => ({
+        ...prev,
+        planning: { ...(prev.planning || {}), [key]: val },
+    }));
+
+    const setEtape = (idx, field, val) => {
+        const etapes = [...(planning.etapes || ETAPES_DEF.map(nom => ({ nom, date_debut: '', date_fin: '' })))];
+        etapes[idx] = { ...etapes[idx], [field]: val };
+        setP('etapes', etapes);
+    };
+
+    const etapes = planning.etapes || ETAPES_DEF.map(nom => ({ nom, date_debut: '', date_fin: '' }));
+
+    const handleSave = () => { onSave(); setEditing(false); };
+
+    const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : '—';
+
+    const InfoBlock = ({ label, value }) => !value ? null : (
+        <div>
+            <dt className="text-xs font-medium text-gray-500 mb-0.5">{label}</dt>
+            <dd className="text-sm text-gray-800 whitespace-pre-wrap">{value}</dd>
+        </div>
+    );
+
+    if (!editing) {
+        return (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-gray-800">Planning de l'audit</h2>
+                    {!readOnly && (
+                        <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
+                            Modifier
+                        </button>
+                    )}
+                </div>
+
+                {!hasData ? (
+                    <p className="text-xs text-gray-400 italic">Planning non encore défini.</p>
+                ) : (
+                    <>
+                        <dl className="space-y-4">
+                            <InfoBlock label="Objectifs de l'audit" value={planning.objectifs} />
+                            <InfoBlock label="Méthodes d'audit" value={planning.methodes} />
+                            <InfoBlock label="Documents attendus du client" value={planning.documents_attendus} />
+                        </dl>
+
+                        {/* Équipe */}
+                        {audit.auditeurs?.length > 0 && (
+                            <div>
+                                <dt className="text-xs font-medium text-gray-500 mb-1.5">Équipe d'audit</dt>
+                                <div className="flex flex-wrap gap-2">
+                                    {audit.auditeurs.map(a => (
+                                        <span key={a.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-700">
+                                            <span className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-bold">{(a.prenom?.[0] || '?').toUpperCase()}</span>
+                                            {a.prenom} {a.nom}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Calendrier */}
+                        <div>
+                            <dt className="text-xs font-medium text-gray-500 mb-2">Calendrier prévisionnel</dt>
+                            <table className="w-full text-sm border-collapse">
+                                <thead>
+                                    <tr className="border-b border-gray-100">
+                                        <th className="text-left text-xs font-medium text-gray-500 pb-2 pr-4">Étape</th>
+                                        <th className="text-left text-xs font-medium text-gray-500 pb-2 pr-4">Début</th>
+                                        <th className="text-left text-xs font-medium text-gray-500 pb-2">Fin</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {etapes.map((e, i) => (
+                                        <tr key={i} className="border-b border-gray-50">
+                                            <td className="py-1.5 pr-4 text-gray-700 font-medium">{e.nom}</td>
+                                            <td className="py-1.5 pr-4 text-gray-600">{fmt(e.date_debut)}</td>
+                                            <td className="py-1.5 text-gray-600">{fmt(e.date_fin)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-800">Planning de l'audit</h2>
+                {hasData && <button onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>}
+            </div>
+
+            {/* Objectifs */}
+            <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Objectifs de l'audit</h3>
+                <textarea
+                    rows={3}
+                    value={planning.objectifs || ''}
+                    onChange={e => setP('objectifs', e.target.value)}
+                    placeholder="Décrire les objectifs de l'audit…"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
+                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                />
+            </div>
+
+            {/* Calendrier */}
+            <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Calendrier prévisionnel</h3>
+                <div className="space-y-2">
+                    {etapes.map((e, i) => (
+                        <div key={i} className="grid grid-cols-[1fr_160px_160px] gap-3 items-center">
+                            <span className="text-sm font-medium text-gray-700">{e.nom}</span>
+                            <div>
+                                <label className="block text-xs text-gray-500 mb-1">Début</label>
+                                <input type="date" value={e.date_debut || ''} onChange={ev => setEtape(i, 'date_debut', ev.target.value)}
+                                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-500 mb-1">Fin</label>
+                                <input type="date" value={e.date_fin || ''} onChange={ev => setEtape(i, 'date_fin', ev.target.value)}
+                                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Équipe */}
+            {audit.auditeurs?.length > 0 && (
+                <div>
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Équipe d'audit</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {audit.auditeurs.map(a => (
+                            <span key={a.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-700">
+                                {a.prenom} {a.nom}
+                            </span>
+                        ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Auditeurs assignés à cet audit.</p>
+                </div>
+            )}
+
+            {/* Méthodes */}
+            <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Méthodes d'audit</h3>
+                <textarea
+                    rows={2}
+                    value={planning.methodes || ''}
+                    onChange={e => setP('methodes', e.target.value)}
+                    placeholder="Entretiens, revue documentaire, tests techniques, observations terrain…"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
+                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                />
+            </div>
+
+            {/* Documents attendus */}
+            <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Documents attendus du client</h3>
+                <textarea
+                    rows={3}
+                    value={planning.documents_attendus || ''}
+                    onChange={e => setP('documents_attendus', e.target.value)}
+                    placeholder="Politique de sécurité, procédures internes, schémas réseau, contrats prestataires…"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
+                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                />
+            </div>
+
+            <div className="flex justify-end pt-1">
+                <button onClick={handleSave} disabled={saving}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
+                    {saving ? 'Enregistrement…' : 'Enregistrer le planning'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// ─── Validation client ────────────────────────────────────────────────────────
+
+const ValidationClientCard = ({ type, validation, isSeniorOrAdmin, isClient, onAction, loading }) => {
+    const [commentaire, setCommentaire] = useState('');
+    const [showModifForm, setShowModifForm] = useState(false);
+
+    const titles = { planning: "Validation du planning par le client", rapport: "Validation du rapport final par le client" };
+    const submitLabels = { planning: "Soumettre le planning au client", rapport: "Soumettre le rapport au client" };
+
+    const statusConfig = {
+        en_attente:           { label: 'En attente de validation client', color: 'text-orange-700 bg-orange-50 border-orange-200' },
+        valide:               { label: 'Validé par le client', color: 'text-green-700 bg-green-50 border-green-200' },
+        modification_demandee:{ label: 'Modification demandée', color: 'text-red-700 bg-red-50 border-red-200' },
+    };
+
+    const statut = validation?.statut;
+    const cfg = statut ? statusConfig[statut] : null;
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-800">{titles[type]}</h3>
+
+            {/* Pas encore soumis */}
+            {!validation && isSeniorOrAdmin && (
+                <button
+                    onClick={() => onAction(type, 'soumettre')}
+                    disabled={loading}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                    {loading ? 'Envoi…' : submitLabels[type]}
+                </button>
+            )}
+            {!validation && !isSeniorOrAdmin && (
+                <p className="text-xs text-gray-400 italic">Non encore soumis au client.</p>
+            )}
+
+            {/* Badge statut */}
+            {cfg && (
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium ${cfg.color}`}>
+                    <span>{cfg.label}</span>
+                    {validation.date && <span className="ml-auto opacity-70">{new Date(validation.date).toLocaleDateString('fr-FR')}</span>}
+                </div>
+            )}
+
+            {/* Commentaire modification demandée */}
+            {statut === 'modification_demandee' && validation.commentaire && (
+                <div className="px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-700">
+                    <span className="font-medium">Motif : </span>{validation.commentaire}
+                </div>
+            )}
+
+            {/* Client peut répondre si en_attente */}
+            {statut === 'en_attente' && isClient && (
+                <div className="flex flex-col gap-3">
+                    {!showModifForm ? (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => onAction(type, 'valider')}
+                                disabled={loading}
+                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                Valider
+                            </button>
+                            <button
+                                onClick={() => setShowModifForm(true)}
+                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
+                                Demander des modifications
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <textarea
+                                rows={3}
+                                value={commentaire}
+                                onChange={e => setCommentaire(e.target.value)}
+                                placeholder="Décrivez les modifications souhaitées…"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
+                                style={{ color: '#111827' }}
+                            />
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => { onAction(type, 'demander_modification', commentaire); setShowModifForm(false); setCommentaire(''); }}
+                                    disabled={loading || !commentaire.trim()}
+                                    className="px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition"
+                                >
+                                    {loading ? 'Envoi…' : 'Envoyer la demande'}
+                                </button>
+                                <button onClick={() => setShowModifForm(false)} className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700">Annuler</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Senior/admin peut resoumettre si modification demandée ou déjà soumis */}
+            {(statut === 'modification_demandee') && isSeniorOrAdmin && (
+                <button
+                    onClick={() => onAction(type, 'soumettre')}
+                    disabled={loading}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition"
+                >
+                    {loading ? 'Envoi…' : 'Resoumettre au client'}
+                </button>
+            )}
+        </div>
+    );
+};
+
 // ─── Documents client ─────────────────────────────────────────────────────────
 
 const FILE_ICONS = {
@@ -1368,76 +1776,231 @@ const fmtSize  = (bytes) => {
     return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
 };
 
-const DocList = ({ documents, readOnly, uploading, currentUserId, isSeniorOrAdmin, onUpload, onDelete, onDownload }) => {
-    const inputRef = useRef(null);
+const PREVIEWABLE = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'text/plain'];
+
+const DocumentPreviewModal = ({ doc, onClose, onFetchBlob, onDownload }) => {
+    const [blobUrl, setBlobUrl] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const canPreview = PREVIEWABLE.includes(doc.mime);
+    const isImage = doc.mime?.startsWith('image/');
+
+    useEffect(() => {
+        let url = null;
+        if (!canPreview) { setLoading(false); return; }
+        onFetchBlob(doc.id)
+            .then(blob => { url = URL.createObjectURL(new Blob([blob], { type: doc.mime })); setBlobUrl(url); })
+            .catch(() => {})
+            .finally(() => setLoading(false));
+        return () => { if (url) URL.revokeObjectURL(url); };
+    }, [doc.id]);
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-800">Documents client</h2>
-                {!readOnly && (
-                    <>
-                        <button
-                            onClick={() => inputRef.current?.click()}
-                            disabled={uploading}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                            {uploading ? 'Dépôt…' : 'Déposer des fichiers'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden" style={{ height: '85vh' }} onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-2xl flex-shrink-0">{fileIcon(doc.mime)}</span>
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{doc.nom}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{fmtSize(doc.taille)}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                        <button onClick={() => onDownload(doc.id, doc.nom)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 rounded-lg transition">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                            Télécharger
                         </button>
-                        <input
-                            ref={inputRef}
-                            type="file"
-                            multiple
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
-                            className="hidden"
-                            onChange={e => { onUpload(e.target.files); e.target.value = ''; }}
-                        />
-                    </>
-                )}
+                        <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </div>
+                {/* Body */}
+                <div className="flex-1 overflow-auto bg-gray-50 flex items-center justify-center p-4">
+                    {loading && <p className="text-gray-400 text-sm animate-pulse">Chargement…</p>}
+                    {!loading && blobUrl && isImage && (
+                        <img src={blobUrl} alt={doc.nom} className="max-w-full max-h-full object-contain rounded shadow" />
+                    )}
+                    {!loading && blobUrl && !isImage && (
+                        <iframe src={blobUrl} title={doc.nom} className="w-full h-full rounded" style={{ border: 'none', minHeight: '400px' }} />
+                    )}
+                    {!loading && !canPreview && (
+                        <div className="text-center">
+                            <span className="text-6xl block mb-5">{fileIcon(doc.mime)}</span>
+                            <p className="text-gray-700 font-medium mb-2">{doc.nom}</p>
+                            <p className="text-gray-400 text-sm mb-6">Aperçu non disponible pour ce format.</p>
+                            <button onClick={() => onDownload(doc.id, doc.nom)}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                Télécharger
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
+        </div>
+    );
+};
 
+// ── Zone de dépôt (prérequis — client upload) ────────────────────────────────
+const DepotDocuments = ({ documents, uploading, currentUserId, isSeniorOrAdmin, readOnly, onUpload, onDelete, onDownload, onFetchBlob }) => {
+    const inputRef = useRef(null);
+    const [dragging, setDragging] = useState(false);
+    const [preview, setPreview] = useState(null);
+
+    const handleDrop = (e) => {
+        e.preventDefault(); setDragging(false);
+        if (!readOnly && onUpload) onUpload(e.dataTransfer.files);
+    };
+
+    return (
+        <>
+        {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
+        <div className="space-y-3">
+            {/* Zone de dépôt — visible uniquement pour le client */}
+            {!readOnly && (
+                <>
+                <div
+                    onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => !uploading && inputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragging ? 'border-orange-400 bg-orange-50' : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50/40'}`}
+                >
+                    {uploading ? (
+                        <p className="text-sm text-orange-600 font-medium animate-pulse">Dépôt en cours…</p>
+                    ) : (
+                        <>
+                        <svg className="w-10 h-10 mx-auto mb-3 text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                        <p className="text-sm font-semibold text-gray-700">Glissez vos fichiers ici</p>
+                        <p className="text-xs text-gray-400 mt-1">ou <span className="text-orange-500 font-medium">cliquez pour sélectionner</span></p>
+                        <p className="text-xs text-gray-300 mt-3">PDF · Word · Excel · Image — 10 Mo max par fichier</p>
+                        </>
+                    )}
+                </div>
+                <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
+                    className="hidden" onChange={e => { onUpload(e.target.files); e.target.value = ''; }} />
+                </>
+            )}
+
+            {/* Liste des fichiers déposés */}
             {documents.length === 0 ? (
-                <div className="py-10 text-center text-gray-400">
-                    <svg className="w-8 h-8 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                    <p className="text-sm font-medium">Aucun document déposé</p>
-                    {!readOnly && <p className="text-xs mt-1">PDF, Word, Excel, image — max 10 Mo par fichier</p>}
+                <div className={`py-8 text-center text-gray-400 bg-white rounded-xl border border-gray-100 ${readOnly ? '' : ''}`}>
+                    <svg className="w-7 h-7 mx-auto mb-2 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    <p className="text-sm">{readOnly ? 'Aucun document déposé par le client.' : 'Aucun fichier déposé pour l\'instant.'}</p>
                 </div>
             ) : (
-                <ul className="divide-y divide-gray-100">
+                <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
                     {documents.map(doc => {
                         const canDelete = !readOnly && (doc.uploaded_by === currentUserId || isSeniorOrAdmin);
                         return (
-                            <li key={doc.id} className="flex items-center gap-3 py-3">
-                                <span className="text-xl flex-shrink-0">{fileIcon(doc.type_mime)}</span>
+                            <div key={doc.id} className="flex items-center gap-3 px-4 py-3">
+                                <span className="text-lg flex-shrink-0">{fileIcon(doc.type_mime)}</span>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-800 truncate">{doc.nom_original}</p>
                                     <p className="text-xs text-gray-400">{fmtSize(doc.taille)} · {new Date(doc.createdAt).toLocaleDateString('fr-FR')}</p>
                                 </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    <button
-                                        onClick={() => onDownload(doc.id, doc.nom_original)}
-                                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                        title="Télécharger"
-                                    >
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                    <button onClick={() => setPreview({ id: doc.id, nom: doc.nom_original, mime: doc.type_mime, taille: doc.taille })}
+                                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="Visualiser">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    </button>
+                                    <button onClick={() => onDownload(doc.id, doc.nom_original)}
+                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Télécharger">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                     </button>
                                     {canDelete && (
-                                        <button
-                                            onClick={() => onDelete(doc.id)}
-                                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                            title="Supprimer"
-                                        >
+                                        <button onClick={() => onDelete(doc.id)}
+                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Supprimer">
                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                                         </button>
                                     )}
                                 </div>
-                            </li>
+                            </div>
                         );
                     })}
-                </ul>
+                </div>
             )}
         </div>
+        </>
+    );
+};
+
+// ── Grille de consultation (revue documentaire — auditeur examine) ────────────
+const RevueDocuments = ({ documents, onDownload, onFetchBlob }) => {
+    const [preview, setPreview] = useState(null);
+    const [examined, setExamined] = useState(new Set());
+
+    const handleConsulter = (doc) => {
+        setExamined(prev => new Set([...prev, doc.id]));
+        setPreview({ id: doc.id, nom: doc.nom_original, mime: doc.type_mime, taille: doc.taille });
+    };
+
+    const examCount = examined.size;
+    const total = documents.length;
+    const pct = total > 0 ? Math.round((examCount / total) * 100) : 0;
+
+    if (documents.length === 0) return (
+        <div className="py-12 text-center bg-white rounded-xl border border-gray-200">
+            <svg className="w-10 h-10 mx-auto mb-3 text-purple-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+            <p className="text-sm text-gray-400">Aucun document transmis par le client.</p>
+        </div>
+    );
+
+    return (
+        <>
+        {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
+
+        {/* Barre de progression */}
+        <div className="bg-white rounded-xl border border-purple-200 px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-purple-800">Progression de la revue</span>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${examCount === total ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                    {examCount}/{total} examiné{examCount > 1 ? 's' : ''}
+                </span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-2">
+                <div className={`h-2 rounded-full transition-all duration-500 ${examCount === total ? 'bg-green-500' : 'bg-purple-500'}`} style={{ width: `${pct}%` }} />
+            </div>
+        </div>
+
+        {/* Grille de cartes */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {documents.map(doc => {
+                const done = examined.has(doc.id);
+                return (
+                    <div key={doc.id} className={`bg-white rounded-xl border-2 flex flex-col overflow-hidden transition ${done ? 'border-green-200' : 'border-gray-200'}`}>
+                        {/* En-tête carte */}
+                        <div className={`px-4 py-3 flex items-center gap-2 border-b ${done ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
+                            <span className="text-xl">{fileIcon(doc.type_mime)}</span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-gray-800 truncate">{doc.nom_original}</p>
+                                <p className="text-xs text-gray-400">{fmtSize(doc.taille)}</p>
+                            </div>
+                            {done && (
+                                <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            )}
+                        </div>
+                        {/* Actions */}
+                        <div className="p-3 flex flex-col gap-2 mt-auto">
+                            <button onClick={() => handleConsulter(doc)}
+                                className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition ${done ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                {done ? 'Revoir' : 'Consulter'}
+                            </button>
+                            <button onClick={() => onDownload(doc.id, doc.nom_original)}
+                                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 hover:bg-gray-50 transition">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                Télécharger
+                            </button>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+        </>
     );
 };
 

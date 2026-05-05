@@ -25,7 +25,7 @@ const NewAuditPage = () => {
         Promise.all([getAllReferentiels(), getAllUsers()])
             .then(([refRes, usersRes]) => {
                 setReferentiels(refRes.data.referentiels || []);
-                setUsers((usersRes.data.users || []).filter(u => u.actif));
+                setUsers((usersRes.data.users || []).filter(u => u.actif && u.role !== 'client'));
             })
             .catch(() => toast.error('Erreur lors du chargement des données'));
     }, []);

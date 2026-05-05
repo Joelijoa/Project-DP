@@ -472,6 +472,14 @@ router.put('/:id/rejeter', verifyToken, verifyRole('admin', 'auditeur_senior'), 
 
 router.put('/:id/phase', verifyToken, verifyRole('admin', 'auditeur_senior'), changerPhase);
 
+// ─── Validation client ───────────────────────────────────────────────────────
+const { soumettreValidationPlanning, repondreValidationPlanning, soumettreValidationRapport, repondreValidationRapport } = require('../controllers/validationClientController');
+
+router.put('/:id/validation-planning/soumettre', verifyToken, verifyRole('admin', 'auditeur_senior'), soumettreValidationPlanning);
+router.put('/:id/validation-planning/repondre',  verifyToken, repondreValidationPlanning);
+router.put('/:id/validation-rapport/soumettre',  verifyToken, verifyRole('admin', 'auditeur_senior'), soumettreValidationRapport);
+router.put('/:id/validation-rapport/repondre',   verifyToken, repondreValidationRapport);
+
 // ─── Documents ───────────────────────────────────────────────────────────────
 
 router.get   ('/:id/documents',                verifyToken, getDocuments);

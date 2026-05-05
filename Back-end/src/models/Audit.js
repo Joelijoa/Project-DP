@@ -68,6 +68,16 @@ const Audit = sequelize.define('Audit', {
         allowNull: false,
         defaultValue: 'cadrage',
     },
+    validation_planning: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: null,
+    },
+    validation_rapport: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: null,
+    },
 }, {
     tableName: 'audits',
 });
