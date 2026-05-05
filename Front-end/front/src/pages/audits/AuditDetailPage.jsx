@@ -11,17 +11,17 @@ import { useAuth } from '../../store/auth/AuthContext';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-const stripNumericPrefix  = (str = '') => str.replace(/^\d+[\.\s\t]+/, '').trim();
+const stripNumericPrefix = (str = '') => str.replace(/^\d+[\.\s\t]+/, '').trim();
 const stripObjectifPrefix = (str = '') => str.replace(/^Objectif\s+\d+\s*:\s*/i, '').trim();
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
 const PHASES_DEF = [
-    { id: 'cadrage',            label: 'Cadrage' },
-    { id: 'prerequis',          label: 'Prérequis' },
+    { id: 'cadrage', label: 'Cadrage' },
+    { id: 'prerequis', label: 'Prérequis' },
     { id: 'revue_documentaire', label: 'Revue doc.' },
-    { id: 'realisation',        label: 'Réalisation' },
-    { id: 'termine',            label: 'Terminé' },
+    { id: 'realisation', label: 'Réalisation' },
+    { id: 'termine', label: 'Terminé' },
 ];
 
 const PhasesStepper = ({ phase, canChange, onPrev, changing }) => {
@@ -31,18 +31,17 @@ const PhasesStepper = ({ phase, canChange, onPrev, changing }) => {
         <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-white rounded-lg border border-gray-100">
             <div className="flex items-center gap-1 flex-1 min-w-0">
                 {PHASES_DEF.map((p, i) => {
-                    const done    = i < idx;
+                    const done = i < idx;
                     const current = i === idx;
                     return (
                         <div key={p.id} className="flex items-center gap-1">
                             {i > 0 && (
                                 <div className="h-px w-4 flex-shrink-0" style={{ backgroundColor: i <= idx ? 'var(--brand-red)' : '#e5e7eb' }} />
                             )}
-                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${
-                                done    ? 'bg-green-100 text-green-700' :
-                                current ? 'text-white'                  :
-                                          'bg-gray-100 text-gray-400'
-                            }`} style={current ? { backgroundColor: 'var(--brand-red)' } : {}}>
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${done ? 'bg-green-100 text-green-700' :
+                                    current ? 'text-white' :
+                                        'bg-gray-100 text-gray-400'
+                                }`} style={current ? { backgroundColor: 'var(--brand-red)' } : {}}>
                                 {done ? '✓ ' : ''}{p.label}
                             </span>
                         </div>
@@ -62,94 +61,94 @@ const PhasesStepper = ({ phase, canChange, onPrev, changing }) => {
 };
 
 const NIVEAUX = [
-    { value: null,  label: 'N/A',         color: 'text-gray-400' },
-    { value: 0,     label: 'Aucun',       color: 'text-red-600' },
-    { value: 1,     label: 'Initial',     color: 'text-orange-500' },
-    { value: 2,     label: 'Reproductible', color: 'text-yellow-500' },
-    { value: 3,     label: 'Défini',      color: 'text-blue-500' },
-    { value: 4,     label: 'Maitrisé',    color: 'text-indigo-600' },
-    { value: 5,     label: 'Optimisé',    color: 'text-green-600' },
+    { value: null, label: 'N/A', color: 'text-gray-400' },
+    { value: 0, label: 'Aucun', color: 'text-red-600' },
+    { value: 1, label: 'Initial', color: 'text-orange-500' },
+    { value: 2, label: 'Reproductible', color: 'text-yellow-500' },
+    { value: 3, label: 'Défini', color: 'text-blue-500' },
+    { value: 4, label: 'Maitrisé', color: 'text-indigo-600' },
+    { value: 5, label: 'Optimisé', color: 'text-green-600' },
 ];
 
 const CONFORMITE_CONFIG = {
-    conforme:     { label: 'Totale',       bg: 'bg-green-50',  text: 'text-green-700' },
-    partiel:      { label: 'Partielle',    bg: 'bg-yellow-50', text: 'text-yellow-700' },
-    non_conforme: { label: 'Non conforme', bg: 'bg-red-50',    text: 'text-red-700' },
-    nc_mineure:   { label: 'NC mineure',   bg: 'bg-orange-50', text: 'text-orange-700' },
-    nc_majeure:   { label: 'NC majeure',   bg: 'bg-red-50',    text: 'text-red-700' },
-    na:           { label: 'N/A',          bg: 'bg-gray-100',  text: 'text-gray-500' },
+    conforme: { label: 'Totale', bg: 'bg-green-50', text: 'text-green-700' },
+    partiel: { label: 'Partielle', bg: 'bg-yellow-50', text: 'text-yellow-700' },
+    non_conforme: { label: 'Non conforme', bg: 'bg-red-50', text: 'text-red-700' },
+    nc_mineure: { label: 'NC mineure', bg: 'bg-orange-50', text: 'text-orange-700' },
+    nc_majeure: { label: 'NC majeure', bg: 'bg-red-50', text: 'text-red-700' },
+    na: { label: 'N/A', bg: 'bg-gray-100', text: 'text-gray-500' },
 };
 
 const STATUT_CONFIG = {
     brouillon: { label: 'Brouillon', bg: 'bg-gray-100', text: 'text-gray-600' },
-    en_cours:  { label: 'En cours',  bg: 'bg-blue-50',  text: 'text-blue-700' },
-    termine:   { label: 'Terminé',   bg: 'bg-green-50', text: 'text-green-700' },
-    archive:   { label: 'Archivé',   bg: 'bg-yellow-50',text: 'text-yellow-700' },
+    en_cours: { label: 'En cours', bg: 'bg-blue-50', text: 'text-blue-700' },
+    termine: { label: 'Terminé', bg: 'bg-green-50', text: 'text-green-700' },
+    archive: { label: 'Archivé', bg: 'bg-yellow-50', text: 'text-yellow-700' },
 };
 
 const TABS_DNSSI = [
-    { id: 'description',    label: 'Description outil évaluation' },
+    { id: 'description', label: 'Description outil évaluation' },
     { id: 'identification', label: 'Identification entité ou IIV' },
-    { id: 'evaluation',     label: 'Évaluation MO DNSSI' },
-    { id: 'synthese_mat',   label: 'Synthèse niveau de maturité' },
-    { id: 'synthese_conf',  label: 'Synthèse niveau de conformité' },
-    { id: 'avancement',     label: "État d'avancement" },
-    { id: 'plans_actions',  label: "Plan d'actions" },
-    { id: 'indicateurs',    label: 'Indicateurs de la SSI' },
+    { id: 'evaluation', label: 'Évaluation MO DNSSI' },
+    { id: 'synthese_mat', label: 'Synthèse niveau de maturité' },
+    { id: 'synthese_conf', label: 'Synthèse niveau de conformité' },
+    { id: 'avancement', label: "État d'avancement" },
+    { id: 'plans_actions', label: "Plan d'actions" },
+    { id: 'indicateurs', label: 'Indicateurs de la SSI' },
 ];
 
 const TABS_ISO = [
-    { id: 'description',    label: "Description de l'audit" },
+    { id: 'description', label: "Description de l'audit" },
     { id: 'identification', label: "Identification de l'organisme" },
     { id: 'exigences_smsi', label: 'Exigences SMSI (§4-10)' },
-    { id: 'soa',            label: "Déclaration d'Applicabilité" },
+    { id: 'soa', label: "Déclaration d'Applicabilité" },
     { id: 'evaluation_iso', label: 'Évaluation Annexe A' },
-    { id: 'plans_actions',  label: "Plan d'actions" },
-    { id: 'synthese_iso',   label: 'Synthèse par thème' },
-    { id: 'nc',             label: 'Non-conformités' },
-    { id: 'indicateurs_iso',label: 'Indicateurs SMSI' },
+    { id: 'plans_actions', label: "Plan d'actions" },
+    { id: 'synthese_iso', label: 'Synthèse par thème' },
+    { id: 'nc', label: 'Non-conformités' },
+    { id: 'indicateurs_iso', label: 'Indicateurs SMSI' },
 ];
 
 // Raisons d'inclusion ISO 27001
 const RAISONS_INCLUSION = [
-    { value: 'legal',          label: 'Exigence légale / réglementaire' },
-    { value: 'contractuel',    label: 'Exigence contractuelle' },
-    { value: 'risque',         label: 'Résultat d\'appréciation des risques' },
+    { value: 'legal', label: 'Exigence légale / réglementaire' },
+    { value: 'contractuel', label: 'Exigence contractuelle' },
+    { value: 'risque', label: 'Résultat d\'appréciation des risques' },
     { value: 'bonne_pratique', label: 'Bonne pratique retenue' },
 ];
 
 const STATUT_IMPL_CONFIG = {
-    implemente:     { label: 'Implémenté',          bg: 'bg-green-50',  text: 'text-green-700',  dot: 'bg-green-500' },
-    partiel:        { label: 'Partiellement impl.', bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500' },
-    planifie:       { label: 'Planifié',            bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-500' },
-    non_implemente: { label: 'Non implémenté',      bg: 'bg-red-50',    text: 'text-red-700',    dot: 'bg-red-500' },
+    implemente: { label: 'Implémenté', bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+    partiel: { label: 'Partiellement impl.', bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500' },
+    planifie: { label: 'Planifié', bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+    non_implemente: { label: 'Non implémenté', bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
 };
 
 const INDICATEURS_DEF = [
-    { key: 'taux_organisation_ssi',    label: "Taux de conformité — Organisation SSI (Objectif 2)", auto: true },
-    { key: 'taux_actifs_info',         label: "Taux de conformité — Actifs informationnels (Objectif 7)", auto: true },
-    { key: 'budget_ssi_ratio',         label: "Taux de budget consacré aux projets SSI / budget SI", unit: '%' },
-    { key: 'journaux_traites',         label: "Taux de plateformes dont les journaux d'événements sont traités", unit: '%' },
-    { key: 'incidents_indispo',        label: "Nombre d'incidents induisant l'indisponibilité d'un service", unit: '/an' },
-    { key: 'incidents_perte_donnees',  label: "Nombre d'incidents de perte de données sensibles", unit: '/an' },
-    { key: 'taux_patch',               label: "Taux d'application de patch et mises à jour", unit: '%' },
-    { key: 'freq_sauvegardes',         label: "Fréquence de vérification des sauvegardes", unit: '/an' },
-    { key: 'taux_pra',                 label: "Taux de systèmes critiques disposant d'un PRA", unit: '%' },
-    { key: 'nb_audits',                label: "Nombre d'audits effectués", unit: '/an' },
-    { key: 'taux_sensibilisation',     label: "Taux d'utilisateurs sensibilisés en SSI", unit: '%' },
-    { key: 'taux_admins_formes',       label: "Taux d'administrateurs formés en SSI", unit: '%' },
+    { key: 'taux_organisation_ssi', label: "Taux de conformité — Organisation SSI (Objectif 2)", auto: true },
+    { key: 'taux_actifs_info', label: "Taux de conformité — Actifs informationnels (Objectif 7)", auto: true },
+    { key: 'budget_ssi_ratio', label: "Taux de budget consacré aux projets SSI / budget SI", unit: '%' },
+    { key: 'journaux_traites', label: "Taux de plateformes dont les journaux d'événements sont traités", unit: '%' },
+    { key: 'incidents_indispo', label: "Nombre d'incidents induisant l'indisponibilité d'un service", unit: '/an' },
+    { key: 'incidents_perte_donnees', label: "Nombre d'incidents de perte de données sensibles", unit: '/an' },
+    { key: 'taux_patch', label: "Taux d'application de patch et mises à jour", unit: '%' },
+    { key: 'freq_sauvegardes', label: "Fréquence de vérification des sauvegardes", unit: '/an' },
+    { key: 'taux_pra', label: "Taux de systèmes critiques disposant d'un PRA", unit: '%' },
+    { key: 'nb_audits', label: "Nombre d'audits effectués", unit: '/an' },
+    { key: 'taux_sensibilisation', label: "Taux d'utilisateurs sensibilisés en SSI", unit: '%' },
+    { key: 'taux_admins_formes', label: "Taux d'administrateurs formés en SSI", unit: '%' },
 ];
 
 const ISO_INDICATEURS_DEF = [
-    { key: 'iso_risques_traites',      label: "Nombre de risques identifiés et traités",                unit: '' },
-    { key: 'iso_taux_nc',              label: "Taux de non-conformités (contrôles NC / applicables)",   auto: 'nc' },
-    { key: 'iso_taux_conf',            label: "Taux de contrôles conformes (Annexe A)",                 auto: 'conf' },
-    { key: 'iso_taux_impl',            label: "Taux de contrôles implémentés (SoA)",                    auto: 'impl' },
-    { key: 'iso_incidents_smsi',       label: "Nombre d'incidents de sécurité déclarés",                unit: '/an' },
-    { key: 'iso_audits_internes',      label: "Nombre d'audits internes réalisés",                      unit: '/an' },
-    { key: 'iso_rev_direction',        label: "Nombre de revues de direction réalisées",                unit: '/an' },
-    { key: 'iso_taux_sensibilisation', label: "Taux de personnel sensibilisé ISO 27001",                unit: '%' },
-    { key: 'iso_actions_clot',         label: "Nombre d'actions correctives clôturées",                 unit: '' },
+    { key: 'iso_risques_traites', label: "Nombre de risques identifiés et traités", unit: '' },
+    { key: 'iso_taux_nc', label: "Taux de non-conformités (contrôles NC / applicables)", auto: 'nc' },
+    { key: 'iso_taux_conf', label: "Taux de contrôles conformes (Annexe A)", auto: 'conf' },
+    { key: 'iso_taux_impl', label: "Taux de contrôles implémentés (SoA)", auto: 'impl' },
+    { key: 'iso_incidents_smsi', label: "Nombre d'incidents de sécurité déclarés", unit: '/an' },
+    { key: 'iso_audits_internes', label: "Nombre d'audits internes réalisés", unit: '/an' },
+    { key: 'iso_rev_direction', label: "Nombre de revues de direction réalisées", unit: '/an' },
+    { key: 'iso_taux_sensibilisation', label: "Taux de personnel sensibilisé ISO 27001", unit: '%' },
+    { key: 'iso_actions_clot', label: "Nombre d'actions correctives clôturées", unit: '' },
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -215,9 +214,9 @@ const StatutBadge = ({ statut }) => {
 };
 
 const VALIDATION_CONFIG = {
-    en_attente: { label: 'En attente de validation', bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200' },
-    valide:     { label: 'Validé',                   bg: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200' },
-    rejete:     { label: 'Rejeté',                   bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200'   },
+    en_attente: { label: 'En attente de validation', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    valide: { label: 'Validé', bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+    rejete: { label: 'Rejeté', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
 };
 
 const RejeterModal = ({ title, onConfirm, onCancel }) => {
@@ -279,12 +278,12 @@ const AuditDetailPage = () => {
     // Plans d'actions
     const [planActions, setPlanActions] = useState([]);
     // Validation workflow
-    const [validating, setValidating]           = useState(false);
-    const [changingPhase, setChangingPhase]     = useState(false);
-    const [documents, setDocuments]             = useState([]);
-    const [uploading, setUploading]             = useState(false);
+    const [validating, setValidating] = useState(false);
+    const [changingPhase, setChangingPhase] = useState(false);
+    const [documents, setDocuments] = useState([]);
+    const [uploading, setUploading] = useState(false);
     const [showRejeterAudit, setShowRejeterAudit] = useState(false);
-    const [rejetingPlanId, setRejetingPlanId]   = useState(null);
+    const [rejetingPlanId, setRejetingPlanId] = useState(null);
 
     // Chargement initial
     useEffect(() => {
@@ -345,7 +344,7 @@ const AuditDetailPage = () => {
     useEffect(() => {
         if (!audit?.phase) return;
         if (audit.phase === 'prerequis' || audit.phase === 'revue_documentaire') {
-            getDocuments(id).then(r => setDocuments(r.data.documents || [])).catch(() => {});
+            getDocuments(id).then(r => setDocuments(r.data.documents || [])).catch(() => { });
         }
     }, [audit?.phase, id]);
 
@@ -399,7 +398,7 @@ const AuditDetailPage = () => {
         try {
             const fn = type === 'planning'
                 ? (action === 'soumettre' ? soumettreValidationPlanning : repondreValidationPlanning)
-                : (action === 'soumettre' ? soumettreValidationRapport  : repondreValidationRapport);
+                : (action === 'soumettre' ? soumettreValidationRapport : repondreValidationRapport);
             const res = action === 'soumettre'
                 ? await fn(id)
                 : await fn(id, action, commentaire);
@@ -697,17 +696,17 @@ const AuditDetailPage = () => {
         : 0;
 
     // ── Indicateurs de complétion par onglet (dot orange si non rempli) ──────────
-    const identFilled     = Object.values(identification).some(v => v && String(v).trim());
-    const isoEvalsDone    = Object.values(localEvals).some(e => e.niveau_maturite !== null && e.niveau_maturite !== undefined);
+    const identFilled = Object.values(identification).some(v => v && String(v).trim());
+    const isoEvalsDone = Object.values(localEvals).some(e => e.niveau_maturite !== null && e.niveau_maturite !== undefined);
     const MANUAL_IND_KEYS = INDICATEURS_DEF.filter(i => !i.auto).map(i => i.key);
     const ISO_MANUAL_KEYS = ISO_INDICATEURS_DEF.filter(i => !i.auto).map(i => i.key);
     const tabStatus = {
-        identification:  identFilled,
-        evaluation:      totalEvaluated > 0,
-        soa:             Object.keys(soaMap).length > 0,
-        evaluation_iso:  isoEvalsDone,
-        plans_actions:   planActions.length > 0,
-        indicateurs:     MANUAL_IND_KEYS.some(k => indicateurs[k]),
+        identification: identFilled,
+        evaluation: totalEvaluated > 0,
+        soa: Object.keys(soaMap).length > 0,
+        evaluation_iso: isoEvalsDone,
+        plans_actions: planActions.length > 0,
+        indicateurs: MANUAL_IND_KEYS.some(k => indicateurs[k]),
         indicateurs_iso: ISO_MANUAL_KEYS.some(k => indicateurs[k]),
     };
 
@@ -745,14 +744,14 @@ const AuditDetailPage = () => {
 
     const isISO = referentiel?.type === 'ISO27001';
 
-    const isClient         = user?.role === 'client';
-    const isAssigned       = audit?.auditeurs?.some(a => a.id === user?.id) || audit?.createur?.id === user?.id;
-    const canSeeGraphs     = user?.role !== 'auditeur_junior' || isAssigned || isClient;
-    const isJunior         = user?.role === 'auditeur_junior';
-    const isSeniorOrAdmin  = user?.role === 'admin' || user?.role === 'auditeur_senior';
+    const isClient = user?.role === 'client';
+    const isAssigned = audit?.auditeurs?.some(a => a.id === user?.id) || audit?.createur?.id === user?.id;
+    const canSeeGraphs = user?.role !== 'auditeur_junior' || isAssigned || isClient;
+    const isJunior = user?.role === 'auditeur_junior';
+    const isSeniorOrAdmin = user?.role === 'admin' || user?.role === 'auditeur_senior';
     const canSoumettreAudit = isJunior && isAssigned && audit.statut_validation !== 'en_attente' && audit.statut_validation !== 'valide';
     const canValiderRejeter = isSeniorOrAdmin && audit.statut_validation === 'en_attente';
-    const validationCfg     = VALIDATION_CONFIG[audit.statut_validation];
+    const validationCfg = VALIDATION_CONFIG[audit.statut_validation];
 
     const GRAPH_TABS = [
         'plans_actions',
@@ -764,401 +763,399 @@ const AuditDetailPage = () => {
         <div className="-mx-6 -mt-6">
             {/* ── Bloc sticky : en-tête + bannières + onglets ── */}
             <div className="sticky z-20 bg-gray-50 px-6 pt-6 pb-3 shadow-sm" style={{ top: '-1.5rem' }}>
-            {/* En-tête */}
-            <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-3">
-                    <Link to="/audits" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                        </svg>
-                    </Link>
-                    <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <h1 className="text-xl font-semibold text-gray-900">{audit.nom}</h1>
-                            <StatutBadge statut={audit.statut} />
-                            {validationCfg && (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${validationCfg.bg} ${validationCfg.text} ${validationCfg.border}`}>
-                                    {validationCfg.label}
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-sm text-gray-500 mt-0.5">{audit.client} — {audit.referentiel?.nom}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    {(audit.phase === 'realisation' || audit.phase === 'termine') && (
-                    <div className="flex items-center gap-2 text-sm">
-                        <span className="text-gray-500">{totalEvaluated}/{totalMesures} mesures évaluées</span>
-                        <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all" style={{ width: `${totalMesures > 0 ? (totalEvaluated/totalMesures)*100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
-                        </div>
-                    </div>
-                    )}
-                    {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && !isJunior && !isClient && (
-                        <button
-                            onClick={() => setShowClotureModal(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90"
-                            style={{ backgroundColor: '#16a34a' }}
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                {/* En-tête */}
+                <div className="flex items-start justify-between mb-5">
+                    <div className="flex items-center gap-3">
+                        <Link to="/audits" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                             </svg>
-                            Clôturer l'audit
-                        </button>
-                    )}
-                    {canSoumettreAudit && !isClient && (
-                        <button onClick={handleSoumettreAudit} disabled={validating}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
-                            style={{ backgroundColor: '#d97706' }}>
-                            {validating ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-                            }
-                            Soumettre pour validation
-                        </button>
-                    )}
-                    {canValiderRejeter && !isClient && (
-                        <>
-                            <button onClick={handleValiderAudit} disabled={validating}
+                        </Link>
+                        <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h1 className="text-xl font-semibold text-gray-900">{audit.nom}</h1>
+                                <StatutBadge statut={audit.statut} />
+                                {validationCfg && (
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${validationCfg.bg} ${validationCfg.text} ${validationCfg.border}`}>
+                                        {validationCfg.label}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-sm text-gray-500 mt-0.5">{audit.client} — {audit.referentiel?.nom}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {(audit.phase === 'realisation' || audit.phase === 'termine') && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-gray-500">{totalEvaluated}/{totalMesures} mesures évaluées</span>
+                                <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full transition-all" style={{ width: `${totalMesures > 0 ? (totalEvaluated / totalMesures) * 100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
+                                </div>
+                            </div>
+                        )}
+                        {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && !isJunior && !isClient && (
+                            <button
+                                onClick={() => setShowClotureModal(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90"
+                                style={{ backgroundColor: '#16a34a' }}
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                                Clôturer l'audit
+                            </button>
+                        )}
+                        {canSoumettreAudit && !isClient && (
+                            <button onClick={handleSoumettreAudit} disabled={validating}
                                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
-                                style={{ backgroundColor: '#16a34a' }}>
+                                style={{ backgroundColor: '#d97706' }}>
                                 {validating ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
                                 }
-                                Valider
+                                Soumettre pour validation
                             </button>
-                            <button onClick={() => setShowRejeterAudit(true)} disabled={validating}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
-                                style={{ backgroundColor: '#cc0000' }}>
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                Rejeter
-                            </button>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Bannière rejet */}
-            {audit.statut_validation === 'rejete' && audit.commentaire_rejet && (
-                <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3">
-                    <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                    <div>
-                        <p className="text-xs font-semibold text-red-700">Audit rejeté — corrections requises</p>
-                        <p className="text-xs text-red-600 mt-0.5">{audit.commentaire_rejet}</p>
+                        )}
+                        {canValiderRejeter && !isClient && (
+                            <>
+                                <button onClick={handleValiderAudit} disabled={validating}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
+                                    style={{ backgroundColor: '#16a34a' }}>
+                                    {validating ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                    }
+                                    Valider
+                                </button>
+                                <button onClick={() => setShowRejeterAudit(true)} disabled={validating}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
+                                    style={{ backgroundColor: '#cc0000' }}>
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    Rejeter
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
-            )}
 
-            {/* Bannière lecture seule client */}
-            {isClient && (
-                <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200">
-                    <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <p className="text-sm text-blue-700">
-                        <strong>Mode lecture seule</strong> — Vous consultez les résultats de l'audit de votre entité.
-                    </p>
-                </div>
-            )}
+                {/* Bannière rejet */}
+                {audit.statut_validation === 'rejete' && audit.commentaire_rejet && (
+                    <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3">
+                        <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                        <div>
+                            <p className="text-xs font-semibold text-red-700">Audit rejeté — corrections requises</p>
+                            <p className="text-xs text-red-600 mt-0.5">{audit.commentaire_rejet}</p>
+                        </div>
+                    </div>
+                )}
 
-            {/* Stepper phases */}
-            <PhasesStepper
-                phase={audit.phase || 'cadrage'}
-                canChange={isSeniorOrAdmin}
-                onPrev={() => handleChangerPhase(-1)}
-                changing={changingPhase}
-            />
+                {/* Bannière lecture seule client */}
+                {isClient && (
+                    <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200">
+                        <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <p className="text-sm text-blue-700">
+                            <strong>Mode lecture seule</strong> — Vous consultez les résultats de l'audit de votre entité.
+                        </p>
+                    </div>
+                )}
 
-            {/* Onglets — uniquement en réalisation/terminé */}
-            {(audit.phase === 'realisation' || audit.phase === 'termine') && (
-                <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} tabStatus={tabStatus} />
-            )}
+                {/* Stepper phases */}
+                <PhasesStepper
+                    phase={audit.phase || 'cadrage'}
+                    canChange={isSeniorOrAdmin}
+                    onPrev={() => handleChangerPhase(-1)}
+                    changing={changingPhase}
+                />
+
+                {/* Onglets — uniquement en réalisation/terminé */}
+                {(audit.phase === 'realisation' || audit.phase === 'termine') && (
+                    <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} tabStatus={tabStatus} />
+                )}
             </div>{/* fin sticky */}
 
             <div className="px-6 pt-4 pb-6">
 
-            {/* Phase cadrage */}
-            {audit.phase === 'cadrage' && (
-                <div className="space-y-5">
-                    <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200">
-                        <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
-                        <div>
-                            <p className="text-sm font-semibold text-blue-800">Phase de cadrage</p>
-                            <p className="text-xs text-blue-600 mt-0.5">Définissez le périmètre, les objectifs et l'équipe. Passez à "Prérequis" une fois la planification finalisée.</p>
-                        </div>
-                    </div>
-                    <TabCadrage audit={audit} referentiel={referentiel} identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} readOnly={isClient} />
-                    <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />
-                    <PlanningAuditCard
-                        audit={audit}
-                        identification={identification}
-                        setIdentification={setIdentification}
-                        onSave={() => handleSaveInfo('identification', identification)}
-                        saving={savingInfo}
-                        readOnly={isClient}
-                    />
-                    <ValidationClientCard
-                        type="planning"
-                        validation={audit.validation_planning}
-                        isSeniorOrAdmin={isSeniorOrAdmin}
-                        isClient={isClient}
-                        onAction={handleValidationClient}
-                        loading={validatingClient}
-                    />
-                    {isSeniorOrAdmin && (
-                        <div className="flex justify-end pt-2">
-                            <button
-                                onClick={() => handleChangerPhase(1)}
-                                disabled={changingPhase}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                            >
-                                {changingPhase ? 'En cours…' : 'Valider le cadrage — Passer aux Prérequis'}
-                                {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Phase prérequis */}
-            {audit.phase === 'prerequis' && (
-                <div className="space-y-4">
-                    {/* Bandeau rôle-spécifique */}
-                    {isClient ? (
-                        <div className="flex items-start gap-4 p-5 rounded-xl bg-orange-50 border border-orange-200">
-                            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                            </div>
+                {/* Phase cadrage */}
+                {audit.phase === 'cadrage' && (
+                    <div className="space-y-5">
+                        <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200">
+                            <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
                             <div>
-                                <p className="text-sm font-bold text-orange-900">Action requise — Dépôt des documents</p>
-                                <p className="text-xs text-orange-700 mt-1">Veuillez déposer tous les documents nécessaires à l'audit (politiques, procédures, rapports précédents…). L'équipe d'audit pourra ensuite les examiner.</p>
+                                <p className="text-sm font-semibold text-blue-800">Phase de cadrage</p>
+                                <p className="text-xs text-blue-600 mt-0.5">Définissez le périmètre, les objectifs et l'équipe. Passez à "Prérequis" une fois la planification finalisée.</p>
                             </div>
                         </div>
-                    ) : (
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-orange-50 border border-orange-200">
-                            <div className="flex items-center gap-3">
-                                <svg className="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <TabCadrage audit={audit} referentiel={referentiel} identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} readOnly={isClient} />
+                        <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />
+                        <PlanningAuditCard
+                            audit={audit}
+                            identification={identification}
+                            setIdentification={setIdentification}
+                            onSave={() => handleSaveInfo('identification', identification)}
+                            saving={savingInfo}
+                            readOnly={isClient}
+                        />
+                        <ValidationClientCard
+                            type="planning"
+                            validation={audit.validation_planning}
+                            isSeniorOrAdmin={isSeniorOrAdmin}
+                            isClient={isClient}
+                            onAction={handleValidationClient}
+                            loading={validatingClient}
+                        />
+                        {isSeniorOrAdmin && (
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    onClick={() => handleChangerPhase(1)}
+                                    disabled={changingPhase}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                >
+                                    {changingPhase ? 'En cours…' : 'Valider le cadrage — Passer aux Prérequis'}
+                                    {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Phase prérequis */}
+                {audit.phase === 'prerequis' && (
+                    <div className="space-y-4">
+                        {/* Bandeau rôle-spécifique */}
+                        {isClient ? (
+                            <div className="flex items-start gap-4 p-5 rounded-xl bg-orange-50 border border-orange-200">
+                                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                                </div>
                                 <div>
-                                    <p className="text-sm font-semibold text-orange-800">En attente des documents du client</p>
-                                    <p className="text-xs text-orange-600 mt-0.5">Le client doit déposer les prérequis avant de pouvoir passer à la revue documentaire.</p>
+                                    <p className="text-sm font-bold text-orange-900">Action requise — Dépôt des documents</p>
+                                    <p className="text-xs text-orange-700 mt-1">Veuillez déposer tous les documents nécessaires à l'audit (politiques, procédures, rapports précédents…). L'équipe d'audit pourra ensuite les examiner.</p>
                                 </div>
                             </div>
-                            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${documents.length > 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600'}`}>
-                                {documents.length > 0 ? `${documents.length} fichier(s) reçu(s)` : 'Aucun fichier'}
-                            </span>
-                        </div>
-                    )}
-                    <DocList
-                        documents={documents}
-                        mode="depot"
-                        readOnly={!isClient}
-                        uploading={uploading}
-                        currentUserId={user?.id}
-                        isSeniorOrAdmin={isSeniorOrAdmin}
-                        onUpload={handleUploadDocuments}
-                        onDelete={handleDeleteDocument}
-                        onDownload={handleDownloadDocument}
-                        onFetchBlob={handleFetchDocBlob}
-                    />
-                    {isSeniorOrAdmin && (
-                        <div className="flex justify-end pt-2">
-                            <button
-                                onClick={() => handleChangerPhase(1)}
-                                disabled={changingPhase}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-600 text-white text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 transition-colors"
-                            >
-                                {changingPhase ? 'En cours…' : 'Valider les prérequis — Passer à la Revue documentaire'}
-                                {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Phase revue documentaire */}
-            {audit.phase === 'revue_documentaire' && (
-                <div className="space-y-4">
-                    {/* Bandeau rôle-spécifique */}
-                    {isClient ? (
-                        <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-50 border border-purple-200">
-                            <svg className="w-5 h-5 text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            <div>
-                                <p className="text-sm font-semibold text-purple-800">Documents transmis — Revue en cours</p>
-                                <p className="text-xs text-purple-600 mt-0.5">L'équipe d'audit examine vos documents. Vous serez notifié à la prochaine étape.</p>
+                        ) : (
+                            <div className="flex items-center justify-between p-4 rounded-xl bg-orange-50 border border-orange-200">
+                                <div className="flex items-center gap-3">
+                                    <svg className="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <div>
+                                        <p className="text-sm font-semibold text-orange-800">En attente des documents du client</p>
+                                        <p className="text-xs text-orange-600 mt-0.5">Le client doit déposer les prérequis avant de pouvoir passer à la revue documentaire.</p>
+                                    </div>
+                                </div>
+                                <span className={`text-xs font-semibold px-3 py-1 rounded-full ${documents.length > 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600'}`}>
+                                    {documents.length > 0 ? `${documents.length} fichier(s) reçu(s)` : 'Aucun fichier'}
+                                </span>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="flex items-start gap-4 p-5 rounded-xl bg-purple-50 border border-purple-200">
-                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        )}
+                        <DepotDocuments
+                            documents={documents}
+                            uploading={uploading}
+                            currentUserId={user?.id}
+                            isSeniorOrAdmin={isSeniorOrAdmin}
+                            readOnly={!isClient}
+                            onUpload={handleUploadDocuments}
+                            onDelete={handleDeleteDocument}
+                            onDownload={handleDownloadDocument}
+                            onFetchBlob={handleFetchDocBlob}
+                        />
+                        {isSeniorOrAdmin && (
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    onClick={() => handleChangerPhase(1)}
+                                    disabled={changingPhase}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-600 text-white text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                                >
+                                    {changingPhase ? 'En cours…' : 'Valider les prérequis — Passer à la Revue documentaire'}
+                                    {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
+                                </button>
                             </div>
-                            <div>
-                                <p className="text-sm font-bold text-purple-900">Revue documentaire — Lecture des fichiers</p>
-                                <p className="text-xs text-purple-700 mt-1">Examinez les {documents.length > 0 ? `${documents.length} document(s) déposé(s)` : 'documents déposés'} par le client. Utilisez l'icône œil pour visualiser chaque fichier dans la plateforme.</p>
+                        )}
+                    </div>
+                )}
+
+                {/* Phase revue documentaire */}
+                {audit.phase === 'revue_documentaire' && (
+                    <div className="space-y-4">
+                        {/* Bandeau rôle-spécifique */}
+                        {isClient ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-50 border border-purple-200">
+                                <svg className="w-5 h-5 text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <div>
+                                    <p className="text-sm font-semibold text-purple-800">Documents transmis — Revue en cours</p>
+                                    <p className="text-xs text-purple-600 mt-0.5">L'équipe d'audit examine vos documents. Vous serez notifié à la prochaine étape.</p>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="flex items-start gap-4 p-5 rounded-xl bg-purple-50 border border-purple-200">
+                                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-purple-900">Revue documentaire — Lecture des fichiers</p>
+                                    <p className="text-xs text-purple-700 mt-1">Examinez les {documents.length > 0 ? `${documents.length} document(s) déposé(s)` : 'documents déposés'} par le client. Utilisez l'icône œil pour visualiser chaque fichier dans la plateforme.</p>
+                                </div>
+                            </div>
+                        )}
+                        <DepotDocuments
+                            documents={documents}
+                            uploading={uploading}
+                            currentUserId={user?.id}
+                            isSeniorOrAdmin={isSeniorOrAdmin}
+                            readOnly={!isClient}
+                            onUpload={handleUploadDocuments}
+                            onDelete={handleDeleteDocument}
+                            onDownload={handleDownloadDocument}
+                            onFetchBlob={handleFetchDocBlob}
+                        />
+                        {isSeniorOrAdmin && (
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    onClick={() => handleChangerPhase(1)}
+                                    disabled={changingPhase}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                                >
+                                    {changingPhase ? 'En cours…' : 'Valider la revue — Démarrer la Réalisation'}
+                                    {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Validation rapport final — phase terminé */}
+                {audit.phase === 'termine' && (
+                    <div className="mb-4">
+                        <ValidationClientCard
+                            type="rapport"
+                            validation={audit.validation_rapport}
+                            isSeniorOrAdmin={isSeniorOrAdmin}
+                            isClient={isClient}
+                            onAction={handleValidationClient}
+                            loading={validatingClient}
+                        />
+                    </div>
+                )}
+
+                {/* Onglets — phases réalisation et terminé uniquement */}
+                {(audit.phase === 'realisation' || audit.phase === 'termine') && (<>
+                    {/* Contenu des onglets — communs */}
+                    {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} readOnly={isClient || isJunior} />}
+                    {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />}
+
+                    {/* Onglets DNSSI */}
+                    {!isISO && activeTab === 'evaluation' && (
+                        <TabEvaluation
+                            referentiel={referentiel}
+                            localEvals={localEvals}
+                            setEval={setEval}
+                            openDomaines={openDomaines}
+                            setOpenDomaines={setOpenDomaines}
+                            isDirty={isDirty}
+                            saving={saving}
+                            onSave={handleSaveEvals}
+                            readOnly={isClient}
+                        />
                     )}
-                    <DocList
-                        documents={documents}
-                        mode="revue"
-                        readOnly={true}
-                        uploading={false}
-                        currentUserId={user?.id}
-                        isSeniorOrAdmin={isSeniorOrAdmin}
-                        onUpload={null}
-                        onDelete={null}
-                        onDownload={handleDownloadDocument}
-                        onFetchBlob={handleFetchDocBlob}
-                    />
-                    {isSeniorOrAdmin && (
-                        <div className="flex justify-end pt-2">
-                            <button
-                                onClick={() => handleChangerPhase(1)}
-                                disabled={changingPhase}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-50 transition-colors"
-                            >
-                                {changingPhase ? 'En cours…' : 'Valider la revue — Démarrer la Réalisation'}
-                                {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
-                            </button>
-                        </div>
+                    {!isISO && activeTab === 'synthese_mat' && canSeeGraphs && <TabSyntheseMaturite synthese={synthese} />}
+                    {!isISO && activeTab === 'synthese_conf' && canSeeGraphs && <TabSyntheseConformite synthese={synthese} totalConforme={totalConforme} totalPartiel={totalPartiel} totalNC={totalNC} tauxGlobal={tauxGlobal} />}
+                    {!isISO && activeTab === 'avancement' && canSeeGraphs && <TabAvancement referentiel={referentiel} localEvals={localEvals} synthese={synthese} />}
+                    {!isISO && activeTab === 'indicateurs' && (
+                        <TabIndicateurs
+                            indicateurs={indicateurs}
+                            setIndicateurs={setIndicateurs}
+                            synthese={synthese}
+                            onSave={() => handleSaveInfo('indicateurs', indicateurs)}
+                            saving={savingInfo}
+                            readOnly={isClient}
+                        />
                     )}
-                </div>
-            )}
 
-            {/* Validation rapport final — phase terminé */}
-            {audit.phase === 'termine' && (
-                <div className="mb-4">
-                    <ValidationClientCard
-                        type="rapport"
-                        validation={audit.validation_rapport}
-                        isSeniorOrAdmin={isSeniorOrAdmin}
-                        isClient={isClient}
-                        onAction={handleValidationClient}
-                        loading={validatingClient}
+                    {/* Onglets ISO 27001 */}
+                    {isISO && activeTab === 'exigences_smsi' && (
+                        <TabExigencesSMSI
+                            referentiel={referentiel}
+                            localEvals={localEvals}
+                            setEval={setEval}
+                            isDirty={isDirty}
+                            saving={saving}
+                            onSave={handleSaveEvals}
+                            readOnly={isClient}
+                        />
+                    )}
+                    {isISO && activeTab === 'soa' && (
+                        <TabSoA
+                            referentiel={referentiel}
+                            soaMap={soaMap}
+                            setSoaEntry={setSoaEntry}
+                            soaDirty={soaDirty}
+                            savingSoa={savingSoa}
+                            onSave={handleSaveSoA}
+                            readOnly={isClient}
+                        />
+                    )}
+                    {isISO && activeTab === 'evaluation_iso' && (
+                        <TabEvaluationISO
+                            referentiel={referentiel}
+                            soaMap={soaMap}
+                            localEvals={localEvals}
+                            setEval={setEval}
+                            isDirty={isDirty}
+                            saving={saving}
+                            onSave={handleSaveEvals}
+                            readOnly={isClient}
+                        />
+                    )}
+                    {isISO && activeTab === 'synthese_iso' && canSeeGraphs && <TabSyntheseISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
+                    {isISO && activeTab === 'nc' && canSeeGraphs && <TabNC referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
+                    {isISO && activeTab === 'indicateurs_iso' && <TabIndicateursISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} indicateurs={indicateurs} setIndicateurs={setIndicateurs} onSave={() => handleSaveInfo('indicateurs', indicateurs)} saving={savingInfo} readOnly={isClient} />}
+
+                    {/* Plan d'actions — commun DNSSI + ISO */}
+                    {activeTab === 'plans_actions' && canSeeGraphs && (
+                        <TabPlanActions
+                            referentiel={referentiel}
+                            planActions={planActions}
+                            localEvals={localEvals}
+                            soaMap={soaMap}
+                            isISO={isISO}
+                            user={user}
+                            auditId={id}
+                            onAdd={handleCreatePlanAction}
+                            onBulkAdd={handleBulkCreatePlanAction}
+                            onUpdate={handleUpdatePlanAction}
+                            onDelete={handleDeletePlanAction}
+                            onSoumettre={handleSoumettrePlan}
+                            onValider={handleValiderPlan}
+                            onRejeter={(planId) => setRejetingPlanId(planId)}
+                            readOnly={isClient}
+                        />
+                    )}
+                </>)}
+
+                <ConfirmModal
+                    isOpen={showClotureModal}
+                    title="Clôturer l'audit"
+                    message={`Êtes-vous sûr de vouloir clôturer l'audit "${audit.nom}" ? Cette action indique que l'audit est terminé. Vous pourrez encore consulter les données mais l'audit sera marqué comme terminé.`}
+                    confirmLabel={cloturing ? 'Clôture en cours…' : 'Confirmer la clôture'}
+                    cancelLabel="Annuler"
+                    danger={false}
+                    onConfirm={handleClotureAudit}
+                    onCancel={() => setShowClotureModal(false)}
+                />
+
+                {showRejeterAudit && (
+                    <RejeterModal
+                        title="Rejeter l'audit"
+                        onConfirm={handleRejeterAudit}
+                        onCancel={() => setShowRejeterAudit(false)}
                     />
-                </div>
-            )}
-
-            {/* Onglets — phases réalisation et terminé uniquement */}
-            {(audit.phase === 'realisation' || audit.phase === 'termine') && (<>
-            {/* Contenu des onglets — communs */}
-            {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} readOnly={isClient || isJunior} />}
-            {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />}
-
-            {/* Onglets DNSSI */}
-            {!isISO && activeTab === 'evaluation' && (
-                <TabEvaluation
-                    referentiel={referentiel}
-                    localEvals={localEvals}
-                    setEval={setEval}
-                    openDomaines={openDomaines}
-                    setOpenDomaines={setOpenDomaines}
-                    isDirty={isDirty}
-                    saving={saving}
-                    onSave={handleSaveEvals}
-                    readOnly={isClient}
-                />
-            )}
-            {!isISO && activeTab === 'synthese_mat' && canSeeGraphs && <TabSyntheseMaturite synthese={synthese} />}
-            {!isISO && activeTab === 'synthese_conf' && canSeeGraphs && <TabSyntheseConformite synthese={synthese} totalConforme={totalConforme} totalPartiel={totalPartiel} totalNC={totalNC} tauxGlobal={tauxGlobal} />}
-            {!isISO && activeTab === 'avancement' && canSeeGraphs && <TabAvancement referentiel={referentiel} localEvals={localEvals} synthese={synthese} />}
-            {!isISO && activeTab === 'indicateurs' && (
-                <TabIndicateurs
-                    indicateurs={indicateurs}
-                    setIndicateurs={setIndicateurs}
-                    synthese={synthese}
-                    onSave={() => handleSaveInfo('indicateurs', indicateurs)}
-                    saving={savingInfo}
-                    readOnly={isClient}
-                />
-            )}
-
-            {/* Onglets ISO 27001 */}
-            {isISO && activeTab === 'exigences_smsi' && (
-                <TabExigencesSMSI
-                    referentiel={referentiel}
-                    localEvals={localEvals}
-                    setEval={setEval}
-                    isDirty={isDirty}
-                    saving={saving}
-                    onSave={handleSaveEvals}
-                    readOnly={isClient}
-                />
-            )}
-            {isISO && activeTab === 'soa' && (
-                <TabSoA
-                    referentiel={referentiel}
-                    soaMap={soaMap}
-                    setSoaEntry={setSoaEntry}
-                    soaDirty={soaDirty}
-                    savingSoa={savingSoa}
-                    onSave={handleSaveSoA}
-                    readOnly={isClient}
-                />
-            )}
-            {isISO && activeTab === 'evaluation_iso' && (
-                <TabEvaluationISO
-                    referentiel={referentiel}
-                    soaMap={soaMap}
-                    localEvals={localEvals}
-                    setEval={setEval}
-                    isDirty={isDirty}
-                    saving={saving}
-                    onSave={handleSaveEvals}
-                    readOnly={isClient}
-                />
-            )}
-            {isISO && activeTab === 'synthese_iso' && canSeeGraphs && <TabSyntheseISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
-            {isISO && activeTab === 'nc' && canSeeGraphs && <TabNC referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
-            {isISO && activeTab === 'indicateurs_iso' && <TabIndicateursISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} indicateurs={indicateurs} setIndicateurs={setIndicateurs} onSave={() => handleSaveInfo('indicateurs', indicateurs)} saving={savingInfo} readOnly={isClient} />}
-
-            {/* Plan d'actions — commun DNSSI + ISO */}
-            {activeTab === 'plans_actions' && canSeeGraphs && (
-                <TabPlanActions
-                    referentiel={referentiel}
-                    planActions={planActions}
-                    localEvals={localEvals}
-                    soaMap={soaMap}
-                    isISO={isISO}
-                    user={user}
-                    auditId={id}
-                    onAdd={handleCreatePlanAction}
-                    onBulkAdd={handleBulkCreatePlanAction}
-                    onUpdate={handleUpdatePlanAction}
-                    onDelete={handleDeletePlanAction}
-                    onSoumettre={handleSoumettrePlan}
-                    onValider={handleValiderPlan}
-                    onRejeter={(planId) => setRejetingPlanId(planId)}
-                    readOnly={isClient}
-                />
-            )}
-            </>)}
-
-            <ConfirmModal
-                isOpen={showClotureModal}
-                title="Clôturer l'audit"
-                message={`Êtes-vous sûr de vouloir clôturer l'audit "${audit.nom}" ? Cette action indique que l'audit est terminé. Vous pourrez encore consulter les données mais l'audit sera marqué comme terminé.`}
-                confirmLabel={cloturing ? 'Clôture en cours…' : 'Confirmer la clôture'}
-                cancelLabel="Annuler"
-                danger={false}
-                onConfirm={handleClotureAudit}
-                onCancel={() => setShowClotureModal(false)}
-            />
-
-            {showRejeterAudit && (
-                <RejeterModal
-                    title="Rejeter l'audit"
-                    onConfirm={handleRejeterAudit}
-                    onCancel={() => setShowRejeterAudit(false)}
-                />
-            )}
-            {rejetingPlanId && (
-                <RejeterModal
-                    title="Rejeter le plan d'action"
-                    onConfirm={(commentaire) => handleRejeterPlan(rejetingPlanId, commentaire)}
-                    onCancel={() => setRejetingPlanId(null)}
-                />
-            )}
+                )}
+                {rejetingPlanId && (
+                    <RejeterModal
+                        title="Rejeter le plan d'action"
+                        onConfirm={(commentaire) => handleRejeterPlan(rejetingPlanId, commentaire)}
+                        onCancel={() => setRejetingPlanId(null)}
+                    />
+                )}
             </div>{/* fin contenu */}
         </div>
     );
@@ -1168,7 +1165,7 @@ const AuditDetailPage = () => {
 
 const TabNav = ({ activeTab, setActiveTab, tabs, tabStatus = {} }) => {
     const navRef = useRef(null);
-    const [canScrollLeft, setCanScrollLeft]   = useState(false);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
 
     const checkScroll = () => {
@@ -1221,11 +1218,10 @@ const TabNav = ({ activeTab, setActiveTab, tabs, tabStatus = {} }) => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
-                            activeTab === tab.id
+                        className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id
                                 ? 'border-current -mb-px'
                                 : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
-                        }`}
+                            }`}
                         style={activeTab === tab.id ? { color: 'var(--brand-red)', borderColor: 'var(--brand-red)' } : {}}
                     >
                         <span className="relative flex-shrink-0">
@@ -1276,21 +1272,21 @@ const fmtISODate = (iso) => {
 const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO, onSave, saving, readOnly }) => {
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState({
-        nom:        audit.nom || '',
-        client:     audit.client || '',
-        perimetre:  audit.perimetre || '',
+        nom: audit.nom || '',
+        client: audit.client || '',
+        perimetre: audit.perimetre || '',
         date_debut: audit.date_debut?.split('T')[0] || '',
-        date_fin:   audit.date_fin?.split('T')[0] || '',
+        date_fin: audit.date_fin?.split('T')[0] || '',
     });
 
     useEffect(() => {
         if (!editing) {
             setForm({
-                nom:        audit.nom || '',
-                client:     audit.client || '',
-                perimetre:  audit.perimetre || '',
+                nom: audit.nom || '',
+                client: audit.client || '',
+                perimetre: audit.perimetre || '',
                 date_debut: audit.date_debut?.split('T')[0] || '',
-                date_fin:   audit.date_fin?.split('T')[0] || '',
+                date_fin: audit.date_fin?.split('T')[0] || '',
             });
         }
     }, [audit, editing]);
@@ -1379,9 +1375,9 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO
                     <div>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             {[
-                                { key: 'nom',      label: "Nom de l'audit" },
-                                { key: 'client',   label: 'Client / Entité' },
-                                { key: 'perimetre',label: 'Périmètre', span: true },
+                                { key: 'nom', label: "Nom de l'audit" },
+                                { key: 'client', label: 'Client / Entité' },
+                                { key: 'perimetre', label: 'Périmètre', span: true },
                             ].map(({ key, label, span }) => (
                                 <div key={key} className={span ? 'col-span-2' : ''}>
                                     <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
@@ -1396,7 +1392,7 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO
                             ))}
                             {[
                                 { key: 'date_debut', label: 'Date de début' },
-                                { key: 'date_fin',   label: 'Date de fin prévue' },
+                                { key: 'date_fin', label: 'Date de fin prévue' },
                             ].map(({ key, label }) => (
                                 <div key={key}>
                                     <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
@@ -1425,12 +1421,12 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO
                 ) : (
                     <dl className="grid grid-cols-2 gap-4 text-sm">
                         {[
-                            { label: 'Client / Entité',   value: audit.client || '—' },
-                            { label: 'Périmètre',         value: audit.perimetre || '—' },
-                            { label: 'Date de début',     value: fmtISODate(audit.date_debut) },
-                            { label: 'Date de fin prévue',value: fmtISODate(audit.date_fin) },
-                            { label: 'Créé par',          value: audit.createur ? `${audit.createur.prenom} ${audit.createur.nom}` : '—' },
-                            { label: 'Auditeurs',         value: audit.auditeurs?.length > 0 ? audit.auditeurs.map(u => `${u.prenom} ${u.nom}`).join(', ') : '—' },
+                            { label: 'Client / Entité', value: audit.client || '—' },
+                            { label: 'Périmètre', value: audit.perimetre || '—' },
+                            { label: 'Date de début', value: fmtISODate(audit.date_debut) },
+                            { label: 'Date de fin prévue', value: fmtISODate(audit.date_fin) },
+                            { label: 'Créé par', value: audit.createur ? `${audit.createur.prenom} ${audit.createur.nom}` : '—' },
+                            { label: 'Auditeurs', value: audit.auditeurs?.length > 0 ? audit.auditeurs.map(u => `${u.prenom} ${u.nom}`).join(', ') : '—' },
                         ].map(({ label, value }) => (
                             <div key={label}>
                                 <dt className="text-xs font-medium text-gray-500">{label}</dt>
@@ -1655,9 +1651,9 @@ const ValidationClientCard = ({ type, validation, isSeniorOrAdmin, isClient, onA
     const submitLabels = { planning: "Soumettre le planning au client", rapport: "Soumettre le rapport au client" };
 
     const statusConfig = {
-        en_attente:           { label: 'En attente de validation client', color: 'text-orange-700 bg-orange-50 border-orange-200' },
-        valide:               { label: 'Validé par le client', color: 'text-green-700 bg-green-50 border-green-200' },
-        modification_demandee:{ label: 'Modification demandée', color: 'text-red-700 bg-red-50 border-red-200' },
+        en_attente: { label: 'En attente de validation client', color: 'text-orange-700 bg-orange-50 border-orange-200' },
+        valide: { label: 'Validé par le client', color: 'text-green-700 bg-green-50 border-green-200' },
+        modification_demandee: { label: 'Modification demandée', color: 'text-red-700 bg-red-50 border-red-200' },
     };
 
     const statut = validation?.statut;
@@ -1769,7 +1765,7 @@ const FILE_ICONS = {
     'image/png': '🖼️',
 };
 const fileIcon = (mime) => FILE_ICONS[mime] || '📎';
-const fmtSize  = (bytes) => {
+const fmtSize = (bytes) => {
     if (!bytes) return '';
     if (bytes < 1024) return `${bytes} o`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
@@ -1789,7 +1785,7 @@ const DocumentPreviewModal = ({ doc, onClose, onFetchBlob, onDownload }) => {
         if (!canPreview) { setLoading(false); return; }
         onFetchBlob(doc.id)
             .then(blob => { url = URL.createObjectURL(new Blob([blob], { type: doc.mime })); setBlobUrl(url); })
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoading(false));
         return () => { if (url) URL.revokeObjectURL(url); };
     }, [doc.id]);
@@ -1857,73 +1853,73 @@ const DepotDocuments = ({ documents, uploading, currentUserId, isSeniorOrAdmin, 
 
     return (
         <>
-        {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
-        <div className="space-y-3">
-            {/* Zone de dépôt — visible uniquement pour le client */}
-            {!readOnly && (
-                <>
-                <div
-                    onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                    onDragLeave={() => setDragging(false)}
-                    onDrop={handleDrop}
-                    onClick={() => !uploading && inputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragging ? 'border-orange-400 bg-orange-50' : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50/40'}`}
-                >
-                    {uploading ? (
-                        <p className="text-sm text-orange-600 font-medium animate-pulse">Dépôt en cours…</p>
-                    ) : (
-                        <>
-                        <svg className="w-10 h-10 mx-auto mb-3 text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                        <p className="text-sm font-semibold text-gray-700">Glissez vos fichiers ici</p>
-                        <p className="text-xs text-gray-400 mt-1">ou <span className="text-orange-500 font-medium">cliquez pour sélectionner</span></p>
-                        <p className="text-xs text-gray-300 mt-3">PDF · Word · Excel · Image — 10 Mo max par fichier</p>
-                        </>
-                    )}
-                </div>
-                <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
-                    className="hidden" onChange={e => { onUpload(e.target.files); e.target.value = ''; }} />
-                </>
-            )}
+            {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
+            <div className="space-y-3">
+                {/* Zone de dépôt — visible uniquement pour le client */}
+                {!readOnly && (
+                    <>
+                        <div
+                            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                            onDragLeave={() => setDragging(false)}
+                            onDrop={handleDrop}
+                            onClick={() => !uploading && inputRef.current?.click()}
+                            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragging ? 'border-orange-400 bg-orange-50' : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50/40'}`}
+                        >
+                            {uploading ? (
+                                <p className="text-sm text-orange-600 font-medium animate-pulse">Dépôt en cours…</p>
+                            ) : (
+                                <>
+                                    <svg className="w-10 h-10 mx-auto mb-3 text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                                    <p className="text-sm font-semibold text-gray-700">Glissez vos fichiers ici</p>
+                                    <p className="text-xs text-gray-400 mt-1">ou <span className="text-orange-500 font-medium">cliquez pour sélectionner</span></p>
+                                    <p className="text-xs text-gray-300 mt-3">PDF · Word · Excel · Image — 10 Mo max par fichier</p>
+                                </>
+                            )}
+                        </div>
+                        <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
+                            className="hidden" onChange={e => { onUpload(e.target.files); e.target.value = ''; }} />
+                    </>
+                )}
 
-            {/* Liste des fichiers déposés */}
-            {documents.length === 0 ? (
-                <div className={`py-8 text-center text-gray-400 bg-white rounded-xl border border-gray-100 ${readOnly ? '' : ''}`}>
-                    <svg className="w-7 h-7 mx-auto mb-2 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                    <p className="text-sm">{readOnly ? 'Aucun document déposé par le client.' : 'Aucun fichier déposé pour l\'instant.'}</p>
-                </div>
-            ) : (
-                <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-                    {documents.map(doc => {
-                        const canDelete = !readOnly && (doc.uploaded_by === currentUserId || isSeniorOrAdmin);
-                        return (
-                            <div key={doc.id} className="flex items-center gap-3 px-4 py-3">
-                                <span className="text-lg flex-shrink-0">{fileIcon(doc.type_mime)}</span>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-800 truncate">{doc.nom_original}</p>
-                                    <p className="text-xs text-gray-400">{fmtSize(doc.taille)} · {new Date(doc.createdAt).toLocaleDateString('fr-FR')}</p>
-                                </div>
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                    <button onClick={() => setPreview({ id: doc.id, nom: doc.nom_original, mime: doc.type_mime, taille: doc.taille })}
-                                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="Visualiser">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    </button>
-                                    <button onClick={() => onDownload(doc.id, doc.nom_original)}
-                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Télécharger">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                                    </button>
-                                    {canDelete && (
-                                        <button onClick={() => onDelete(doc.id)}
-                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Supprimer">
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                {/* Liste des fichiers déposés */}
+                {documents.length === 0 ? (
+                    <div className={`py-8 text-center text-gray-400 bg-white rounded-xl border border-gray-100 ${readOnly ? '' : ''}`}>
+                        <svg className="w-7 h-7 mx-auto mb-2 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                        <p className="text-sm">{readOnly ? 'Aucun document déposé par le client.' : 'Aucun fichier déposé pour l\'instant.'}</p>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                        {documents.map(doc => {
+                            const canDelete = !readOnly && (doc.uploaded_by === currentUserId || isSeniorOrAdmin);
+                            return (
+                                <div key={doc.id} className="flex items-center gap-3 px-4 py-3">
+                                    <span className="text-lg flex-shrink-0">{fileIcon(doc.type_mime)}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-800 truncate">{doc.nom_original}</p>
+                                        <p className="text-xs text-gray-400">{fmtSize(doc.taille)} · {new Date(doc.createdAt).toLocaleDateString('fr-FR')}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                        <button onClick={() => setPreview({ id: doc.id, nom: doc.nom_original, mime: doc.type_mime, taille: doc.taille })}
+                                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="Visualiser">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                         </button>
-                                    )}
+                                        <button onClick={() => onDownload(doc.id, doc.nom_original)}
+                                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Télécharger">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                        </button>
+                                        {canDelete && (
+                                            <button onClick={() => onDelete(doc.id)}
+                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Supprimer">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
         </>
     );
 };
@@ -1951,55 +1947,55 @@ const RevueDocuments = ({ documents, onDownload, onFetchBlob }) => {
 
     return (
         <>
-        {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
+            {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
 
-        {/* Barre de progression */}
-        <div className="bg-white rounded-xl border border-purple-200 px-5 py-4">
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-purple-800">Progression de la revue</span>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${examCount === total ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                    {examCount}/{total} examiné{examCount > 1 ? 's' : ''}
-                </span>
+            {/* Barre de progression */}
+            <div className="bg-white rounded-xl border border-purple-200 px-5 py-4">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-purple-800">Progression de la revue</span>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${examCount === total ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                        {examCount}/{total} examiné{examCount > 1 ? 's' : ''}
+                    </span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className={`h-2 rounded-full transition-all duration-500 ${examCount === total ? 'bg-green-500' : 'bg-purple-500'}`} style={{ width: `${pct}%` }} />
+                </div>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className={`h-2 rounded-full transition-all duration-500 ${examCount === total ? 'bg-green-500' : 'bg-purple-500'}`} style={{ width: `${pct}%` }} />
-            </div>
-        </div>
 
-        {/* Grille de cartes */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {documents.map(doc => {
-                const done = examined.has(doc.id);
-                return (
-                    <div key={doc.id} className={`bg-white rounded-xl border-2 flex flex-col overflow-hidden transition ${done ? 'border-green-200' : 'border-gray-200'}`}>
-                        {/* En-tête carte */}
-                        <div className={`px-4 py-3 flex items-center gap-2 border-b ${done ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
-                            <span className="text-xl">{fileIcon(doc.type_mime)}</span>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-gray-800 truncate">{doc.nom_original}</p>
-                                <p className="text-xs text-gray-400">{fmtSize(doc.taille)}</p>
+            {/* Grille de cartes */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {documents.map(doc => {
+                    const done = examined.has(doc.id);
+                    return (
+                        <div key={doc.id} className={`bg-white rounded-xl border-2 flex flex-col overflow-hidden transition ${done ? 'border-green-200' : 'border-gray-200'}`}>
+                            {/* En-tête carte */}
+                            <div className={`px-4 py-3 flex items-center gap-2 border-b ${done ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
+                                <span className="text-xl">{fileIcon(doc.type_mime)}</span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-gray-800 truncate">{doc.nom_original}</p>
+                                    <p className="text-xs text-gray-400">{fmtSize(doc.taille)}</p>
+                                </div>
+                                {done && (
+                                    <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                )}
                             </div>
-                            {done && (
-                                <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                            )}
+                            {/* Actions */}
+                            <div className="p-3 flex flex-col gap-2 mt-auto">
+                                <button onClick={() => handleConsulter(doc)}
+                                    className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition ${done ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    {done ? 'Revoir' : 'Consulter'}
+                                </button>
+                                <button onClick={() => onDownload(doc.id, doc.nom_original)}
+                                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 hover:bg-gray-50 transition">
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                    Télécharger
+                                </button>
+                            </div>
                         </div>
-                        {/* Actions */}
-                        <div className="p-3 flex flex-col gap-2 mt-auto">
-                            <button onClick={() => handleConsulter(doc)}
-                                className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition ${done ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                {done ? 'Revoir' : 'Consulter'}
-                            </button>
-                            <button onClick={() => onDownload(doc.id, doc.nom_original)}
-                                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 hover:bg-gray-50 transition">
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                                Télécharger
-                            </button>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
+                    );
+                })}
+            </div>
         </>
     );
 };
@@ -2008,8 +2004,8 @@ const RevueDocuments = ({ documents, onDownload, onFetchBlob }) => {
 
 const TYPE_AUDIT_OPTIONS = [
     { value: 'diagnostique', label: 'Audit diagnostique' },
-    { value: 'a_blanc',      label: 'Audit à blanc' },
-    { value: 'conformite',   label: 'Audit de conformité' },
+    { value: 'a_blanc', label: 'Audit à blanc' },
+    { value: 'conformite', label: 'Audit de conformité' },
 ];
 
 const TabCadrage = ({ audit, referentiel, identification, setIdentification, onSave, saving, readOnly }) => {
@@ -2098,11 +2094,10 @@ const TabCadrage = ({ audit, referentiel, identification, setIdentification, onS
                             key={opt.value}
                             type="button"
                             onClick={() => set('type_audit', opt.value)}
-                            className={`px-4 py-3 rounded-lg border text-sm font-medium transition text-left ${
-                                identification.type_audit === opt.value
+                            className={`px-4 py-3 rounded-lg border text-sm font-medium transition text-left ${identification.type_audit === opt.value
                                     ? 'border-blue-500 bg-blue-50 text-blue-700'
                                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
+                                }`}
                         >
                             {opt.label}
                         </button>
@@ -2115,8 +2110,8 @@ const TabCadrage = ({ audit, referentiel, identification, setIdentification, onS
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Périmètre</h3>
                 <div className="space-y-4">
                     {[
-                        { key: 'perimetre_physique',        label: 'Périmètre physique',        placeholder: 'Sites, bâtiments, équipements physiques concernés…' },
-                        { key: 'perimetre_logique',         label: 'Périmètre logique',         placeholder: 'Systèmes, réseaux, applications, bases de données…' },
+                        { key: 'perimetre_physique', label: 'Périmètre physique', placeholder: 'Sites, bâtiments, équipements physiques concernés…' },
+                        { key: 'perimetre_logique', label: 'Périmètre logique', placeholder: 'Systèmes, réseaux, applications, bases de données…' },
                         { key: 'perimetre_organisationnel', label: 'Périmètre organisationnel', placeholder: 'Entités, directions, processus métier concernés…' },
                     ].map(({ key, label, placeholder }) => (
                         <div key={key}>
@@ -2243,11 +2238,11 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                     <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">{genLabel}</h3>
                     <div className="grid grid-cols-2 gap-4">
                         {[
-                            { key: 'denomination',  label: 'Dénomination' },
-                            { key: 'departement',   label: "Département d'appartenance" },
-                            { key: 'adresse',       label: 'Adresse' },
-                            { key: 'ville',         label: 'Ville' },
-                            { key: 'site_web',      label: 'Adresse du site web' },
+                            { key: 'denomination', label: 'Dénomination' },
+                            { key: 'departement', label: "Département d'appartenance" },
+                            { key: 'adresse', label: 'Adresse' },
+                            { key: 'ville', label: 'Ville' },
+                            { key: 'site_web', label: 'Adresse du site web' },
                         ].map(({ key, label }) => (
                             <div key={key} className={key === 'adresse' ? 'col-span-2' : ''}>
                                 <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
@@ -2268,10 +2263,10 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                     <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Responsable de la Sécurité des SI (RSSI)</h3>
                     <div className="grid grid-cols-2 gap-4">
                         {[
-                            { key: 'rssi_nom_prenom',   label: 'Nom et Prénom' },
+                            { key: 'rssi_nom_prenom', label: 'Nom et Prénom' },
                             { key: 'rssi_rattachement', label: 'Rattachement' },
-                            { key: 'rssi_email',        label: 'E-mail', type: 'email' },
-                            { key: 'rssi_telephone',    label: 'Téléphone', type: 'tel' },
+                            { key: 'rssi_email', label: 'E-mail', type: 'email' },
+                            { key: 'rssi_telephone', label: 'Téléphone', type: 'tel' },
                         ].map(({ key, label, type = 'text' }) => (
                             <div key={key}>
                                 <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
@@ -2293,9 +2288,9 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                     <div className="grid grid-cols-2 gap-4">
                         {[
                             { key: 'auteur_evaluation', label: "Auteur de l'évaluation", isDate: false },
-                            { key: 'date_evaluation',   label: "Date de l'évaluation",   isDate: true },
-                            { key: 'valide_par',        label: 'Validé par',              isDate: false },
-                            { key: 'date_validation',   label: 'Date de validation',      isDate: true },
+                            { key: 'date_evaluation', label: "Date de l'évaluation", isDate: true },
+                            { key: 'valide_par', label: 'Validé par', isDate: false },
+                            { key: 'date_validation', label: 'Date de validation', isDate: true },
                         ].map(({ key, label, isDate }) => (
                             <div key={key}>
                                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
@@ -2399,7 +2394,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                             <div className="flex items-center gap-3">
                                 <span className="text-xs text-gray-500">{evCount}/{mesures.length} évaluées</span>
                                 <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${mesures.length > 0 ? (evCount/mesures.length)*100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
+                                    <div className="h-full rounded-full" style={{ width: `${mesures.length > 0 ? (evCount / mesures.length) * 100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
                                 </div>
                                 <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -2412,113 +2407,113 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                 {domaine.objectifs?.map(objectif => {
                                     const objDesc = stripObjectifPrefix(objectif.description || '');
                                     return (
-                                    <div key={objectif.id} className="border-b border-gray-50 last:border-0">
-                                        {/* En-tête objectif */}
-                                        <div className="px-5 py-2.5 bg-gray-50/60">
-                                            <p className="text-xs font-semibold text-gray-600">
-                                                <span className="text-gray-400 mr-1">{objectif.code}</span>
-                                                {objDesc}
-                                            </p>
-                                        </div>
+                                        <div key={objectif.id} className="border-b border-gray-50 last:border-0">
+                                            {/* En-tête objectif */}
+                                            <div className="px-5 py-2.5 bg-gray-50/60">
+                                                <p className="text-xs font-semibold text-gray-600">
+                                                    <span className="text-gray-400 mr-1">{objectif.code}</span>
+                                                    {objDesc}
+                                                </p>
+                                            </div>
 
-                                        {/* Table des mesures */}
-                                        <table className="w-full text-xs">
-                                            <thead>
-                                                <tr className="border-b border-gray-100">
-                                                    <th className="text-left px-5 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Règle</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Niveau maturité</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Conformité</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Constat</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Recommandation</th>
-                                                    <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Preuves / Références</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {objectif.mesures?.map(mesure => {
-                                                    const ev = localEvals[mesure.id] || {};
-                                                    const niveau = ev.niveau_maturite ?? null;
-                                                    const conformite = calcConformite(niveau);
-                                                    const isNA = niveau === null;
+                                            {/* Table des mesures */}
+                                            <table className="w-full text-xs">
+                                                <thead>
+                                                    <tr className="border-b border-gray-100">
+                                                        <th className="text-left px-5 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Règle</th>
+                                                        <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Niveau maturité</th>
+                                                        <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Conformité</th>
+                                                        <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Constat</th>
+                                                        <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Recommandation</th>
+                                                        <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Preuves / Références</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {objectif.mesures?.map(mesure => {
+                                                        const ev = localEvals[mesure.id] || {};
+                                                        const niveau = ev.niveau_maturite ?? null;
+                                                        const conformite = calcConformite(niveau);
+                                                        const isNA = niveau === null;
 
-                                                    return (
-                                                        <tr key={mesure.id} className="border-b border-gray-50 hover:bg-gray-50/40 transition-colors">
-                                                            <td className="px-5 py-2">
-                                                                <div className="relative group inline-flex items-center gap-1">
-                                                                    <span className="font-mono text-gray-500 cursor-help underline decoration-dotted decoration-gray-400">
-                                                                        {mesure.code}
-                                                                    </span>
-                                                                    <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
-                                                                        <p className="font-semibold text-gray-100 mb-1.5">{mesure.code?.trim()}</p>
-                                                                        {mesure.description && <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>}
-                                                                        <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
+                                                        return (
+                                                            <tr key={mesure.id} className="border-b border-gray-50 hover:bg-gray-50/40 transition-colors">
+                                                                <td className="px-5 py-2">
+                                                                    <div className="relative group inline-flex items-center gap-1">
+                                                                        <span className="font-mono text-gray-500 cursor-help underline decoration-dotted decoration-gray-400">
+                                                                            {mesure.code}
+                                                                        </span>
+                                                                        <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
+                                                                            <p className="font-semibold text-gray-100 mb-1.5">{mesure.code?.trim()}</p>
+                                                                            {mesure.description && <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>}
+                                                                            <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-3 py-2">
-                                                                <select
-                                                                    value={niveau === null ? 'na' : String(niveau)}
-                                                                    onChange={e => {
-                                                                        if (readOnly) return;
-                                                                        const v = e.target.value === 'na' ? null : parseInt(e.target.value);
-                                                                        setEval(mesure.id, 'niveau_maturite', v);
-                                                                    }}
-                                                                    disabled={readOnly}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-default"
-                                                                    style={{ '--tw-ring-color': 'var(--brand-red)' }}
-                                                                >
-                                                                    <option value="na">N/A</option>
-                                                                    <option value="0">0 — Aucun</option>
-                                                                    <option value="1">1 — Initial</option>
-                                                                    <option value="2">2 — Reproductible</option>
-                                                                    <option value="3">3 — Défini</option>
-                                                                    <option value="4">4 — Maitrisé</option>
-                                                                    <option value="5">5 — Optimisé</option>
-                                                                </select>
-                                                            </td>
-                                                            <td className="px-3 py-2">
-                                                                <ConformiteBadge conformite={conformite} />
-                                                            </td>
-                                                            <td className="px-3 py-2">
-                                                                <textarea
-                                                                    value={ev.commentaire || ''}
-                                                                    onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
-                                                                    readOnly={readOnly}
-                                                                    rows={2}
-                                                                    placeholder={readOnly ? '—' : 'Constat...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
-                                                                />
-                                                            </td>
-                                                            <td className="px-3 py-2">
-                                                                <textarea
-                                                                    value={ev.recommandation || ''}
-                                                                    onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
-                                                                    readOnly={readOnly}
-                                                                    rows={2}
-                                                                    placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
-                                                                />
-                                                            </td>
-                                                            <td className="px-3 py-2">
-                                                                <input
-                                                                    type="text"
-                                                                    value={ev.preuve || ''}
-                                                                    onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
-                                                                    readOnly={readOnly}
-                                                                    placeholder={readOnly ? '—' : isNA ? 'Justifier la non-applicabilité...' : 'Références / preuves...'}
-                                                                    className={`w-full text-xs border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-default ${
-                                                                        isNA && !readOnly
-                                                                            ? 'border-orange-200 bg-orange-50 read-only:bg-gray-50'
-                                                                            : 'border-gray-200 read-only:bg-gray-50 read-only:text-gray-600'
-                                                                    }`}
-                                                                />
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ); })}
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <select
+                                                                        value={niveau === null ? 'na' : String(niveau)}
+                                                                        onChange={e => {
+                                                                            if (readOnly) return;
+                                                                            const v = e.target.value === 'na' ? null : parseInt(e.target.value);
+                                                                            setEval(mesure.id, 'niveau_maturite', v);
+                                                                        }}
+                                                                        disabled={readOnly}
+                                                                        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-default"
+                                                                        style={{ '--tw-ring-color': 'var(--brand-red)' }}
+                                                                    >
+                                                                        <option value="na">N/A</option>
+                                                                        <option value="0">0 — Aucun</option>
+                                                                        <option value="1">1 — Initial</option>
+                                                                        <option value="2">2 — Reproductible</option>
+                                                                        <option value="3">3 — Défini</option>
+                                                                        <option value="4">4 — Maitrisé</option>
+                                                                        <option value="5">5 — Optimisé</option>
+                                                                    </select>
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <ConformiteBadge conformite={conformite} />
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <textarea
+                                                                        value={ev.commentaire || ''}
+                                                                        onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
+                                                                        readOnly={readOnly}
+                                                                        rows={2}
+                                                                        placeholder={readOnly ? '—' : 'Constat...'}
+                                                                        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
+                                                                    />
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <textarea
+                                                                        value={ev.recommandation || ''}
+                                                                        onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
+                                                                        readOnly={readOnly}
+                                                                        rows={2}
+                                                                        placeholder={readOnly ? '—' : 'Recommandation...'}
+                                                                        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
+                                                                    />
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={ev.preuve || ''}
+                                                                        onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
+                                                                        readOnly={readOnly}
+                                                                        placeholder={readOnly ? '—' : isNA ? 'Justifier la non-applicabilité...' : 'Références / preuves...'}
+                                                                        className={`w-full text-xs border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-default ${isNA && !readOnly
+                                                                                ? 'border-orange-200 bg-orange-50 read-only:bg-gray-50'
+                                                                                : 'border-gray-200 read-only:bg-gray-50 read-only:text-gray-600'
+                                                                            }`}
+                                                                    />
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -2865,21 +2860,21 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
 // ─── Constantes ISO évaluation ────────────────────────────────────────────────
 
 const ISO_CONF_STATES = [
-    { value: 5, label: 'Conforme',    activeCls: 'bg-green-600 text-white border-green-600',   inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-green-400' },
-    { value: 2, label: 'NC mineure',  activeCls: 'bg-orange-500 text-white border-orange-500', inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-orange-400' },
-    { value: 0, label: 'NC majeure',  activeCls: 'bg-red-600 text-white border-red-600',       inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-red-400' },
+    { value: 5, label: 'Conforme', activeCls: 'bg-green-600 text-white border-green-600', inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-green-400' },
+    { value: 2, label: 'NC mineure', activeCls: 'bg-orange-500 text-white border-orange-500', inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-orange-400' },
+    { value: 0, label: 'NC majeure', activeCls: 'bg-red-600 text-white border-red-600', inactiveCls: 'bg-white text-gray-500 border-gray-200 hover:border-red-400' },
 ];
 
 const PRIORITE_CONFIG = {
-    haute:   { label: 'Haute',   bg: 'bg-red-50',    text: 'text-red-700' },
-    moyenne: { label: 'Moyenne', bg: 'bg-yellow-50',  text: 'text-yellow-700' },
-    basse:   { label: 'Basse',   bg: 'bg-green-50',   text: 'text-green-700' },
+    haute: { label: 'Haute', bg: 'bg-red-50', text: 'text-red-700' },
+    moyenne: { label: 'Moyenne', bg: 'bg-yellow-50', text: 'text-yellow-700' },
+    basse: { label: 'Basse', bg: 'bg-green-50', text: 'text-green-700' },
 };
 
 const STATUT_PLAN_CONFIG = {
-    a_faire:  { label: 'À faire',  bg: 'bg-gray-100',  text: 'text-gray-600' },
-    en_cours: { label: 'En cours', bg: 'bg-blue-50',   text: 'text-blue-700' },
-    cloture:  { label: 'Clôturé',  bg: 'bg-green-50',  text: 'text-green-700' },
+    a_faire: { label: 'À faire', bg: 'bg-gray-100', text: 'text-gray-600' },
+    en_cours: { label: 'En cours', bg: 'bg-blue-50', text: 'text-blue-700' },
+    cloture: { label: 'Clôturé', bg: 'bg-green-50', text: 'text-green-700' },
 };
 
 // ─── TAB ISO : Exigences SMSI §4-10 ──────────────────────────────────────────
@@ -2897,7 +2892,7 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
     const mainBodyDomaines = referentiel?.domaines?.filter(d => !d.code.startsWith('A.')) ?? [];
     const allMesures = mainBodyDomaines.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []);
 
-    const conforme  = allMesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+    const conforme = allMesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
     const ncMineure = allMesures.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
     const ncMajeure = allMesures.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
     const evaluated = conforme + ncMineure + ncMajeure;
@@ -2918,9 +2913,9 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Exigences totales', value: allMesures.length, sub: `${evaluated} évaluées`, color: '#111827' },
-                    { label: 'Conformes',   value: conforme,   color: '#16a34a' },
-                    { label: 'NC mineures', value: ncMineure,  color: '#ea580c' },
-                    { label: 'NC majeures', value: ncMajeure,  color: '#dc2626' },
+                    { label: 'Conformes', value: conforme, color: '#16a34a' },
+                    { label: 'NC mineures', value: ncMineure, color: '#ea580c' },
+                    { label: 'NC majeures', value: ncMajeure, color: '#dc2626' },
                 ].map((kpi, i) => (
                     <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
@@ -3063,10 +3058,10 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
         );
     }
 
-    const conforme   = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
-    const ncMineure  = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
-    const ncMajeure  = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
-    const evaluated  = conforme + ncMineure + ncMajeure;
+    const conforme = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+    const ncMineure = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
+    const ncMajeure = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+    const evaluated = conforme + ncMineure + ncMajeure;
 
     return (
         <div className="space-y-4">
@@ -3076,9 +3071,9 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Contrôles applicables', value: allApplicable.length, sub: `${evaluated} évalués`, color: '#111827' },
-                    { label: 'Conformes',   value: conforme,   color: '#16a34a' },
-                    { label: 'NC mineures', value: ncMineure,  color: '#ea580c' },
-                    { label: 'NC majeures', value: ncMajeure,  color: '#dc2626' },
+                    { label: 'Conformes', value: conforme, color: '#16a34a' },
+                    { label: 'NC mineures', value: ncMineure, color: '#ea580c' },
+                    { label: 'NC majeures', value: ncMajeure, color: '#dc2626' },
                 ].map((kpi, i) => (
                     <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
@@ -3223,9 +3218,9 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
 const emptyPlanForm = { mesure_id: '', description_nc: '', action_corrective: '', responsable: '', delai: '', priorite: 'moyenne', statut: 'a_faire', kpi: '' };
 
 const PLAN_VALIDATION_CONFIG = {
-    en_attente: { label: 'En attente', bg: 'bg-amber-50',  text: 'text-amber-700'  },
-    valide:     { label: 'Validé',     bg: 'bg-green-50',  text: 'text-green-700'  },
-    rejete:     { label: 'Rejeté',     bg: 'bg-red-50',    text: 'text-red-700'    },
+    en_attente: { label: 'En attente', bg: 'bg-amber-50', text: 'text-amber-700' },
+    valide: { label: 'Validé', bg: 'bg-green-50', text: 'text-green-700' },
+    rejete: { label: 'Rejeté', bg: 'bg-red-50', text: 'text-red-700' },
 };
 
 const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, user, onAdd, onBulkAdd, onUpdate, onDelete, onSoumettre, onValider, onRejeter, readOnly }) => {
@@ -3691,12 +3686,12 @@ const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
     if (!referentiel) return <div className="text-gray-400 text-sm">Chargement...</div>;
 
     const mainBodyDomaines = referentiel.domaines.filter(d => !d.code.startsWith('A.'));
-    const annexeDomaines   = referentiel.domaines.filter(d =>  d.code.startsWith('A.'));
+    const annexeDomaines = referentiel.domaines.filter(d => d.code.startsWith('A.'));
 
     // §4-10 : toutes les mesures (pas de SoA)
     const smsiRows = mainBodyDomaines.map(d => {
-        const mesures   = d.objectifs.flatMap(o => o.mesures);
-        const conforme  = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+        const mesures = d.objectifs.flatMap(o => o.mesures);
+        const conforme = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
         const ncMineure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
         const ncMajeure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
         const evaluated = conforme + ncMineure + ncMajeure;
@@ -3706,8 +3701,8 @@ const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
 
     // Annexe A : filtrée par SoA
     const annexeRows = annexeDomaines.map(d => {
-        const mesures   = d.objectifs.flatMap(o => o.mesures).filter(m => soaMap[m.id]?.applicable === true);
-        const conforme  = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+        const mesures = d.objectifs.flatMap(o => o.mesures).filter(m => soaMap[m.id]?.applicable === true);
+        const conforme = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
         const ncMineure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
         const ncMajeure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
         const evaluated = conforme + ncMineure + ncMajeure;
@@ -3715,11 +3710,11 @@ const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
         return { ...d, total: mesures.length, evaluated, conforme, ncMineure, ncMajeure, taux };
     });
 
-    const allRows  = [...smsiRows, ...annexeRows];
-    const totConf  = allRows.reduce((s, t) => s + t.conforme,  0);
-    const totMin   = allRows.reduce((s, t) => s + t.ncMineure, 0);
-    const totMaj   = allRows.reduce((s, t) => s + t.ncMajeure, 0);
-    const totEval  = allRows.reduce((s, t) => s + t.evaluated, 0);
+    const allRows = [...smsiRows, ...annexeRows];
+    const totConf = allRows.reduce((s, t) => s + t.conforme, 0);
+    const totMin = allRows.reduce((s, t) => s + t.ncMineure, 0);
+    const totMaj = allRows.reduce((s, t) => s + t.ncMajeure, 0);
+    const totEval = allRows.reduce((s, t) => s + t.evaluated, 0);
     const tauxGlobal = totEval > 0 ? Math.round(((totConf + totMin * 0.5) / totEval) * 100) : 0;
 
     const hasAnySoA = annexeRows.some(t => t.total > 0);
@@ -3732,9 +3727,9 @@ const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
             <div className="grid grid-cols-4 gap-4">
                 {[
                     { label: 'Taux global', value: `${tauxGlobal}%`, color: tauxGlobal >= 75 ? '#16a34a' : tauxGlobal >= 50 ? '#d97706' : '#dc2626', accent: true },
-                    { label: 'Conformes',   value: totConf, color: '#16a34a' },
-                    { label: 'NC mineures', value: totMin,  color: '#ea580c' },
-                    { label: 'NC majeures', value: totMaj,  color: '#dc2626' },
+                    { label: 'Conformes', value: totConf, color: '#16a34a' },
+                    { label: 'NC mineures', value: totMin, color: '#ea580c' },
+                    { label: 'NC majeures', value: totMaj, color: '#dc2626' },
                 ].map((k, i) => (
                     <div key={i} className="bg-white rounded-xl border border-gray-200 p-4" style={k.accent ? { borderTopWidth: '3px', borderTopColor: k.color } : {}}>
                         <p className="text-xs font-medium text-gray-500">{k.label}</p>
@@ -3875,13 +3870,13 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
 
     const allMesures = referentiel?.domaines?.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []) ?? [];
     const applicable = allMesures.filter(m => soaMap[m.id]?.applicable === true);
-    const ncCount    = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
-    const confCount  = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
-    const implCount  = allMesures.filter(m => ['implemente', 'partiel', 'planifie'].includes(soaMap[m.id]?.statut_implementation)).length;
+    const ncCount = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+    const confCount = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+    const implCount = allMesures.filter(m => ['implemente', 'partiel', 'planifie'].includes(soaMap[m.id]?.statut_implementation)).length;
 
     const getAutoValue = (key) => {
         if (!applicable.length) return '—';
-        if (key === 'iso_taux_nc')   return `${Math.round(ncCount / applicable.length * 100)}%`;
+        if (key === 'iso_taux_nc') return `${Math.round(ncCount / applicable.length * 100)}%`;
         if (key === 'iso_taux_conf') return `${Math.round(confCount / applicable.length * 100)}%`;
         if (key === 'iso_taux_impl') return allMesures.length > 0 ? `${Math.round(implCount / allMesures.length * 100)}%` : '—';
         return '—';
@@ -3927,17 +3922,17 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                 </div>
 
                 {!readOnly && (
-                <div className="flex justify-end mt-5">
-                    <button
-                        onClick={onSave}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60"
-                        style={{ backgroundColor: 'var(--brand-red)' }}
-                    >
-                        {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                        Enregistrer les indicateurs
-                    </button>
-                </div>
+                    <div className="flex justify-end mt-5">
+                        <button
+                            onClick={onSave}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60"
+                            style={{ backgroundColor: 'var(--brand-red)' }}
+                        >
+                            {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            Enregistrer les indicateurs
+                        </button>
+                    </div>
                 )}
             </div>
         </div>
@@ -4044,133 +4039,134 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                                     if (!objectif.mesures?.length) return null;
                                     const objDesc = stripObjectifPrefix(objectif.description || '');
                                     return (
-                                    <div key={objectif.id} className="border-b border-gray-50 last:border-0">
-                                        {/* En-tête objectif */}
-                                        <div className="px-5 py-2.5 bg-gray-50/60">
-                                            <p className="text-xs font-semibold text-gray-600">
-                                                <span className="text-gray-400 mr-1">{objectif.code}</span>
-                                                {objDesc}
-                                            </p>
-                                        </div>
+                                        <div key={objectif.id} className="border-b border-gray-50 last:border-0">
+                                            {/* En-tête objectif */}
+                                            <div className="px-5 py-2.5 bg-gray-50/60">
+                                                <p className="text-xs font-semibold text-gray-600">
+                                                    <span className="text-gray-400 mr-1">{objectif.code}</span>
+                                                    {objDesc}
+                                                </p>
+                                            </div>
 
-                                        {/* Lignes contrôles */}
-                                        {objectif.mesures?.map(mesure => {
-                                            const entry = soaMap[mesure.id] || {};
-                                            const isApplicable = entry.applicable;
-                                            const raisons = entry.raisons_inclusion ?? [];
+                                            {/* Lignes contrôles */}
+                                            {objectif.mesures?.map(mesure => {
+                                                const entry = soaMap[mesure.id] || {};
+                                                const isApplicable = entry.applicable;
+                                                const raisons = entry.raisons_inclusion ?? [];
 
-                                            return (
-                                                <div key={mesure.id} className="px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors">
-                                                    {/* Ligne principale */}
-                                                    <div className="flex items-start gap-4">
-                                                        {/* Code + tooltip */}
-                                                        <div className="relative group flex-shrink-0 w-24">
-                                                            <span className="font-mono text-xs text-gray-600 cursor-help underline decoration-dotted decoration-gray-400">
-                                                                {mesure.code?.trim()}
-                                                            </span>
-                                                            <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
-                                                                <p className="font-semibold text-gray-100 mb-1.5 text-xs">{mesure.code?.trim()}</p>
-                                                                {mesure.description && <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>}
-                                                                <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Description de la règle */}
-                                                        <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description || objDesc}</p>
-
-                                                        {/* Toggle applicable */}
-                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                            <button
-                                                                onClick={() => !readOnly && setSoaEntry(mesure.id, 'applicable', isApplicable === true ? null : true)}
-                                                                disabled={readOnly}
-                                                                className={`px-2.5 py-1 text-xs font-medium rounded-l-md border transition ${isApplicable === true ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-500 border-gray-200 hover:border-green-400'} ${readOnly ? 'cursor-default' : ''}`}
-                                                            >
-                                                                Oui
-                                                            </button>
-                                                            <button
-                                                                onClick={() => !readOnly && setSoaEntry(mesure.id, 'applicable', isApplicable === false ? null : false)}
-                                                                disabled={readOnly}
-                                                                className={`px-2.5 py-1 text-xs font-medium rounded-r-md border-t border-r border-b transition ${isApplicable === false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-200 hover:border-red-400'} ${readOnly ? 'cursor-default' : ''}`}
-                                                            >
-                                                                Non
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Détails si applicable = true */}
-                                                    {isApplicable === true && (
-                                                        <div className="mt-3 ml-28 space-y-3">
-                                                            {/* Raisons d'inclusion */}
-                                                            <div>
-                                                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Raisons d'inclusion</p>
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {RAISONS_INCLUSION.map(r => (
-                                                                        <label key={r.value} className={`flex items-center gap-1.5 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}>
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={raisons.includes(r.value)}
-                                                                                onChange={() => !readOnly && toggleRaison(mesure.id, r.value)}
-                                                                                disabled={readOnly}
-                                                                                className="w-3 h-3 rounded accent-red-600"
-                                                                            />
-                                                                            <span className="text-xs text-gray-600">{r.label}</span>
-                                                                        </label>
-                                                                    ))}
+                                                return (
+                                                    <div key={mesure.id} className="px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors">
+                                                        {/* Ligne principale */}
+                                                        <div className="flex items-start gap-4">
+                                                            {/* Code + tooltip */}
+                                                            <div className="relative group flex-shrink-0 w-24">
+                                                                <span className="font-mono text-xs text-gray-600 cursor-help underline decoration-dotted decoration-gray-400">
+                                                                    {mesure.code?.trim()}
+                                                                </span>
+                                                                <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
+                                                                    <p className="font-semibold text-gray-100 mb-1.5 text-xs">{mesure.code?.trim()}</p>
+                                                                    {mesure.description && <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>}
+                                                                    <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
                                                                 </div>
                                                             </div>
 
-                                                            <div className="grid grid-cols-2 gap-3">
-                                                                {/* Statut implémentation */}
+                                                            {/* Description de la règle */}
+                                                            <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description || objDesc}</p>
+
+                                                            {/* Toggle applicable */}
+                                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                                <button
+                                                                    onClick={() => !readOnly && setSoaEntry(mesure.id, 'applicable', isApplicable === true ? null : true)}
+                                                                    disabled={readOnly}
+                                                                    className={`px-2.5 py-1 text-xs font-medium rounded-l-md border transition ${isApplicable === true ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-500 border-gray-200 hover:border-green-400'} ${readOnly ? 'cursor-default' : ''}`}
+                                                                >
+                                                                    Oui
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => !readOnly && setSoaEntry(mesure.id, 'applicable', isApplicable === false ? null : false)}
+                                                                    disabled={readOnly}
+                                                                    className={`px-2.5 py-1 text-xs font-medium rounded-r-md border-t border-r border-b transition ${isApplicable === false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-200 hover:border-red-400'} ${readOnly ? 'cursor-default' : ''}`}
+                                                                >
+                                                                    Non
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Détails si applicable = true */}
+                                                        {isApplicable === true && (
+                                                            <div className="mt-3 ml-28 space-y-3">
+                                                                {/* Raisons d'inclusion */}
                                                                 <div>
-                                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Statut d'implémentation</p>
-                                                                    <select
-                                                                        value={entry.statut_implementation ?? ''}
-                                                                        onChange={e => setSoaEntry(mesure.id, 'statut_implementation', e.target.value || null)}
-                                                                        disabled={readOnly}
-                                                                        className={`w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-500 cursor-default' : 'bg-white'}`}
-                                                                    >
-                                                                        <option value="">— Sélectionner —</option>
-                                                                        {Object.entries(STATUT_IMPL_CONFIG).map(([k, v]) => (
-                                                                            <option key={k} value={k}>{v.label}</option>
+                                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Raisons d'inclusion</p>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {RAISONS_INCLUSION.map(r => (
+                                                                            <label key={r.value} className={`flex items-center gap-1.5 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}>
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={raisons.includes(r.value)}
+                                                                                    onChange={() => !readOnly && toggleRaison(mesure.id, r.value)}
+                                                                                    disabled={readOnly}
+                                                                                    className="w-3 h-3 rounded accent-red-600"
+                                                                                />
+                                                                                <span className="text-xs text-gray-600">{r.label}</span>
+                                                                            </label>
                                                                         ))}
-                                                                    </select>
+                                                                    </div>
                                                                 </div>
 
-                                                                {/* Référence documentaire */}
-                                                                <div>
-                                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Référence documentaire</p>
-                                                                    <input
-                                                                        type="text"
-                                                                        value={entry.reference_document ?? ''}
-                                                                        onChange={e => setSoaEntry(mesure.id, 'reference_document', e.target.value || null)}
-                                                                        readOnly={readOnly}
-                                                                        placeholder="Ex : POL-SEC-001"
-                                                                        className={`w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
-                                                                    />
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    {/* Statut implémentation */}
+                                                                    <div>
+                                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Statut d'implémentation</p>
+                                                                        <select
+                                                                            value={entry.statut_implementation ?? ''}
+                                                                            onChange={e => setSoaEntry(mesure.id, 'statut_implementation', e.target.value || null)}
+                                                                            disabled={readOnly}
+                                                                            className={`w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-500 cursor-default' : 'bg-white'}`}
+                                                                        >
+                                                                            <option value="">— Sélectionner —</option>
+                                                                            {Object.entries(STATUT_IMPL_CONFIG).map(([k, v]) => (
+                                                                                <option key={k} value={k}>{v.label}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+
+                                                                    {/* Référence documentaire */}
+                                                                    <div>
+                                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Référence documentaire</p>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={entry.reference_document ?? ''}
+                                                                            onChange={e => setSoaEntry(mesure.id, 'reference_document', e.target.value || null)}
+                                                                            readOnly={readOnly}
+                                                                            placeholder="Ex : POL-SEC-001"
+                                                                            className={`w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
+                                                                        />
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        )}
 
-                                                    {/* Justification si non applicable */}
-                                                    {isApplicable === false && (
-                                                        <div className="mt-3 ml-28">
-                                                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Justification d'exclusion</p>
-                                                            <textarea
-                                                                value={entry.justification_exclusion ?? ''}
-                                                                onChange={e => setSoaEntry(mesure.id, 'justification_exclusion', e.target.value || null)}
-                                                                readOnly={readOnly}
-                                                                placeholder="Expliquer pourquoi ce contrôle n'est pas applicable..."
-                                                                rows={2}
-                                                                className={`w-full text-xs border border-orange-200 rounded-md px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1 resize-none ${readOnly ? 'text-gray-600 cursor-default' : ''}`}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ); })}
+                                                        {/* Justification si non applicable */}
+                                                        {isApplicable === false && (
+                                                            <div className="mt-3 ml-28">
+                                                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Justification d'exclusion</p>
+                                                                <textarea
+                                                                    value={entry.justification_exclusion ?? ''}
+                                                                    onChange={e => setSoaEntry(mesure.id, 'justification_exclusion', e.target.value || null)}
+                                                                    readOnly={readOnly}
+                                                                    placeholder="Expliquer pourquoi ce contrôle n'est pas applicable..."
+                                                                    rows={2}
+                                                                    className={`w-full text-xs border border-orange-200 rounded-md px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1 resize-none ${readOnly ? 'text-gray-600 cursor-default' : ''}`}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
