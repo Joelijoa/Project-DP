@@ -393,18 +393,20 @@ const AuditDetailPage = () => {
     };
 
     const handleReplaceDocument = async (oldDocId, files) => {
-        if (!files || files.length === 0) return;
+        const fileArr = Array.isArray(files) ? files : Array.from(files);
+        if (!fileArr || fileArr.length === 0) return;
         setUploading(true);
         try {
             await deleteDocument(id, oldDocId);
             const fd = new FormData();
-            Array.from(files).forEach(f => fd.append('fichiers', f));
+            fileArr.forEach(f => fd.append('fichiers', f));
+            fd.append('is_correction', 'true');
             await uploadDocuments(id, fd);
             const refreshed = await getDocuments(id);
             setDocuments(refreshed.data.documents || []);
             toast.success('Document corrigé et re-déposé.');
-        } catch {
-            toast.error('Erreur lors de la correction.');
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Erreur lors de la correction.');
         } finally {
             setUploading(false);
         }
@@ -2081,7 +2083,7 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
         {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
         {onReplace && (
             <input ref={replaceRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
-                className="hidden" onChange={e => { if (replacingId) { onReplace(replacingId, e.target.files); setReplacingId(null); } e.target.value = ''; }} />
+                className="hidden" onChange={e => { if (replacingId) { const files = Array.from(e.target.files); e.target.value = ''; onReplace(replacingId, files); setReplacingId(null); } else { e.target.value = ''; } }} />
         )}
 
         {/* ── Documents client à valider ─────────────────────────── */}
@@ -2112,14 +2114,22 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
                     const isRefusing = refuseId === doc.id;
                     const examined_ = examined.has(doc.id);
                     return (
-                        <div key={doc.id} className={`bg-white rounded-xl border-2 flex flex-col overflow-hidden transition ${doc.statut === 'valide' ? 'border-green-200' : doc.statut === 'refuse' ? 'border-red-200' : 'border-gray-200'}`}>
-                            <div className={`px-4 py-3 flex items-center gap-2 border-b ${doc.statut === 'valide' ? 'bg-green-50 border-green-100' : doc.statut === 'refuse' ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                        <div key={doc.id} className={`bg-white rounded-xl border-2 flex flex-col overflow-hidden transition ${doc.statut === 'valide' ? 'border-green-200' : doc.statut === 'refuse' ? 'border-red-200' : doc.is_correction ? 'border-orange-300' : 'border-gray-200'}`}>
+                            <div className={`px-4 py-3 flex items-center gap-2 border-b ${doc.statut === 'valide' ? 'bg-green-50 border-green-100' : doc.statut === 'refuse' ? 'bg-red-50 border-red-100' : doc.is_correction ? 'bg-orange-50 border-orange-100' : 'bg-gray-50 border-gray-100'}`}>
                                 <span className="text-xl flex-shrink-0">{fileIcon(doc.type_mime)}</span>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-semibold text-gray-800 truncate">{doc.nom_original}</p>
                                     <p className="text-xs text-gray-400">{fmtSize(doc.taille)}</p>
                                 </div>
-                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${badge.cls}`}>{badge.label}</span>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    {doc.is_correction && doc.statut === 'en_attente' && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                                            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                            Corrigé
+                                        </span>
+                                    )}
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+                                </div>
                             </div>
                             {doc.statut === 'refuse' && doc.constat && (
                                 <div className="px-4 py-2 bg-red-50 border-b border-red-100">

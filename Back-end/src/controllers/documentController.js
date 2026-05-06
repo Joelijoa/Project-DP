@@ -29,7 +29,11 @@ const getDocuments = async (req, res) => {
 const uploadDocuments = async (req, res) => {
     try {
         const { id } = req.params;
-        const audit = await Audit.findByPk(id);
+        const isCorrection = req.body.is_correction === 'true' || req.body.is_correction === true;
+
+        const audit = await Audit.findByPk(id, {
+            include: isCorrection ? [{ model: User, as: 'auditeurs', attributes: ['id'] }] : [],
+        });
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé.' });
 
         const files = req.files;
@@ -37,15 +41,27 @@ const uploadDocuments = async (req, res) => {
             return res.status(400).json({ message: 'Aucun fichier fourni.' });
 
         const docs = await Promise.all(files.map(f => Document.create({
-            audit_id:     id,
-            nom_original: f.originalname,
-            nom_fichier:  f.filename,
-            type_mime:    f.mimetype,
-            taille:       f.size,
-            uploaded_by:  req.user.userId,
+            audit_id:      id,
+            nom_original:  f.originalname,
+            nom_fichier:   f.filename,
+            type_mime:     f.mimetype,
+            taille:        f.size,
+            uploaded_by:   req.user.userId,
+            is_correction: isCorrection,
         })));
 
         log(req.user.userId, 'doc_upload', 'audit', id, `${files.length} document(s) déposés — audit "${audit.nom}"`, getIp(req));
+
+        if (isCorrection && audit.auditeurs?.length > 0) {
+            const ids = audit.auditeurs.map(u => u.id);
+            const nomFichier = files[0].originalname;
+            notifierUsers(ids, 'DOC_CORRECTION',
+                `Document corrigé — ${audit.nom}`,
+                `Le client a déposé une correction pour "${nomFichier}". Veuillez le re-examiner.`,
+                Number(id)
+            ).catch(() => {});
+        }
+
         res.status(201).json({ documents: docs });
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -59,7 +75,7 @@ const deleteDocument = async (req, res) => {
         if (!doc) return res.status(404).json({ message: 'Document non trouvé.' });
 
         const role = req.user.role;
-        if (doc.uploaded_by !== req.user.userId && !['admin', 'auditeur_senior'].includes(role))
+        if (Number(doc.uploaded_by) !== Number(req.user.userId) && !['admin', 'auditeur_senior'].includes(role))
             return res.status(403).json({ message: 'Non autorisé.' });
 
         const filePath = path.join(UPLOADS_DIR, doc.nom_fichier);

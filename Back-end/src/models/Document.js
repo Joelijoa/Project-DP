@@ -11,6 +11,7 @@ const Document = sequelize.define('Document', {
     uploaded_by:  { type: DataTypes.INTEGER,     allowNull: false },
     statut:       { type: DataTypes.ENUM('en_attente', 'valide', 'refuse'), defaultValue: 'en_attente' },
     constat:      { type: DataTypes.TEXT, allowNull: true },
+    is_correction: { type: DataTypes.BOOLEAN, defaultValue: false },
 }, { tableName: 'documents' });
 
 module.exports = Document;
