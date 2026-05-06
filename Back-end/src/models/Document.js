@@ -9,6 +9,8 @@ const Document = sequelize.define('Document', {
     type_mime:    { type: DataTypes.STRING(100), allowNull: true },
     taille:       { type: DataTypes.INTEGER,     allowNull: true },
     uploaded_by:  { type: DataTypes.INTEGER,     allowNull: false },
+    statut:       { type: DataTypes.ENUM('en_attente', 'valide', 'refuse'), defaultValue: 'en_attente' },
+    constat:      { type: DataTypes.TEXT, allowNull: true },
 }, { tableName: 'documents' });
 
 module.exports = Document;

@@ -21,3 +21,4 @@ export const getDocuments    = (id) => api.get(`/audits/${id}/documents`);
 export const uploadDocuments = (id, formData) => api.post(`/audits/${id}/documents`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const deleteDocument  = (id, docId) => api.delete(`/audits/${id}/documents/${docId}`);
 export const downloadDocument = (id, docId) => api.get(`/audits/${id}/documents/${docId}/download`, { responseType: 'blob' });
+export const updateDocumentStatut = (id, docId, statut, constat) => api.put(`/audits/${id}/documents/${docId}/statut`, { statut, constat });

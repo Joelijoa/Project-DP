@@ -386,7 +386,7 @@ const changerPhase = async (req, res) => {
 
         const oldPhase = audit.phase;
         await audit.update({ phase });
-        await log('phase_changed', `Phase de l'audit "${audit.nom}" : ${oldPhase} → ${phase}`, req.user.userId, getIp(req));
+        log(req.user.userId, 'phase_changed', 'audit', audit.id, `${oldPhase} → ${phase}`, getIp(req));
 
         const updated = await Audit.findByPk(req.params.id, {
             include: [

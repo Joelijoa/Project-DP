@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../store/auth/AuthContext';
-import { getAllAudits } from '../../services/endpoints/auditService';
+import { getAllAudits, getDocuments } from '../../services/endpoints/auditService';
 import { getAllPlanActions } from '../../services/endpoints/planActionService';
 import { getAllReferentiels } from '../../services/endpoints/referentielService';
 
@@ -87,6 +87,7 @@ const DashboardPage = () => {
     const [plans, setPlans]           = useState([]);
     const [referentiels, setReferentiels] = useState([]);
     const [loading, setLoading]       = useState(true);
+    const [refusedDocs, setRefusedDocs] = useState([]);
 
     useEffect(() => {
         Promise.all([getAllAudits(), getAllPlanActions(), getAllReferentiels()])
@@ -106,6 +107,25 @@ const DashboardPage = () => {
             .catch(() => {})
             .finally(() => setLoading(false));
     }, []);
+
+    useEffect(() => {
+        if (!isClient || audits.length === 0) return;
+        const enCours = audits.filter(a => a.statut === 'en_cours');
+        Promise.all(
+            enCours.map(a =>
+                getDocuments(a.id)
+                    .then(r => ({ audit: a, docs: r.data.documents || [] }))
+                    .catch(() => ({ audit: a, docs: [] }))
+            )
+        ).then(results => {
+            const refused = results.flatMap(({ audit, docs }) =>
+                docs
+                    .filter(d => d.statut === 'refuse' && d.uploader?.role === 'client')
+                    .map(d => ({ doc: d, audit }))
+            );
+            setRefusedDocs(refused);
+        });
+    }, [audits, isClient]);
 
     // ── Données dérivées ──────────────────────────────────────────────────────
 
@@ -174,6 +194,44 @@ const DashboardPage = () => {
                         {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                 </div>
+
+                {/* Alerte documents refusés */}
+                {refusedDocs.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center">
+                                <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-red-800">
+                                    {refusedDocs.length} document{refusedDocs.length > 1 ? 's' : ''} refusé{refusedDocs.length > 1 ? 's' : ''} — action requise
+                                </p>
+                                <p className="text-xs text-red-600 mt-0.5">
+                                    Ces documents ont été refusés par l'auditeur et doivent être corrigés.
+                                </p>
+                                <div className="mt-3 space-y-2">
+                                    {refusedDocs.map(({ doc, audit }) => (
+                                        <Link key={doc.id} to={`/audits/${audit.id}`}
+                                            className="flex items-start gap-3 p-2.5 rounded-xl bg-white border border-red-100 hover:border-red-300 transition group">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold text-gray-800 truncate">{doc.nom_original}</p>
+                                                <p className="text-xs text-gray-500 mt-0.5">{audit.nom}</p>
+                                                {doc.constat && (
+                                                    <p className="text-xs text-red-600 mt-1 italic line-clamp-2">"{doc.constat}"</p>
+                                                )}
+                                            </div>
+                                            <span className="text-xs font-semibold text-red-600 flex-shrink-0 mt-0.5 group-hover:underline">
+                                                Corriger →
+                                            </span>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* KPIs */}
                 <div>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA, soumettreAudit, validerAudit, rejeterAudit, changerPhase, getDocuments, uploadDocuments, deleteDocument, downloadDocument, soumettreValidationPlanning, repondreValidationPlanning, soumettreValidationRapport, repondreValidationRapport } from '../../services/endpoints/auditService';
+import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA, soumettreAudit, validerAudit, rejeterAudit, changerPhase, getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut, soumettreValidationPlanning, repondreValidationPlanning, soumettreValidationRapport, repondreValidationRapport } from '../../services/endpoints/auditService';
 import { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, soumettreValidationPlan, validerPlanAction, rejeterPlanAction } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
@@ -355,7 +355,8 @@ const AuditDetailPage = () => {
             const fd = new FormData();
             Array.from(files).forEach(f => fd.append('fichiers', f));
             const res = await uploadDocuments(id, fd);
-            setDocuments(prev => [...(res.data.documents || []), ...prev]);
+            const refreshed = await getDocuments(id);
+            setDocuments(refreshed.data.documents || []);
             toast.success(`${res.data.documents.length} fichier(s) déposé(s).`);
         } catch (err) {
             toast.error(err?.response?.data?.message || 'Erreur lors du dépôt.');
@@ -389,6 +390,35 @@ const AuditDetailPage = () => {
     const handleFetchDocBlob = async (docId) => {
         const res = await downloadDocument(id, docId);
         return res.data;
+    };
+
+    const handleReplaceDocument = async (oldDocId, files) => {
+        if (!files || files.length === 0) return;
+        setUploading(true);
+        try {
+            await deleteDocument(id, oldDocId);
+            const fd = new FormData();
+            Array.from(files).forEach(f => fd.append('fichiers', f));
+            await uploadDocuments(id, fd);
+            const refreshed = await getDocuments(id);
+            setDocuments(refreshed.data.documents || []);
+            toast.success('Document corrigé et re-déposé.');
+        } catch {
+            toast.error('Erreur lors de la correction.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleUpdateDocStatut = async (docId, statut, constat) => {
+        try {
+            await updateDocumentStatut(id, docId, statut, constat);
+            const res = await getDocuments(id);
+            setDocuments(res.data.documents || []);
+            toast.success(statut === 'valide' ? 'Document validé.' : 'Document refusé.');
+        } catch {
+            toast.error('Erreur lors de la mise à jour du statut.');
+        }
     };
 
     const [validatingClient, setValidatingClient] = useState(false);
@@ -949,14 +979,16 @@ const AuditDetailPage = () => {
                         )}
                         <DepotDocuments
                             documents={documents}
+                            auditeursIds={(audit.auditeurs || []).map(a => a.id)}
                             uploading={uploading}
                             currentUserId={user?.id}
                             isSeniorOrAdmin={isSeniorOrAdmin}
-                            readOnly={!isClient}
+                            isClient={isClient}
                             onUpload={handleUploadDocuments}
                             onDelete={handleDeleteDocument}
                             onDownload={handleDownloadDocument}
                             onFetchBlob={handleFetchDocBlob}
+                            onReplace={handleReplaceDocument}
                         />
                         {isSeniorOrAdmin && (
                             <div className="flex justify-end pt-2">
@@ -986,27 +1018,30 @@ const AuditDetailPage = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-start gap-4 p-5 rounded-xl bg-purple-50 border border-purple-200">
-                                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                                    <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            <div className="flex items-start gap-4 p-5 rounded-xl bg-blue-50 border border-blue-200">
+                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-purple-900">Revue documentaire — Lecture des fichiers</p>
-                                    <p className="text-xs text-purple-700 mt-1">Examinez les {documents.length > 0 ? `${documents.length} document(s) déposé(s)` : 'documents déposés'} par le client. Utilisez l'icône œil pour visualiser chaque fichier dans la plateforme.</p>
+                                    <p className="text-sm font-bold text-blue-900">Revue documentaire — Analyse des fichiers</p>
+                                    <p className="text-xs text-blue-700 mt-1">Consultez les {documents.length > 0 ? `${documents.length} document(s) déposé(s)` : 'documents déposés'} par le client. Validez ou refusez chaque document avec un constat si nécessaire.</p>
                                 </div>
                             </div>
                         )}
                         <RevueDocuments
                             documents={documents}
+                            isClient={isClient}
                             onDownload={handleDownloadDocument}
                             onFetchBlob={handleFetchDocBlob}
+                            onUpdateStatut={handleUpdateDocStatut}
+                            onReplace={isClient ? handleReplaceDocument : undefined}
                         />
                         {isSeniorOrAdmin && (
                             <div className="flex justify-end pt-2">
                                 <button
                                     onClick={() => handleChangerPhase(1)}
                                     disabled={changingPhase}
-                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
                                 >
                                     {changingPhase ? 'En cours…' : 'Valider la revue — Démarrer la Réalisation'}
                                     {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
@@ -1833,74 +1868,90 @@ const DocumentPreviewModal = ({ doc, onClose, onFetchBlob, onDownload }) => {
     );
 };
 
-// ── Zone de dépôt (prérequis — client upload) ────────────────────────────────
-const DepotDocuments = ({ documents, uploading, currentUserId, isSeniorOrAdmin, readOnly, onUpload, onDelete, onDownload, onFetchBlob }) => {
-    const inputRef = useRef(null);
+// ── Sous-liste documents partagée ─────────────────────────────────────────────
+const DocSubList = ({ docs, canUpload, uploading, currentUserId, isSeniorOrAdmin, onUpload, onDelete, onDownload, onReplace, setPreview, accentColor }) => {
+    const inputRef  = useRef(null);
+    const replaceRef = useRef(null);
+    const [replacingId, setReplacingId] = useState(null);
     const [dragging, setDragging] = useState(false);
-    const [preview, setPreview] = useState(null);
-
-    const handleDrop = (e) => {
-        e.preventDefault(); setDragging(false);
-        if (!readOnly && onUpload) onUpload(e.dataTransfer.files);
+    const colors = {
+        orange: { border: 'border-orange-300', bg: 'bg-orange-50', hover: 'hover:border-orange-300 hover:bg-orange-50/40', text: 'text-orange-500', pulse: 'text-orange-600' },
+        blue:   { border: 'border-blue-300',   bg: 'bg-blue-50',   hover: 'hover:border-blue-300 hover:bg-blue-50/40',   text: 'text-blue-500',   pulse: 'text-blue-600'   },
     };
-
+    const c = colors[accentColor] || colors.blue;
     return (
-        <>
-            {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
-            <div className="space-y-3">
-                {/* Zone de dépôt — visible uniquement pour le client */}
-                {!readOnly && (
-                    <>
-                        <div
-                            onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                            onDragLeave={() => setDragging(false)}
-                            onDrop={handleDrop}
-                            onClick={() => !uploading && inputRef.current?.click()}
-                            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragging ? 'border-orange-400 bg-orange-50' : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50/40'}`}
-                        >
-                            {uploading ? (
-                                <p className="text-sm text-orange-600 font-medium animate-pulse">Dépôt en cours…</p>
-                            ) : (
-                                <>
-                                    <svg className="w-10 h-10 mx-auto mb-3 text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                                    <p className="text-sm font-semibold text-gray-700">Glissez vos fichiers ici</p>
-                                    <p className="text-xs text-gray-400 mt-1">ou <span className="text-orange-500 font-medium">cliquez pour sélectionner</span></p>
-                                    <p className="text-xs text-gray-300 mt-3">PDF · Word · Excel · Image — 10 Mo max par fichier</p>
-                                </>
-                            )}
-                        </div>
-                        <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
-                            className="hidden" onChange={e => { onUpload(e.target.files); e.target.value = ''; }} />
-                    </>
-                )}
-
-                {/* Liste des fichiers déposés */}
-                {documents.length === 0 ? (
-                    <div className={`py-8 text-center text-gray-400 bg-white rounded-xl border border-gray-100 ${readOnly ? '' : ''}`}>
-                        <svg className="w-7 h-7 mx-auto mb-2 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                        <p className="text-sm">{readOnly ? 'Aucun document déposé par le client.' : 'Aucun fichier déposé pour l\'instant.'}</p>
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-                        {documents.map(doc => {
-                            const canDelete = !readOnly && (doc.uploaded_by === currentUserId || isSeniorOrAdmin);
-                            return (
-                                <div key={doc.id} className="flex items-center gap-3 px-4 py-3">
+        <div className="space-y-2">
+            {canUpload && (
+                <>
+                <div
+                    onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={e => { e.preventDefault(); setDragging(false); onUpload(e.dataTransfer.files); }}
+                    onClick={() => !uploading && inputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${dragging ? `${c.border} ${c.bg}` : `border-gray-200 ${c.hover}`}`}
+                >
+                    {uploading ? <p className={`text-sm font-medium animate-pulse ${c.pulse}`}>Dépôt en cours…</p> : (
+                        <>
+                        <svg className={`w-8 h-8 mx-auto mb-2 ${c.text} opacity-60`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                        <p className="text-sm font-semibold text-gray-700">Glissez vos fichiers ici</p>
+                        <p className={`text-xs mt-1 ${c.text} font-medium`}>ou cliquez pour sélectionner</p>
+                        <p className="text-xs text-gray-300 mt-2">PDF · Word · Excel · Image — 10 Mo max</p>
+                        </>
+                    )}
+                </div>
+                <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
+                    className="hidden" onChange={e => { onUpload(e.target.files); e.target.value = ''; }} />
+                </>
+            )}
+            {docs.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4">Aucun document déposé.</p>
+            ) : (
+                <>
+                <input ref={replaceRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
+                    className="hidden" onChange={e => { if (replacingId) { onReplace(replacingId, e.target.files); setReplacingId(null); } e.target.value = ''; }} />
+                <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                    {docs.map(doc => {
+                        const canDelete = isSeniorOrAdmin || doc.uploaded_by === currentUserId;
+                        const isRefused = doc.statut === 'refuse';
+                        return (
+                            <div key={doc.id} className={`px-4 py-3 ${isRefused ? 'bg-red-50/40' : ''}`}>
+                                {/* Constat refus visible pour le client */}
+                                {isRefused && doc.constat && (
+                                    <div className="flex items-start gap-1.5 mb-2 p-2 rounded-lg bg-red-50 border border-red-100">
+                                        <svg className="w-3.5 h-3.5 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                        <div>
+                                            <p className="text-xs font-semibold text-red-700">Document refusé</p>
+                                            <p className="text-xs text-red-600 mt-0.5">{doc.constat}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-3">
                                     <span className="text-lg flex-shrink-0">{fileIcon(doc.type_mime)}</span>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-gray-800 truncate">{doc.nom_original}</p>
                                         <p className="text-xs text-gray-400">{fmtSize(doc.taille)} · {new Date(doc.createdAt).toLocaleDateString('fr-FR')}</p>
                                     </div>
                                     <div className="flex items-center gap-1 flex-shrink-0">
+                                        {isRefused && onReplace && (
+                                            <button
+                                                onClick={() => { setReplacingId(doc.id); replaceRef.current?.click(); }}
+                                                disabled={uploading}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50 transition"
+                                                title="Déposer une correction"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                                Corriger
+                                            </button>
+                                        )}
                                         <button onClick={() => setPreview({ id: doc.id, nom: doc.nom_original, mime: doc.type_mime, taille: doc.taille })}
-                                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="Visualiser">
+                                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Visualiser">
                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                         </button>
                                         <button onClick={() => onDownload(doc.id, doc.nom_original)}
                                             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Télécharger">
                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                         </button>
-                                        {canDelete && (
+                                        {canDelete && onDelete && !isRefused && (
                                             <button onClick={() => onDelete(doc.id)}
                                                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Supprimer">
                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
@@ -1908,79 +1959,225 @@ const DepotDocuments = ({ documents, uploading, currentUserId, isSeniorOrAdmin, 
                                         )}
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
+                            </div>
+                        );
+                    })}
+                </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+// ── Zone de dépôt — deux sections : client / auditeurs (prérequis) ────────────
+const DepotDocuments = ({ documents, auditeursIds = [], uploading, currentUserId, isSeniorOrAdmin, isClient, onUpload, onDelete, onDownload, onFetchBlob, onReplace }) => {
+    const [preview, setPreview] = useState(null);
+
+    const docsClient    = documents.filter(d => d.uploader?.role === 'client');
+    const docsAuditeurs = documents.filter(d => d.uploader?.role !== 'client');
+
+    return (
+        <>
+        {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Section client */}
+            <div className="bg-white rounded-xl border border-orange-200 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 border-b border-orange-100">
+                    <svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+                    <span className="text-sm font-semibold text-orange-800">Documents du client</span>
+                    {docsClient.length > 0 && <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-orange-200 text-orange-700">{docsClient.length}</span>}
+                </div>
+                <div className="p-4">
+                    <DocSubList
+                        docs={docsClient}
+                        canUpload={isClient}
+                        uploading={uploading}
+                        currentUserId={currentUserId}
+                        isSeniorOrAdmin={isSeniorOrAdmin}
+                        onUpload={onUpload}
+                        onDelete={onDelete}
+                        onDownload={onDownload}
+                        onReplace={isClient ? onReplace : null}
+                        setPreview={setPreview}
+                        accentColor="orange"
+                    />
+                </div>
             </div>
+
+            {/* Section auditeurs */}
+            <div className="bg-white rounded-xl border border-blue-200 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100">
+                    <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                    <span className="text-sm font-semibold text-blue-800">Documents des auditeurs</span>
+                    {docsAuditeurs.length > 0 && <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-blue-200 text-blue-700">{docsAuditeurs.length}</span>}
+                </div>
+                <div className="p-4">
+                    <DocSubList
+                        docs={docsAuditeurs}
+                        canUpload={!isClient}
+                        uploading={uploading}
+                        currentUserId={currentUserId}
+                        isSeniorOrAdmin={isSeniorOrAdmin}
+                        onUpload={onUpload}
+                        onDelete={onDelete}
+                        onDownload={onDownload}
+                        setPreview={setPreview}
+                        accentColor="blue"
+                    />
+                </div>
+            </div>
+        </div>
         </>
     );
 };
 
-// ── Grille de consultation (revue documentaire — auditeur examine) ────────────
-const RevueDocuments = ({ documents, onDownload, onFetchBlob }) => {
-    const [preview, setPreview] = useState(null);
-    const [examined, setExamined] = useState(new Set());
+// ── Grille de consultation — revue documentaire (auditeur valide/refuse) ───────
+const STATUT_BADGE = {
+    en_attente:  { label: 'En attente',  cls: 'bg-gray-100 text-gray-500' },
+    valide:      { label: 'Validé',      cls: 'bg-green-100 text-green-700' },
+    refuse:      { label: 'Refusé',      cls: 'bg-red-100 text-red-700' },
+};
+
+const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdateStatut, onReplace }) => {
+    const [preview, setPreview]       = useState(null);
+    const [examined, setExamined]     = useState(new Set());
+    const [refuseId, setRefuseId]     = useState(null);
+    const [constatMap, setConstatMap] = useState({});
+    const [saving, setSaving]         = useState(false);
+    const [refOpen, setRefOpen]       = useState(false);
+    const replaceRef                  = useRef(null);
+    const [replacingId, setReplacingId] = useState(null);
+
+    const docsClient    = documents.filter(d => d.uploader?.role === 'client');
+    const docsAuditeurs = documents.filter(d => d.uploader?.role !== 'client');
 
     const handleConsulter = (doc) => {
         setExamined(prev => new Set([...prev, doc.id]));
         setPreview({ id: doc.id, nom: doc.nom_original, mime: doc.type_mime, taille: doc.taille });
     };
 
-    const examCount = examined.size;
-    const total = documents.length;
-    const pct = total > 0 ? Math.round((examCount / total) * 100) : 0;
+    const handleValider = async (doc) => {
+        setSaving(true);
+        await onUpdateStatut(doc.id, 'valide', null);
+        setSaving(false);
+    };
 
-    if (documents.length === 0) return (
-        <div className="py-12 text-center bg-white rounded-xl border border-gray-200">
-            <svg className="w-10 h-10 mx-auto mb-3 text-purple-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-            <p className="text-sm text-gray-400">Aucun document transmis par le client.</p>
-        </div>
-    );
+    const handleRefuser = async (doc) => {
+        const constat = (constatMap[doc.id] || '').trim();
+        if (!constat) return;
+        setSaving(true);
+        await onUpdateStatut(doc.id, 'refuse', constat);
+        setRefuseId(null);
+        setSaving(false);
+    };
+
+    const validatedCount = docsClient.filter(d => d.statut === 'valide').length;
+    const total = docsClient.length;
+    const pct = total > 0 ? Math.round((validatedCount / total) * 100) : 0;
+    const allDone = total > 0 && docsClient.every(d => d.statut !== 'en_attente');
 
     return (
         <>
-            {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
+        {preview && <DocumentPreviewModal doc={preview} onClose={() => setPreview(null)} onFetchBlob={onFetchBlob} onDownload={onDownload} />}
+        {onReplace && (
+            <input ref={replaceRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
+                className="hidden" onChange={e => { if (replacingId) { onReplace(replacingId, e.target.files); setReplacingId(null); } e.target.value = ''; }} />
+        )}
 
+        {/* ── Documents client à valider ─────────────────────────── */}
+        {docsClient.length === 0 ? (
+            <div className="py-12 text-center bg-white rounded-xl border border-gray-200">
+                <svg className="w-10 h-10 mx-auto mb-3 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                <p className="text-sm text-gray-400">Aucun document transmis par le client.</p>
+            </div>
+        ) : (
+            <>
             {/* Barre de progression */}
-            <div className="bg-white rounded-xl border border-purple-200 px-5 py-4">
+            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-purple-800">Progression de la revue</span>
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${examCount === total ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                        {examCount}/{total} examiné{examCount > 1 ? 's' : ''}
+                    <span className="text-sm font-semibold text-gray-700">Validation des documents client</span>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${allDone ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {validatedCount}/{total} validé{validatedCount > 1 ? 's' : ''}
                     </span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div className={`h-2 rounded-full transition-all duration-500 ${examCount === total ? 'bg-green-500' : 'bg-purple-500'}`} style={{ width: `${pct}%` }} />
+                    <div className={`h-2 rounded-full transition-all duration-500 ${allDone ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
                 </div>
             </div>
 
-            {/* Grille de cartes */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {documents.map(doc => {
-                    const done = examined.has(doc.id);
+            {/* Grille cartes client */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {docsClient.map(doc => {
+                    const badge = STATUT_BADGE[doc.statut] || STATUT_BADGE.en_attente;
+                    const isRefusing = refuseId === doc.id;
+                    const examined_ = examined.has(doc.id);
                     return (
-                        <div key={doc.id} className={`bg-white rounded-xl border-2 flex flex-col overflow-hidden transition ${done ? 'border-green-200' : 'border-gray-200'}`}>
-                            {/* En-tête carte */}
-                            <div className={`px-4 py-3 flex items-center gap-2 border-b ${done ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
-                                <span className="text-xl">{fileIcon(doc.type_mime)}</span>
+                        <div key={doc.id} className={`bg-white rounded-xl border-2 flex flex-col overflow-hidden transition ${doc.statut === 'valide' ? 'border-green-200' : doc.statut === 'refuse' ? 'border-red-200' : 'border-gray-200'}`}>
+                            <div className={`px-4 py-3 flex items-center gap-2 border-b ${doc.statut === 'valide' ? 'bg-green-50 border-green-100' : doc.statut === 'refuse' ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                                <span className="text-xl flex-shrink-0">{fileIcon(doc.type_mime)}</span>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-semibold text-gray-800 truncate">{doc.nom_original}</p>
                                     <p className="text-xs text-gray-400">{fmtSize(doc.taille)}</p>
                                 </div>
-                                {done && (
-                                    <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                )}
+                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${badge.cls}`}>{badge.label}</span>
                             </div>
-                            {/* Actions */}
+                            {doc.statut === 'refuse' && doc.constat && (
+                                <div className="px-4 py-2 bg-red-50 border-b border-red-100">
+                                    <p className="text-xs text-red-700 font-medium mb-0.5">Constat :</p>
+                                    <p className="text-xs text-red-600">{doc.constat}</p>
+                                </div>
+                            )}
+                            {isRefusing && !isClient && (
+                                <div className="px-4 py-3 border-b border-gray-100">
+                                    <label className="text-xs font-semibold text-gray-700 block mb-1.5">Constat (obligatoire)</label>
+                                    <textarea
+                                        rows={3}
+                                        value={constatMap[doc.id] || ''}
+                                        onChange={e => setConstatMap(m => ({ ...m, [doc.id]: e.target.value }))}
+                                        placeholder="Décrivez les modifications à apporter…"
+                                        className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
+                                    />
+                                    <div className="flex gap-2 mt-2">
+                                        <button onClick={() => handleRefuser(doc)} disabled={saving || !(constatMap[doc.id] || '').trim()}
+                                            className="flex-1 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition">
+                                            Confirmer le refus
+                                        </button>
+                                        <button onClick={() => setRefuseId(null)}
+                                            className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs hover:bg-gray-50 transition">
+                                            Annuler
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                             <div className="p-3 flex flex-col gap-2 mt-auto">
                                 <button onClick={() => handleConsulter(doc)}
-                                    className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition ${done ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>
+                                    className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition ${examined_ ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    {done ? 'Revoir' : 'Consulter'}
+                                    {examined_ ? 'Revoir' : 'Consulter'}
                                 </button>
+                                {isClient && doc.statut === 'refuse' && onReplace && (
+                                    <button onClick={() => { setReplacingId(doc.id); replaceRef.current?.click(); }}
+                                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                        Corriger et remplacer
+                                    </button>
+                                )}
+                                {!isClient && (
+                                    <div className="flex gap-1.5">
+                                        <button onClick={() => handleValider(doc)} disabled={saving || doc.statut === 'valide'}
+                                            className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 disabled:opacity-40 transition">
+                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                            Valider
+                                        </button>
+                                        <button onClick={() => setRefuseId(isRefusing ? null : doc.id)} disabled={saving || doc.statut === 'refuse'}
+                                            className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-40 transition">
+                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            Refuser
+                                        </button>
+                                    </div>
+                                )}
                                 <button onClick={() => onDownload(doc.id, doc.nom_original)}
-                                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 hover:bg-gray-50 transition">
+                                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition">
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                     Télécharger
                                 </button>
@@ -1989,6 +2186,48 @@ const RevueDocuments = ({ documents, onDownload, onFetchBlob }) => {
                     );
                 })}
             </div>
+            </>
+        )}
+
+        {/* ── Documents de référence (auditeurs) — repliable ────────── */}
+        {!isClient && docsAuditeurs.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <button
+                    onClick={() => setRefOpen(o => !o)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition"
+                >
+                    <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                        <span className="text-sm font-semibold text-gray-700">Documents de référence — auditeurs</span>
+                        <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{docsAuditeurs.length}</span>
+                    </div>
+                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${refOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                </button>
+                {refOpen && (
+                    <div className="border-t border-gray-100 divide-y divide-gray-100">
+                        {docsAuditeurs.map(doc => (
+                            <div key={doc.id} className="flex items-center gap-3 px-5 py-3">
+                                <span className="text-lg flex-shrink-0">{fileIcon(doc.type_mime)}</span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-800 truncate">{doc.nom_original}</p>
+                                    <p className="text-xs text-gray-400">{fmtSize(doc.taille)} · {doc.uploader?.prenom} {doc.uploader?.nom}</p>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                    <button onClick={() => handleConsulter(doc)}
+                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Visualiser">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    </button>
+                                    <button onClick={() => onDownload(doc.id, doc.nom_original)}
+                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Télécharger">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
         </>
     );
 };

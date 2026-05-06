@@ -27,7 +27,7 @@ const soumettreValidationPlanning = async (req, res) => {
             `Planning d'audit à valider : ${audit.nom}`,
             `Le planning de l'audit "${audit.nom}" a été soumis pour votre validation.`
         );
-        await log('validation_planning_soumettre', `Planning soumis au client pour l'audit "${audit.nom}"`, req.user.userId, getIp(req));
+        log(req.user.userId, 'validation_planning_soumettre', 'audit', audit.id, audit.nom, getIp(req));
 
         const updated = await Audit.findByPk(audit.id);
         res.json({ audit: updated });
@@ -64,7 +64,7 @@ const repondreValidationPlanning = async (req, res) => {
             : `Le client demande des modifications sur le planning de l'audit "${audit.nom}". Motif : ${commentaire}`;
 
         notifierRole(['admin', 'auditeur_senior'], 'AUDIT_VALIDE', msgTitre, msgBody, audit.id).catch(() => {});
-        await log(`validation_planning_${action}`, msgTitre, req.user.userId, getIp(req));
+        log(req.user.userId, `validation_planning_${action}`, 'audit', audit.id, audit.nom, getIp(req));
 
         const updated = await Audit.findByPk(audit.id);
         res.json({ audit: updated });
@@ -89,7 +89,7 @@ const soumettreValidationRapport = async (req, res) => {
             `Rapport final à valider : ${audit.nom}`,
             `Le rapport final de l'audit "${audit.nom}" a été soumis pour votre validation.`
         );
-        await log('validation_rapport_soumettre', `Rapport soumis au client pour l'audit "${audit.nom}"`, req.user.userId, getIp(req));
+        log(req.user.userId, 'validation_rapport_soumettre', 'audit', audit.id, audit.nom, getIp(req));
 
         const updated = await Audit.findByPk(audit.id);
         res.json({ audit: updated });
@@ -126,7 +126,7 @@ const repondreValidationRapport = async (req, res) => {
             : `Le client demande des modifications sur le rapport de l'audit "${audit.nom}". Motif : ${commentaire}`;
 
         notifierRole(['admin', 'auditeur_senior'], 'AUDIT_VALIDE', msgTitre, msgBody, audit.id).catch(() => {});
-        await log(`validation_rapport_${action}`, msgTitre, req.user.userId, getIp(req));
+        log(req.user.userId, `validation_rapport_${action}`, 'audit', audit.id, audit.nom, getIp(req));
 
         const updated = await Audit.findByPk(audit.id);
         res.json({ audit: updated });
