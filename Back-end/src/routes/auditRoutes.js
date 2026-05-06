@@ -486,7 +486,7 @@ router.get   ('/:id/documents',                    verifyToken, getDocuments);
 router.post  ('/:id/documents',                    verifyToken, upload.array('fichiers', 10), uploadDocuments);
 router.delete('/:id/documents/:docId',             verifyToken, deleteDocument);
 router.get   ('/:id/documents/:docId/download',    verifyToken, downloadDocument);
-router.put   ('/:id/documents/:docId/statut',      verifyToken, verifyRole('admin', 'auditeur_senior', 'auditeur_junior'), updateDocumentStatut);
+router.put   ('/:id/documents/:docId/statut',      verifyToken, verifyRole('admin', 'auditeur_senior', 'auditeur_junior', 'client'), updateDocumentStatut);
 
 // ─── Plans d'actions ────────────────────────────────────────────────────────
 

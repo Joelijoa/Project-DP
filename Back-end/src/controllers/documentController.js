@@ -109,14 +109,27 @@ const updateDocumentStatut = async (req, res) => {
     try {
         const { id, docId } = req.params;
         const { statut, constat } = req.body;
+        const role = req.user.role;
+        const isClientRole = role === 'client';
 
         if (!['valide', 'refuse'].includes(statut))
             return res.status(400).json({ message: 'Statut invalide.' });
         if (statut === 'refuse' && !constat?.trim())
             return res.status(400).json({ message: 'Un constat est requis en cas de refus.' });
 
-        const doc = await Document.findOne({ where: { id: docId, audit_id: id } });
+        const doc = await Document.findOne({
+            where: { id: docId, audit_id: id },
+            include: [{ model: User, as: 'uploader', attributes: ['id', 'role'] }],
+        });
         if (!doc) return res.status(404).json({ message: 'Document non trouvé.' });
+
+        const docIsFromClient = doc.uploader?.role === 'client';
+
+        // Le client ne valide que les docs d'auditeurs, les auditeurs ne valident que les docs clients
+        if (isClientRole && docIsFromClient)
+            return res.status(403).json({ message: 'Vous ne pouvez pas valider vos propres documents.' });
+        if (!isClientRole && !docIsFromClient)
+            return res.status(403).json({ message: 'Non autorisé.' });
 
         await doc.update({ statut, constat: statut === 'refuse' ? constat.trim() : null });
 
@@ -127,15 +140,26 @@ const updateDocumentStatut = async (req, res) => {
         log(req.user.userId, `doc_${statut}`, 'document', doc.id, doc.nom_original, getIp(req));
 
         if (statut === 'refuse') {
-            const audit = await Audit.findByPk(id);
-            if (audit?.entite_id) {
-                const clients = await User.findAll({ where: { entite_id: audit.entite_id, role: 'client' }, attributes: ['id'] });
-                const ids = clients.map(u => u.id);
-                if (ids.length > 0) notifierUsers(ids, 'DOC_REFUSE',
-                    `Document refusé — ${audit.nom}`,
-                    `Le document "${doc.nom_original}" a été refusé. Constat : ${constat}`,
-                    audit.id
+            const audit = await Audit.findByPk(id, {
+                include: [{ model: User, as: 'auditeurs', attributes: ['id'] }],
+            });
+            if (isClientRole) {
+                const auditeurIds = (audit?.auditeurs || []).map(u => u.id);
+                if (auditeurIds.length > 0) notifierUsers(auditeurIds, 'DOC_REFUSE_CLIENT',
+                    `Document refusé par le client — ${audit.nom}`,
+                    `Le client a refusé le document "${doc.nom_original}". Constat : ${constat}`,
+                    Number(id)
                 ).catch(() => {});
+            } else {
+                if (audit?.entite_id) {
+                    const clients = await User.findAll({ where: { entite_id: audit.entite_id, role: 'client' }, attributes: ['id'] });
+                    const ids = clients.map(u => u.id);
+                    if (ids.length > 0) notifierUsers(ids, 'DOC_REFUSE',
+                        `Document refusé — ${audit.nom}`,
+                        `Le document "${doc.nom_original}" a été refusé. Constat : ${constat}`,
+                        audit.id
+                    ).catch(() => {});
+                }
             }
         }
 
