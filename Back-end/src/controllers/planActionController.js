@@ -59,8 +59,11 @@ const createPlanAction = async (req, res) => {
             statut: 'a_faire',
             created_by: req.user.userId,
         });
+        const planWithMesure = await PlanAction.findByPk(plan.id, {
+            include: [{ model: Mesure, as: 'mesure', attributes: ['id', 'code', 'description'] }],
+        });
         log(req.user?.userId, 'CREATE_PLAN_ACTION', 'plan_action', plan.id, `Audit #${req.params.id}`, getIp(req));
-        res.status(201).json({ plan_action: plan });
+        res.status(201).json({ plan_action: planWithMesure });
     } catch (error) {
         console.error('[PlanAction] createPlanAction:', error.message);
         res.status(500).json({ message: error.message });
