@@ -297,7 +297,13 @@ const AuditDetailPage = () => {
                 ]);
                 const a = auditRes.data.audit;
                 setAudit(a);
-                setIdentification(a.identification || {});
+                const ident = a.identification || {};
+                setIdentification({
+                    ...ident,
+                    denomination:       ident.denomination       || a.client || '',
+                    auteur_evaluation:  ident.auteur_evaluation  || (a.createur ? `${a.createur.prenom} ${a.createur.nom}` : ''),
+                    date_evaluation:    ident.date_evaluation    || a.date_debut?.split('T')[0] || '',
+                });
                 setIndicateurs(a.indicateurs || {});
                 setAllUsers(usersRes.data.users || []);
 
@@ -1055,7 +1061,7 @@ const AuditDetailPage = () => {
                 {/* Onglets — phases réalisation et terminé uniquement */}
                 {(audit.phase === 'realisation' || audit.phase === 'termine') && (<>
                     {/* Contenu des onglets — communs */}
-                    {activeTab === 'description' && <TabDescription audit={audit} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} readOnly={isClient || isJunior} />}
+                    {activeTab === 'description' && <TabDescription audit={audit} identification={identification} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} readOnly={isClient || isJunior} />}
                     {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />}
 
                     {/* Onglets DNSSI */}
@@ -1285,7 +1291,7 @@ const fmtISODate = (iso) => {
     return iso;
 };
 
-const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO, onSave, saving, readOnly }) => {
+const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, tauxGlobal, isISO, onSave, saving, readOnly }) => {
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState({
         nom: audit.nom || '',
@@ -1435,21 +1441,37 @@ const TabDescription = ({ audit, totalMesures, totalEvaluated, tauxGlobal, isISO
                         </div>
                     </div>
                 ) : (
-                    <dl className="grid grid-cols-2 gap-4 text-sm">
-                        {[
-                            { label: 'Client / Entité', value: audit.client || '—' },
-                            { label: 'Périmètre', value: audit.perimetre || '—' },
-                            { label: 'Date de début', value: fmtISODate(audit.date_debut) },
-                            { label: 'Date de fin prévue', value: fmtISODate(audit.date_fin) },
-                            { label: 'Créé par', value: audit.createur ? `${audit.createur.prenom} ${audit.createur.nom}` : '—' },
-                            { label: 'Auditeurs', value: audit.auditeurs?.length > 0 ? audit.auditeurs.map(u => `${u.prenom} ${u.nom}`).join(', ') : '—' },
-                        ].map(({ label, value }) => (
-                            <div key={label}>
-                                <dt className="text-xs font-medium text-gray-500">{label}</dt>
-                                <dd className="text-gray-800 mt-0.5">{value}</dd>
+                    <div className="space-y-5">
+                        <dl className="grid grid-cols-2 gap-4 text-sm">
+                            {[
+                                { label: 'Client / Entité', value: audit.client || '—' },
+                                { label: 'Date de début', value: fmtISODate(audit.date_debut) },
+                                { label: 'Date de fin prévue', value: fmtISODate(audit.date_fin) },
+                                { label: 'Créé par', value: audit.createur ? `${audit.createur.prenom} ${audit.createur.nom}` : '—' },
+                                { label: 'Auditeurs', value: audit.auditeurs?.length > 0 ? audit.auditeurs.map(u => `${u.prenom} ${u.nom}`).join(', ') : '—' },
+                            ].map(({ label, value }) => (
+                                <div key={label}>
+                                    <dt className="text-xs font-medium text-gray-500">{label}</dt>
+                                    <dd className="text-gray-800 mt-0.5">{value}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                        {(identification?.perimetre_physique || identification?.perimetre_logique || identification?.perimetre_organisationnel) && (
+                            <div className="border-t border-gray-100 pt-4 space-y-3">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Périmètre (depuis le cadrage)</p>
+                                {[
+                                    { label: 'Physique', value: identification.perimetre_physique },
+                                    { label: 'Logique', value: identification.perimetre_logique },
+                                    { label: 'Organisationnel', value: identification.perimetre_organisationnel },
+                                ].filter(r => r.value).map(({ label, value }) => (
+                                    <div key={label}>
+                                        <dt className="text-xs font-medium text-gray-500">{label}</dt>
+                                        <dd className="text-sm text-gray-800 mt-0.5 whitespace-pre-line">{value}</dd>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </dl>
+                        )}
+                    </div>
                 )}
             </div>
         </div>
