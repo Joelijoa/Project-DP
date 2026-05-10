@@ -135,7 +135,7 @@ const updateAudit = async (req, res) => {
         const audit = await Audit.findByPk(req.params.id);
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
 
-        const { nom, client, perimetre, date_debut, date_fin, statut, identification, indicateurs, entite_id, auditeurs_ids } = req.body;
+        const { nom, client, perimetre, date_debut, date_fin, statut, phase, identification, indicateurs, entite_id, auditeurs_ids } = req.body;
         await audit.update({
             ...(nom !== undefined && { nom }),
             ...(client !== undefined && { client }),
@@ -143,6 +143,7 @@ const updateAudit = async (req, res) => {
             ...(date_debut !== undefined && { date_debut }),
             ...(date_fin !== undefined && { date_fin }),
             ...(statut !== undefined && { statut }),
+            ...(phase !== undefined && { phase }),
             ...(identification !== undefined && { identification }),
             ...(indicateurs !== undefined && { indicateurs }),
             ...(entite_id !== undefined && { entite_id: entite_id || null }),
