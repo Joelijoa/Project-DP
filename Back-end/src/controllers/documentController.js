@@ -139,26 +139,37 @@ const updateDocumentStatut = async (req, res) => {
 
         log(req.user.userId, `doc_${statut}`, 'document', doc.id, doc.nom_original, getIp(req));
 
-        if (statut === 'refuse') {
-            const audit = await Audit.findByPk(id, {
-                include: [{ model: User, as: 'auditeurs', attributes: ['id'] }],
-            });
-            if (isClientRole) {
-                const auditeurIds = (audit?.auditeurs || []).map(u => u.id);
-                if (auditeurIds.length > 0) notifierUsers(auditeurIds, 'DOC_REFUSE_CLIENT',
-                    `Document refusé par le client — ${audit.nom}`,
-                    `Le client a refusé le document "${doc.nom_original}". Constat : ${constat}`,
-                    Number(id)
-                ).catch(() => {});
-            } else {
-                if (audit?.entite_id) {
-                    const clients = await User.findAll({ where: { entite_id: audit.entite_id, role: 'client' }, attributes: ['id'] });
-                    const ids = clients.map(u => u.id);
-                    if (ids.length > 0) notifierUsers(ids, 'DOC_REFUSE',
-                        `Document refusé — ${audit.nom}`,
-                        `Le document "${doc.nom_original}" a été refusé. Constat : ${constat}`,
-                        audit.id
-                    ).catch(() => {});
+        const audit = await Audit.findByPk(id, {
+            include: [{ model: User, as: 'auditeurs', attributes: ['id'] }],
+        });
+        const auditeurIds = (audit?.auditeurs || []).map(u => u.id);
+
+        if (isClientRole) {
+            // Client valide ou refuse un doc d'auditeur → notifier les auditeurs
+            if (auditeurIds.length > 0) {
+                const type  = statut === 'valide' ? 'DOC_VALIDE_CLIENT' : 'DOC_REFUSE_CLIENT';
+                const titre = statut === 'valide'
+                    ? `Document validé par le client — ${audit.nom}`
+                    : `Document refusé par le client — ${audit.nom}`;
+                const corps = statut === 'valide'
+                    ? `Le client a validé votre document "${doc.nom_original}".`
+                    : `Le client a refusé le document "${doc.nom_original}". Constat : ${constat}`;
+                notifierUsers(auditeurIds, type, titre, corps, Number(id)).catch(() => {});
+            }
+        } else {
+            // Auditeur valide ou refuse un doc client → notifier les clients de l'entité
+            if (audit?.entite_id) {
+                const clients = await User.findAll({ where: { entite_id: audit.entite_id, role: 'client' }, attributes: ['id'] });
+                const ids = clients.map(u => u.id);
+                if (ids.length > 0) {
+                    const type  = statut === 'valide' ? 'DOC_VALIDE' : 'DOC_REFUSE';
+                    const titre = statut === 'valide'
+                        ? `Document validé — ${audit.nom}`
+                        : `Document refusé — ${audit.nom}`;
+                    const corps = statut === 'valide'
+                        ? `Votre document "${doc.nom_original}" a été validé.`
+                        : `Votre document "${doc.nom_original}" a été refusé. Constat : ${constat}`;
+                    notifierUsers(ids, type, titre, corps, audit.id).catch(() => {});
                 }
             }
         }

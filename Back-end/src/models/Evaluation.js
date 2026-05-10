@@ -18,7 +18,7 @@ const Evaluation = sequelize.define('Evaluation', {
     niveau_maturite: {
         type: DataTypes.INTEGER,
         allowNull: true,
-        validate: { min: 0, max: 5 },
+        validate: { min: -1, max: 5 },
     },
     conformite: {
         type: DataTypes.ENUM('conforme', 'partiel', 'non_conforme', 'nc_mineure', 'nc_majeure', 'na'),

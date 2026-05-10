@@ -1,4 +1,4 @@
-const { Audit, User, Referentiel, Mesure, Evaluation, AuditAuditeur, Entite } = require('../models');
+const { Audit, User, Referentiel, Mesure, Evaluation, AuditAuditeur, Entite, PlanAction, SoA, Document, Notification } = require('../models');
 const { log, getIp } = require('../services/logService');
 const { notifierUsers, notifierRole } = require('../services/notificationService');
 
@@ -6,6 +6,7 @@ const NIVEAUX_LABELS = ['Aucun', 'Initial', 'Reproductible', 'Défini', 'Maitris
 
 const calcConformite = (niveau) => {
     if (niveau === null || niveau === undefined) return 'na';
+    if (niveau === -1) return 'na';
     if (niveau <= 1) return 'non_conforme';
     if (niveau <= 3) return 'partiel';
     return 'conforme';
@@ -181,6 +182,15 @@ const deleteAudit = async (req, res) => {
         const audit = await Audit.findByPk(req.params.id);
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
         const nom = audit.nom;
+        const aid = audit.id;
+        await Promise.all([
+            Evaluation.destroy({ where: { audit_id: aid } }),
+            PlanAction.destroy({ where: { audit_id: aid } }),
+            SoA.destroy({ where: { audit_id: aid } }),
+            Document.destroy({ where: { audit_id: aid } }),
+            Notification.destroy({ where: { audit_id: aid } }),
+            AuditAuditeur.destroy({ where: { audit_id: aid } }),
+        ]);
         await audit.destroy();
         log(req.user.userId, 'DELETE_AUDIT', 'audit', parseInt(req.params.id), nom, getIp(req));
         res.json({ message: 'Audit supprimé' });
