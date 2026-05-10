@@ -210,6 +210,8 @@ router.get('/:id', verifyToken, getAuditById);
  *               perimetre: { type: string }
  *               date_debut: { type: string, format: date }
  *               date_fin: { type: string, format: date }
+ *               statut: { type: string, enum: [brouillon, en_cours, termine, archive] }
+ *               phase: { type: string, enum: [cadrage, prerequis, revue_documentaire, realisation, termine] }
  *               identification: { type: object }
  *               indicateurs: { type: object }
  *               auditeurs_ids: { type: array, items: { type: integer } }
@@ -470,22 +472,386 @@ router.put('/:id/valider', verifyToken, verifyRole('admin', 'auditeur_senior'), 
  */
 router.put('/:id/rejeter', verifyToken, verifyRole('admin', 'auditeur_senior'), rejeterAudit);
 
+/**
+ * @swagger
+ * /api/audits/{id}/phase:
+ *   put:
+ *     summary: Changer la phase d'un audit (admin / auditeur_senior)
+ *     description: Avance ou recule la phase du workflow. Ordre — cadrage → prerequis → revue_documentaire → realisation → termine.
+ *     tags: [Audits]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [direction]
+ *             properties:
+ *               direction:
+ *                 type: integer
+ *                 enum: [1, -1]
+ *                 description: 1 = avancer, -1 = reculer
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Phase mise à jour
+ *       400:
+ *         description: Phase déjà première ou dernière
+ *       404:
+ *         description: Audit introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put('/:id/phase', verifyToken, verifyRole('admin', 'auditeur_senior'), changerPhase);
 
 // ─── Validation client ───────────────────────────────────────────────────────
 const { soumettreValidationPlanning, repondreValidationPlanning, soumettreValidationRapport, repondreValidationRapport } = require('../controllers/validationClientController');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Validation client
+ *   description: Validation planning et rapport final par le client
+ */
+
+/**
+ * @swagger
+ * /api/audits/{id}/validation-planning/soumettre:
+ *   put:
+ *     summary: Soumettre le planning pour validation client (admin / senior)
+ *     tags: [Validation client]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Planning soumis au client
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put('/:id/validation-planning/soumettre', verifyToken, verifyRole('admin', 'auditeur_senior'), soumettreValidationPlanning);
+
+/**
+ * @swagger
+ * /api/audits/{id}/validation-planning/repondre:
+ *   put:
+ *     summary: Répondre à la validation planning (client)
+ *     tags: [Validation client]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [statut]
+ *             properties:
+ *               statut:
+ *                 type: string
+ *                 enum: [valide, modifications_demandees]
+ *                 example: valide
+ *               commentaire:
+ *                 type: string
+ *                 example: "Planning approuvé, merci."
+ *     responses:
+ *       200:
+ *         description: Réponse enregistrée
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put('/:id/validation-planning/repondre',  verifyToken, repondreValidationPlanning);
+
+/**
+ * @swagger
+ * /api/audits/{id}/validation-rapport/soumettre:
+ *   put:
+ *     summary: Soumettre le rapport final pour validation client (admin / senior)
+ *     tags: [Validation client]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Rapport soumis au client
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put('/:id/validation-rapport/soumettre',  verifyToken, verifyRole('admin', 'auditeur_senior'), soumettreValidationRapport);
+
+/**
+ * @swagger
+ * /api/audits/{id}/validation-rapport/repondre:
+ *   put:
+ *     summary: Répondre à la validation rapport (client)
+ *     tags: [Validation client]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [statut]
+ *             properties:
+ *               statut:
+ *                 type: string
+ *                 enum: [valide, modifications_demandees]
+ *                 example: valide
+ *               commentaire:
+ *                 type: string
+ *                 example: "Rapport validé."
+ *     responses:
+ *       200:
+ *         description: Réponse enregistrée
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put('/:id/validation-rapport/repondre',   verifyToken, repondreValidationRapport);
 
 // ─── Documents ───────────────────────────────────────────────────────────────
 
+/**
+ * @swagger
+ * tags:
+ *   name: Documents
+ *   description: Dépôt et gestion des documents d'audit
+ */
+
+/**
+ * @swagger
+ * /api/audits/{id}/documents:
+ *   get:
+ *     summary: Lister les documents d'un audit
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Liste des documents
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 documents:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Document'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.get   ('/:id/documents',                    verifyToken, getDocuments);
+
+/**
+ * @swagger
+ * /api/audits/{id}/documents:
+ *   post:
+ *     summary: Déposer des documents sur un audit (multipart, max 10 fichiers, 10 Mo chacun)
+ *     description: Types autorisés — PDF, Word, Excel, image (JPEG/PNG), texte. Envoyer `is_correction=true` si c'est une correction d'un refus.
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fichiers:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *               is_correction:
+ *                 type: boolean
+ *                 example: false
+ *     responses:
+ *       201:
+ *         description: Documents déposés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 documents:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Document'
+ *       400:
+ *         description: Aucun fichier fourni ou type non autorisé
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.post  ('/:id/documents',                    verifyToken, upload.array('fichiers', 10), uploadDocuments);
+
+/**
+ * @swagger
+ * /api/audits/{id}/documents/{docId}:
+ *   delete:
+ *     summary: Supprimer un document
+ *     description: L'auteur du document peut le supprimer. Admin et auditeur_senior peuvent supprimer n'importe quel document.
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: docId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Document supprimé
+ *       403:
+ *         description: Non autorisé
+ *       404:
+ *         description: Document introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.delete('/:id/documents/:docId',             verifyToken, deleteDocument);
+
+/**
+ * @swagger
+ * /api/audits/{id}/documents/{docId}/download:
+ *   get:
+ *     summary: Télécharger un document
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: docId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Fichier binaire
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Document ou fichier introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.get   ('/:id/documents/:docId/download',    verifyToken, downloadDocument);
+
+/**
+ * @swagger
+ * /api/audits/{id}/documents/{docId}/statut:
+ *   put:
+ *     summary: Valider ou refuser un document
+ *     description: |
+ *       - **Client** peut valider/refuser les documents déposés par les auditeurs
+ *       - **Auditeur** peut valider/refuser les documents déposés par le client
+ *       Le statut `refuse` nécessite un `constat`.
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: docId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [statut]
+ *             properties:
+ *               statut:
+ *                 type: string
+ *                 enum: [valide, refuse]
+ *                 example: valide
+ *               constat:
+ *                 type: string
+ *                 example: "Document illisible, veuillez renvoyer en PDF."
+ *     responses:
+ *       200:
+ *         description: Statut mis à jour
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 document:
+ *                   $ref: '#/components/schemas/Document'
+ *       400:
+ *         description: Statut invalide ou constat manquant
+ *       403:
+ *         description: Vous ne pouvez pas valider vos propres documents
+ *       404:
+ *         description: Document introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put   ('/:id/documents/:docId/statut',      verifyToken, verifyRole('admin', 'auditeur_senior', 'auditeur_junior', 'client'), updateDocumentStatut);
 
 // ─── Plans d'actions ────────────────────────────────────────────────────────
