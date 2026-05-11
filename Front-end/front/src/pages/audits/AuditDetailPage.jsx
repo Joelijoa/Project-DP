@@ -24,9 +24,10 @@ const PHASES_DEF = [
     { id: 'termine', label: 'Terminé' },
 ];
 
-const PhasesStepper = ({ phase, canChange, onPrev, changing }) => {
+const PhasesStepper = ({ phase, statut, canChange, onPrev, changing }) => {
+    const allDone = statut === 'termine';
     const currentIdx = PHASES_DEF.findIndex(p => p.id === phase);
-    const idx = currentIdx < 0 ? 0 : currentIdx;
+    const idx = allDone ? PHASES_DEF.length : (currentIdx < 0 ? 0 : currentIdx);
     return (
         <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-white rounded-lg border border-gray-100">
             <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -36,7 +37,7 @@ const PhasesStepper = ({ phase, canChange, onPrev, changing }) => {
                     return (
                         <div key={p.id} className="flex items-center gap-1">
                             {i > 0 && (
-                                <div className="h-px w-4 flex-shrink-0" style={{ backgroundColor: i <= idx ? 'var(--brand-red)' : '#e5e7eb' }} />
+                                <div className="h-px w-4 flex-shrink-0" style={{ backgroundColor: done || allDone ? '#16a34a' : i <= idx ? 'var(--brand-red)' : '#e5e7eb' }} />
                             )}
                             <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${done ? 'bg-green-100 text-green-700' :
                                 current ? 'text-white' :
@@ -48,7 +49,7 @@ const PhasesStepper = ({ phase, canChange, onPrev, changing }) => {
                     );
                 })}
             </div>
-            {canChange && idx > 0 && (
+            {canChange && !allDone && idx > 0 && (
                 <div className="ml-2 pl-2 border-l border-gray-100">
                     <button onClick={onPrev} disabled={changing}
                         className="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50 transition">
@@ -170,6 +171,7 @@ const sortReferentiel = (ref) => {
 
 const calcConformite = (niveau) => {
     if (niveau === null || niveau === undefined) return 'na';
+    if (niveau === -1) return 'na'; // domaine non applicable
     if (niveau <= 1) return 'non_conforme';
     if (niveau <= 3) return 'partiel';
     return 'conforme';
@@ -647,7 +649,7 @@ const AuditDetailPage = () => {
     const handleClotureAudit = async () => {
         setCloturing(true);
         try {
-            await updateAudit(id, { statut: 'termine' });
+            await updateAudit(id, { statut: 'termine', phase: 'termine' });
             const res = await getAuditById(id);
             setAudit(res.data.audit);
             toast.success('Audit clôturé avec succès');
@@ -656,6 +658,17 @@ const AuditDetailPage = () => {
         } finally {
             setCloturing(false);
             setShowClotureModal(false);
+        }
+    };
+
+    const handleRouvrirAudit = async () => {
+        try {
+            await updateAudit(id, { statut: 'en_cours', phase: 'realisation' });
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success('Audit rouvert — statut en cours');
+        } catch {
+            toast.error('Erreur lors de la réouverture');
         }
     };
 
@@ -696,7 +709,8 @@ const AuditDetailPage = () => {
             const mesures = domaine.objectifs.flatMap(o => o.mesures);
             const total = mesures.length;
             const evaluated = mesures.filter(m => localEvals[m.id] !== undefined);
-            const scores = evaluated.map(m => localEvals[m.id]?.niveau_maturite ?? 0);
+            const scoredEvals = evaluated.filter(m => localEvals[m.id]?.niveau_maturite !== -1);
+            const scores = scoredEvals.map(m => localEvals[m.id]?.niveau_maturite);
             const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 
             let conforme = 0, partiel = 0, non_conforme = 0, na = 0;
@@ -787,6 +801,7 @@ const AuditDetailPage = () => {
     const canSeeGraphs = user?.role !== 'auditeur_junior' || isAssigned || isClient;
     const isJunior = user?.role === 'auditeur_junior';
     const isSeniorOrAdmin = user?.role === 'admin' || user?.role === 'auditeur_senior';
+    const isTermine = audit.statut === 'termine';
     const canSoumettreAudit = isJunior && isAssigned && audit.statut_validation !== 'en_attente' && audit.statut_validation !== 'valide';
     const canValiderRejeter = isSeniorOrAdmin && audit.statut_validation === 'en_attente';
     const validationCfg = VALIDATION_CONFIG[audit.statut_validation];
@@ -841,6 +856,17 @@ const AuditDetailPage = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                                 </svg>
                                 Clôturer l'audit
+                            </button>
+                        )}
+                        {audit.statut === 'termine' && !isJunior && !isClient && (
+                            <button
+                                onClick={handleRouvrirAudit}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg border border-gray-200 hover:bg-gray-200 transition"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                Rouvrir l'audit
                             </button>
                         )}
                         {canSoumettreAudit && !isClient && (
@@ -901,6 +927,7 @@ const AuditDetailPage = () => {
                 {/* Stepper phases */}
                 <PhasesStepper
                     phase={audit.phase || 'cadrage'}
+                    statut={audit.statut}
                     canChange={isSeniorOrAdmin}
                     onPrev={() => handleChangerPhase(-1)}
                     changing={changingPhase}
@@ -922,12 +949,19 @@ const AuditDetailPage = () => {
                                 <svg className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
                                 <div>
                                     <p className="text-sm font-semibold text-gray-700">Phase de cadrage</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">Définissez le périmètre, les objectifs et l'équipe.</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        {audit.validation_planning?.statut === 'valide'
+                                            ? 'Planning validé par le client — vous pouvez passer à la phase suivante.'
+                                            : 'Soumettez le planning au client et attendez sa validation avant de continuer.'}
+                                    </p>
                                 </div>
                             </div>
                             {isSeniorOrAdmin && (
-                                <button onClick={() => handleChangerPhase(1)} disabled={changingPhase}
-                                    className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition"
+                                <button
+                                    onClick={() => handleChangerPhase(1)}
+                                    disabled={changingPhase || audit.validation_planning?.statut !== 'valide'}
+                                    title={audit.validation_planning?.statut !== 'valide' ? 'Le planning doit être validé par le client avant de continuer' : ''}
+                                    className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition"
                                     style={{ backgroundColor: 'var(--brand-red)' }}>
                                     {changingPhase ? 'En cours…' : 'Passer aux Prérequis'}
                                     {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
@@ -1039,7 +1073,7 @@ const AuditDetailPage = () => {
                             onDownload={handleDownloadDocument}
                             onFetchBlob={handleFetchDocBlob}
                             onUpdateStatut={handleUpdateDocStatut}
-                            onReplace={isClient ? handleReplaceDocument : undefined}
+                            onReplace={handleReplaceDocument}
                         />
                     </div>
                 )}
@@ -1061,8 +1095,8 @@ const AuditDetailPage = () => {
                 {/* Onglets — phases réalisation et terminé uniquement */}
                 {(audit.phase === 'realisation' || audit.phase === 'termine') && (<>
                     {/* Contenu des onglets — communs */}
-                    {activeTab === 'description' && <TabDescription audit={audit} identification={identification} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} readOnly={isClient || isJunior} />}
-                    {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />}
+                    {activeTab === 'description' && <TabDescription audit={audit} identification={identification} totalMesures={totalMesures} totalEvaluated={totalEvaluated} tauxGlobal={tauxGlobal} isISO={isISO} onSave={handleUpdateAuditInfo} saving={savingInfo} readOnly={isClient || isJunior || isTermine} />}
+                    {activeTab === 'identification' && <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient || isTermine} />}
 
                     {/* Onglets DNSSI */}
                     {!isISO && activeTab === 'evaluation' && (
@@ -1075,7 +1109,7 @@ const AuditDetailPage = () => {
                             isDirty={isDirty}
                             saving={saving}
                             onSave={handleSaveEvals}
-                            readOnly={isClient}
+                            readOnly={isClient || isTermine}
                         />
                     )}
                     {!isISO && activeTab === 'synthese_mat' && canSeeGraphs && <TabSyntheseMaturite synthese={synthese} />}
@@ -1088,7 +1122,7 @@ const AuditDetailPage = () => {
                             synthese={synthese}
                             onSave={() => handleSaveInfo('indicateurs', indicateurs)}
                             saving={savingInfo}
-                            readOnly={isClient}
+                            readOnly={isClient || isTermine}
                         />
                     )}
 
@@ -1101,7 +1135,7 @@ const AuditDetailPage = () => {
                             isDirty={isDirty}
                             saving={saving}
                             onSave={handleSaveEvals}
-                            readOnly={isClient}
+                            readOnly={isClient || isTermine}
                         />
                     )}
                     {isISO && activeTab === 'soa' && (
@@ -1112,7 +1146,7 @@ const AuditDetailPage = () => {
                             soaDirty={soaDirty}
                             savingSoa={savingSoa}
                             onSave={handleSaveSoA}
-                            readOnly={isClient}
+                            readOnly={isClient || isTermine}
                         />
                     )}
                     {isISO && activeTab === 'evaluation_iso' && (
@@ -1124,12 +1158,12 @@ const AuditDetailPage = () => {
                             isDirty={isDirty}
                             saving={saving}
                             onSave={handleSaveEvals}
-                            readOnly={isClient}
+                            readOnly={isClient || isTermine}
                         />
                     )}
                     {isISO && activeTab === 'synthese_iso' && canSeeGraphs && <TabSyntheseISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
                     {isISO && activeTab === 'nc' && canSeeGraphs && <TabNC referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />}
-                    {isISO && activeTab === 'indicateurs_iso' && <TabIndicateursISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} indicateurs={indicateurs} setIndicateurs={setIndicateurs} onSave={() => handleSaveInfo('indicateurs', indicateurs)} saving={savingInfo} readOnly={isClient} />}
+                    {isISO && activeTab === 'indicateurs_iso' && <TabIndicateursISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} indicateurs={indicateurs} setIndicateurs={setIndicateurs} onSave={() => handleSaveInfo('indicateurs', indicateurs)} saving={savingInfo} readOnly={isClient || isTermine} />}
 
                     {/* Plan d'actions — commun DNSSI + ISO */}
                     {activeTab === 'plans_actions' && canSeeGraphs && (
@@ -1148,7 +1182,7 @@ const AuditDetailPage = () => {
                             onSoumettre={handleSoumettrePlan}
                             onValider={handleValiderPlan}
                             onRejeter={(planId) => setRejetingPlanId(planId)}
-                            readOnly={isClient}
+                            readOnly={isClient || isTermine}
                         />
                     )}
                 </>)}
@@ -1481,16 +1515,31 @@ const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, t
 // ─── Planning de l'audit ─────────────────────────────────────────────────────
 
 const ETAPES_DEF = [
-    'Cadrage',
-    'Prérequis / Collecte documents',
-    'Revue documentaire',
-    'Réalisation',
-    'Rendu du rapport',
+    { nom: 'Cadrage', activites: 'Réunion de lancement, définition du périmètre, collecte des informations générales', responsable: '', date_debut: '', date_fin: '', livrables: 'Lettre de mission, planning validé', statut: 'a_planifier' },
+    { nom: 'Prérequis / Collecte documents', activites: 'Envoi de la liste de documents requis, relance et suivi de réception', responsable: '', date_debut: '', date_fin: '', livrables: 'Documents clients réceptionnés', statut: 'a_planifier' },
+    { nom: 'Revue documentaire', activites: 'Analyse des politiques, procédures et preuves fournies par le client', responsable: '', date_debut: '', date_fin: '', livrables: 'Grille d\'analyse documentaire', statut: 'a_planifier' },
+    { nom: 'Réalisation', activites: 'Entretiens, tests techniques, évaluations des mesures de contrôle', responsable: '', date_debut: '', date_fin: '', livrables: 'Grille d\'évaluation complétée', statut: 'a_planifier' },
+    { nom: 'Rendu du rapport', activites: 'Rédaction, relecture et remise du rapport final au client', responsable: '', date_debut: '', date_fin: '', livrables: 'Rapport d\'audit final, plan d\'actions priorisé', statut: 'a_planifier' },
 ];
+
+const STATUT_ETAPE = {
+    a_planifier: { label: 'À planifier', bg: 'bg-gray-100', text: 'text-gray-500' },
+    en_cours:    { label: 'En cours',    bg: 'bg-blue-50',  text: 'text-blue-600' },
+    termine:     { label: 'Terminé',     bg: 'bg-green-50', text: 'text-green-700' },
+    reporte:     { label: 'Reporté',     bg: 'bg-orange-50',text: 'text-orange-600' },
+};
+
+const migrateEtapes = (etapes) =>
+    (etapes || []).map(e =>
+        typeof e === 'string'
+            ? { nom: e, activites: '', responsable: '', date_debut: '', date_fin: '', livrables: '', statut: 'a_planifier' }
+            : { activites: '', responsable: '', livrables: '', statut: 'a_planifier', ...e }
+    );
 
 const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, saving, readOnly }) => {
     const planning = identification.planning || {};
-    const hasData = !!(planning.objectifs || planning.methodes || planning.documents_attendus || (planning.etapes || []).some(e => e.date_debut || e.date_fin));
+    const rawEtapes = planning.etapes;
+    const hasData = !!(planning.objectifs || planning.methodes || planning.documents_attendus || (rawEtapes || []).some(e => e.date_debut || e.date_fin || e.activites));
 
     const [editing, setEditing] = useState(!readOnly && !hasData);
 
@@ -1499,18 +1548,37 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
         planning: { ...(prev.planning || {}), [key]: val },
     }));
 
+    const etapes = rawEtapes ? migrateEtapes(rawEtapes) : ETAPES_DEF.map(e => ({ ...e }));
+
     const setEtape = (idx, field, val) => {
-        const etapes = [...(planning.etapes || ETAPES_DEF.map(nom => ({ nom, date_debut: '', date_fin: '' })))];
-        etapes[idx] = { ...etapes[idx], [field]: val };
-        setP('etapes', etapes);
+        const next = [...etapes];
+        next[idx] = { ...next[idx], [field]: val };
+        setP('etapes', next);
     };
 
-    const etapes = planning.etapes || ETAPES_DEF.map(nom => ({ nom, date_debut: '', date_fin: '' }));
+    const addEtape = () => {
+        setP('etapes', [...etapes, { nom: '', activites: '', responsable: '', date_debut: '', date_fin: '', livrables: '', statut: 'a_planifier' }]);
+    };
+
+    const removeEtape = (idx) => {
+        setP('etapes', etapes.filter((_, i) => i !== idx));
+    };
 
     const handleSave = () => { onSave(); setEditing(false); };
 
     const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : '—';
 
+    const duree = (debut, fin) => {
+        if (!debut || !fin) return '—';
+        const d = Math.round((new Date(fin) - new Date(debut)) / 86400000);
+        return d > 0 ? `${d}j` : '—';
+    };
+
+    const auditeurOptions = (audit.auditeurs || []).map(a => `${a.prenom} ${a.nom}`);
+
+    const SH = ({ children }) => (
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">{children}</h3>
+    );
     const InfoBlock = ({ label, value }) => !value ? null : (
         <div>
             <dt className="text-xs font-medium text-gray-500 mb-0.5">{label}</dt>
@@ -1535,20 +1603,19 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                     <p className="text-xs text-gray-400 italic">Planning non encore défini.</p>
                 ) : (
                     <>
-                        <dl className="space-y-4">
+                        <dl className="space-y-3">
                             <InfoBlock label="Objectifs de l'audit" value={planning.objectifs} />
                             <InfoBlock label="Méthodes d'audit" value={planning.methodes} />
                             <InfoBlock label="Documents attendus du client" value={planning.documents_attendus} />
                         </dl>
 
-                        {/* Équipe */}
                         {audit.auditeurs?.length > 0 && (
                             <div>
-                                <dt className="text-xs font-medium text-gray-500 mb-1.5">Équipe d'audit</dt>
+                                <SH>Équipe d'audit</SH>
                                 <div className="flex flex-wrap gap-2">
                                     {audit.auditeurs.map(a => (
                                         <span key={a.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-700">
-                                            <span className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-bold">{(a.prenom?.[0] || '?').toUpperCase()}</span>
+                                            <span className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-[10px] font-bold">{(a.prenom?.[0] || '?').toUpperCase()}</span>
                                             {a.prenom} {a.nom}
                                         </span>
                                     ))}
@@ -1556,33 +1623,50 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                             </div>
                         )}
 
-                        {/* Calendrier */}
                         <div>
-                            <dt className="text-xs font-medium text-gray-500 mb-2">Calendrier prévisionnel</dt>
-                            <table className="w-full text-sm border-collapse">
-                                <thead>
-                                    <tr className="border-b border-gray-100">
-                                        <th className="text-left text-xs font-medium text-gray-500 pb-2 pr-4">Étape</th>
-                                        <th className="text-left text-xs font-medium text-gray-500 pb-2 pr-4">Début</th>
-                                        <th className="text-left text-xs font-medium text-gray-500 pb-2">Fin</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {etapes.map((e, i) => (
-                                        <tr key={i} className="border-b border-gray-50">
-                                            <td className="py-1.5 pr-4 text-gray-700 font-medium">{e.nom}</td>
-                                            <td className="py-1.5 pr-4 text-gray-600">{fmt(e.date_debut)}</td>
-                                            <td className="py-1.5 text-gray-600">{fmt(e.date_fin)}</td>
+                            <SH>Calendrier prévisionnel</SH>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm border-collapse min-w-[700px]">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200">
+                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[160px]">Phase</th>
+                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2">Activités</th>
+                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[120px]">Responsable</th>
+                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[90px]">Début</th>
+                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[90px]">Fin</th>
+                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[55px]">Durée</th>
+                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2">Livrables</th>
+                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[100px]">Statut</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {etapes.map((e, i) => {
+                                            const sc = STATUT_ETAPE[e.statut] || STATUT_ETAPE.a_planifier;
+                                            return (
+                                                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                                                    <td className="px-3 py-2 font-medium text-gray-800 text-xs">{e.nom || '—'}</td>
+                                                    <td className="px-3 py-2 text-xs text-gray-600">{e.activites || '—'}</td>
+                                                    <td className="px-3 py-2 text-xs text-gray-600">{e.responsable || '—'}</td>
+                                                    <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">{fmt(e.date_debut)}</td>
+                                                    <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">{fmt(e.date_fin)}</td>
+                                                    <td className="px-3 py-2 text-xs text-gray-500">{duree(e.date_debut, e.date_fin)}</td>
+                                                    <td className="px-3 py-2 text-xs text-gray-600">{e.livrables || '—'}</td>
+                                                    <td className="px-3 py-2">
+                                                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${sc.bg} ${sc.text}`}>{sc.label}</span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </>
                 )}
             </div>
         );
     }
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
             <div className="flex items-center justify-between">
@@ -1590,82 +1674,119 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                 {hasData && <button onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>}
             </div>
 
-            {/* Objectifs */}
+            {/* Infos générales */}
             <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Objectifs de l'audit</h3>
-                <textarea
-                    rows={3}
-                    value={planning.objectifs || ''}
-                    onChange={e => setP('objectifs', e.target.value)}
+                <SH>Objectifs de l'audit</SH>
+                <textarea rows={3} value={planning.objectifs || ''} onChange={e => setP('objectifs', e.target.value)}
                     placeholder="Décrire les objectifs de l'audit…"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
-                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
-                />
+                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
             </div>
 
-            {/* Calendrier */}
             <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Calendrier prévisionnel</h3>
-                <div className="space-y-2">
-                    {etapes.map((e, i) => (
-                        <div key={i} className="grid grid-cols-[1fr_160px_160px] gap-3 items-center">
-                            <span className="text-sm font-medium text-gray-700">{e.nom}</span>
-                            <div>
-                                <label className="block text-xs text-gray-500 mb-1">Début</label>
-                                <input type="date" value={e.date_debut || ''} onChange={ev => setEtape(i, 'date_debut', ev.target.value)}
-                                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
-                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-gray-500 mb-1">Fin</label>
-                                <input type="date" value={e.date_fin || ''} onChange={ev => setEtape(i, 'date_fin', ev.target.value)}
-                                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
-                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Équipe */}
-            {audit.auditeurs?.length > 0 && (
-                <div>
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Équipe d'audit</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {audit.auditeurs.map(a => (
-                            <span key={a.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-700">
-                                {a.prenom} {a.nom}
-                            </span>
-                        ))}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">Auditeurs assignés à cet audit.</p>
-                </div>
-            )}
-
-            {/* Méthodes */}
-            <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Méthodes d'audit</h3>
-                <textarea
-                    rows={2}
-                    value={planning.methodes || ''}
-                    onChange={e => setP('methodes', e.target.value)}
+                <SH>Méthodes d'audit</SH>
+                <textarea rows={2} value={planning.methodes || ''} onChange={e => setP('methodes', e.target.value)}
                     placeholder="Entretiens, revue documentaire, tests techniques, observations terrain…"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
-                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
-                />
+                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
             </div>
 
-            {/* Documents attendus */}
             <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Documents attendus du client</h3>
-                <textarea
-                    rows={3}
-                    value={planning.documents_attendus || ''}
-                    onChange={e => setP('documents_attendus', e.target.value)}
+                <SH>Documents attendus du client</SH>
+                <textarea rows={2} value={planning.documents_attendus || ''} onChange={e => setP('documents_attendus', e.target.value)}
                     placeholder="Politique de sécurité, procédures internes, schémas réseau, contrats prestataires…"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
-                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
-                />
+                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+            </div>
+
+            {/* Tableau des phases */}
+            <div>
+                <SH>Calendrier prévisionnel</SH>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse min-w-[900px]">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[140px]">Phase</th>
+                                <th className="text-left font-semibold text-gray-500 px-2 py-2">Activités</th>
+                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[140px]">Responsable</th>
+                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[115px]">Début</th>
+                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[115px]">Fin</th>
+                                <th className="text-left font-semibold text-gray-500 px-2 py-2">Livrables</th>
+                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[115px]">Statut</th>
+                                <th className="w-8"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {etapes.map((e, i) => (
+                                <tr key={i} className="border-b border-gray-100 align-top">
+                                    <td className="px-2 py-1.5">
+                                        <input value={e.nom} onChange={ev => setEtape(i, 'nom', ev.target.value)}
+                                            placeholder="Phase…"
+                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
+                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                        <textarea rows={2} value={e.activites} onChange={ev => setEtape(i, 'activites', ev.target.value)}
+                                            placeholder="Activités prévues…"
+                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 resize-none"
+                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                        {auditeurOptions.length > 0 ? (
+                                            <select value={e.responsable} onChange={ev => setEtape(i, 'responsable', ev.target.value)}
+                                                className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
+                                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}>
+                                                <option value="">— Choisir —</option>
+                                                {auditeurOptions.map(name => <option key={name} value={name}>{name}</option>)}
+                                            </select>
+                                        ) : (
+                                            <input value={e.responsable} onChange={ev => setEtape(i, 'responsable', ev.target.value)}
+                                                placeholder="Responsable…"
+                                                className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
+                                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                                        )}
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                        <input type="date" value={e.date_debut} onChange={ev => setEtape(i, 'date_debut', ev.target.value)}
+                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
+                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                        <input type="date" value={e.date_fin} onChange={ev => setEtape(i, 'date_fin', ev.target.value)}
+                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
+                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                        <textarea rows={2} value={e.livrables} onChange={ev => setEtape(i, 'livrables', ev.target.value)}
+                                            placeholder="Livrables attendus…"
+                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 resize-none"
+                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                        <select value={e.statut} onChange={ev => setEtape(i, 'statut', ev.target.value)}
+                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
+                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}>
+                                            <option value="a_planifier">À planifier</option>
+                                            <option value="en_cours">En cours</option>
+                                            <option value="termine">Terminé</option>
+                                            <option value="reporte">Reporté</option>
+                                        </select>
+                                    </td>
+                                    <td className="px-1 py-1.5 text-center">
+                                        {etapes.length > 1 && (
+                                            <button onClick={() => removeEtape(i)} className="text-gray-300 hover:text-red-400 transition text-base leading-none" title="Supprimer">×</button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <button onClick={addEtape}
+                    className="mt-2 flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition">
+                    <span className="w-4 h-4 rounded-full border border-gray-300 flex items-center justify-center text-gray-400 text-sm leading-none">+</span>
+                    Ajouter une étape
+                </button>
             </div>
 
             <div className="flex justify-end pt-1">
@@ -2421,11 +2542,26 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
                                 style={{ borderLeft: `3px solid ${doc.statut === 'valide' ? '#16a34a' : doc.statut === 'refuse' ? '#dc2626' : '#e5e7eb'}` }}>
                                 <span className="text-base flex-shrink-0">{fileIcon(doc.type_mime)}</span>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-800 truncate">{doc.nom_original}</p>
-                                    <p className="text-xs text-gray-400">{fmtSize(doc.taille)} · {doc.uploader?.prenom} {doc.uploader?.nom}</p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="text-sm font-medium text-gray-800 truncate">{doc.nom_original}</p>
+                                        {doc.is_correction && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200 flex-shrink-0">
+                                                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                                Corrigé
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-0.5">{fmtSize(doc.taille)} · {doc.uploader?.prenom} {doc.uploader?.nom}</p>
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0">
                                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+                                    {doc.statut === 'refuse' && onReplace && (
+                                        <button onClick={() => { setReplacingId(doc.id); replaceRef.current?.click(); }}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                            Corriger
+                                        </button>
+                                    )}
                                     <button onClick={() => handleConsulter(doc)} title="Visualiser"
                                         className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -2830,27 +2966,48 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
             {/* Domaines */}
             {referentiel.domaines?.map(domaine => {
                 const mesures = domaine.objectifs?.flatMap(o => o.mesures) || [];
-                const evCount = mesures.filter(m => localEvals[m.id]?.niveau_maturite !== null && localEvals[m.id]?.niveau_maturite !== undefined).length;
+                const evCount = mesures.filter(m => localEvals[m.id] !== undefined).length;
+                const isDomainNA = mesures.length > 0 && mesures.every(m => localEvals[m.id]?.niveau_maturite === -1);
+                const hasStartedEval = mesures.some(m => { const n = localEvals[m.id]?.niveau_maturite; return n !== null && n !== undefined && n !== -1; });
                 const isOpen = openDomaines[domaine.id];
 
                 return (
-                    <div key={domaine.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div key={domaine.id} className={`bg-white rounded-xl border overflow-hidden ${isDomainNA ? 'border-gray-300 opacity-70' : 'border-gray-200'}`}>
                         {/* En-tête domaine */}
                         <button
                             onClick={() => toggleDomaine(domaine.id)}
                             className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50/60 transition"
                         >
                             <div className="flex items-center gap-3">
-                                <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>
+                                <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: isDomainNA ? '#9ca3af' : 'var(--brand-red)' }}>
                                     {domaine.code}
                                 </span>
-                                <span className="text-sm font-semibold text-gray-800">{stripNumericPrefix(domaine.nom)}</span>
+                                <span className={`text-sm font-semibold ${isDomainNA ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{stripNumericPrefix(domaine.nom)}</span>
+                                {isDomainNA && <span className="text-xs text-gray-400 italic">(non applicable)</span>}
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="text-xs text-gray-500">{evCount}/{mesures.length} évaluées</span>
-                                <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${mesures.length > 0 ? (evCount / mesures.length) * 100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
-                                </div>
+                                {!readOnly && (!hasStartedEval || isDomainNA) && (
+                                    <button
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            const newValue = isDomainNA ? null : -1;
+                                            mesures.forEach(m => setEval(m.id, 'niveau_maturite', newValue));
+                                        }}
+                                        className={`text-xs px-2.5 py-1 rounded-md font-medium transition border ${
+                                            isDomainNA
+                                                ? 'bg-gray-100 border-gray-300 text-gray-500 hover:bg-gray-200'
+                                                : 'border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                                        }`}
+                                    >
+                                        {isDomainNA ? '↩ Réactiver' : 'Non applicable'}
+                                    </button>
+                                )}
+                                {!isDomainNA && <span className="text-xs text-gray-500">{evCount}/{mesures.length} évaluées</span>}
+                                {!isDomainNA && (
+                                    <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
+                                        <div className="h-full rounded-full" style={{ width: `${mesures.length > 0 ? (evCount / mesures.length) * 100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
+                                    </div>
+                                )}
                                 <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                                 </svg>
@@ -2859,7 +3016,23 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
 
                         {isOpen && (
                             <div className="border-t border-gray-100">
-                                {domaine.objectifs?.map(objectif => {
+                                {isDomainNA ? (
+                                    <div className="px-5 py-4 flex items-center gap-2.5 text-sm text-gray-500 bg-gray-50">
+                                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                        </svg>
+                                        Ce domaine a été marqué comme <strong className="font-semibold">non applicable</strong> à l'organisation auditée.
+                                        {!readOnly && (
+                                            <button
+                                                onClick={() => mesures.forEach(m => setEval(m.id, 'niveau_maturite', null))}
+                                                className="ml-auto text-xs text-gray-400 hover:text-gray-600 underline"
+                                            >
+                                                Annuler
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                <>{domaine.objectifs?.map(objectif => {
                                     const objDesc = stripObjectifPrefix(objectif.description || '');
                                     return (
                                         <div key={objectif.id} className="border-b border-gray-50 last:border-0">
@@ -2968,7 +3141,8 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                             </table>
                                         </div>
                                     );
-                                })}
+                                })}</>
+                                )}
                             </div>
                         )}
                     </div>

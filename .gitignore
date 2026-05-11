@@ -7,3 +7,6 @@ CLAUDE.md
 # Variables d'environnement — ne jamais committer
 Back-end/.env
 .env
+
+# Fichiers uploadés — stockés sur disque, ne pas committer
+Back-end/uploads/
