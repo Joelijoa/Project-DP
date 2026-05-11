@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA, soumettreAudit, validerAudit, rejeterAudit, changerPhase, getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut, soumettreValidationPlanning, repondreValidationPlanning, soumettreValidationRapport, repondreValidationRapport } from '../../services/endpoints/auditService';
+import { getAuditById, updateAudit, getEvaluations, saveEvaluations, getSoA, saveSoA, soumettreAudit, validerAudit, rejeterAudit, changerPhase, getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut, soumettreValidationPlanning, repondreValidationPlanning, annulerValidationPlanning, soumettreValidationRapport, repondreValidationRapport, annulerValidationRapport } from '../../services/endpoints/auditService';
 import { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, soumettreValidationPlan, validerPlanAction, rejeterPlanAction } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
@@ -8,6 +8,10 @@ import DateInput from '../../components/common/DateInput';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../store/auth/AuthContext';
+import logoDataprotect from '../../assets/images/Logo.png';
+import logoZerogap from '../../assets/icons/icone_logo.svg';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -24,10 +28,11 @@ const PHASES_DEF = [
     { id: 'termine', label: 'Terminé' },
 ];
 
-const PhasesStepper = ({ phase, statut, canChange, onPrev, changing }) => {
+const PhasesStepper = ({ phase, statut, canChange, onPrev, onNext, nextConfig, changing }) => {
     const allDone = statut === 'termine';
     const currentIdx = PHASES_DEF.findIndex(p => p.id === phase);
     const idx = allDone ? PHASES_DEF.length : (currentIdx < 0 ? 0 : currentIdx);
+    const showRight = (canChange && !allDone && idx > 0) || nextConfig;
     return (
         <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-white rounded-lg border border-gray-100">
             <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -39,22 +44,31 @@ const PhasesStepper = ({ phase, statut, canChange, onPrev, changing }) => {
                             {i > 0 && (
                                 <div className="h-px w-4 flex-shrink-0" style={{ backgroundColor: done || allDone ? '#16a34a' : i <= idx ? 'var(--brand-red)' : '#e5e7eb' }} />
                             )}
-                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${done ? 'bg-green-100 text-green-700' :
-                                current ? 'text-white' :
-                                    'bg-gray-100 text-gray-400'
-                                }`} style={current ? { backgroundColor: 'var(--brand-red)' } : {}}>
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${done ? 'bg-green-100 text-green-700' : current ? 'text-white' : 'bg-gray-100 text-gray-400'}`}
+                                style={current ? { backgroundColor: 'var(--brand-red)' } : {}}>
                                 {done ? '✓ ' : ''}{p.label}
                             </span>
                         </div>
                     );
                 })}
             </div>
-            {canChange && !allDone && idx > 0 && (
-                <div className="ml-2 pl-2 border-l border-gray-100">
-                    <button onClick={onPrev} disabled={changing}
-                        className="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50 transition">
-                        ← Reculer
-                    </button>
+            {showRight && (
+                <div className="ml-2 pl-2 border-l border-gray-100 flex items-center gap-2 flex-shrink-0">
+                    {canChange && !allDone && idx > 0 && (
+                        <button onClick={onPrev} disabled={changing}
+                            className="px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50 transition">
+                            ← Reculer
+                        </button>
+                    )}
+                    {nextConfig && (
+                        <button onClick={onNext} disabled={nextConfig.disabled}
+                            title={nextConfig.title || ''}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            style={{ backgroundColor: 'var(--brand-red)' }}>
+                            {changing ? 'En cours…' : nextConfig.label}
+                            {!changing && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
+                        </button>
+                    )}
                 </div>
             )}
         </div>
@@ -436,17 +450,20 @@ const AuditDetailPage = () => {
     const handleValidationClient = async (type, action, commentaire) => {
         setValidatingClient(true);
         try {
-            const fn = type === 'planning'
-                ? (action === 'soumettre' ? soumettreValidationPlanning : repondreValidationPlanning)
-                : (action === 'soumettre' ? soumettreValidationRapport : repondreValidationRapport);
-            const res = action === 'soumettre'
-                ? await fn(id)
-                : await fn(id, action, commentaire);
+            let res;
+            if (action === 'annuler') {
+                res = await (type === 'planning' ? annulerValidationPlanning(id) : annulerValidationRapport(id));
+            } else if (action === 'soumettre') {
+                res = await (type === 'planning' ? soumettreValidationPlanning(id) : soumettreValidationRapport(id));
+            } else {
+                res = await (type === 'planning' ? repondreValidationPlanning(id, action, commentaire) : repondreValidationRapport(id, action, commentaire));
+            }
             setAudit(prev => ({ ...prev, ...res.data.audit }));
             const msgs = {
                 soumettre: 'Soumis au client pour validation.',
-                valider: 'Planning validé.',
+                valider: 'Validation enregistrée.',
                 demander_modification: 'Demande de modification envoyée.',
+                annuler: 'Validation annulée.',
             };
             toast.success(msgs[action] || 'Mis à jour.');
         } catch (err) {
@@ -925,13 +942,34 @@ const AuditDetailPage = () => {
                 )}
 
                 {/* Stepper phases */}
-                <PhasesStepper
-                    phase={audit.phase || 'cadrage'}
-                    statut={audit.statut}
-                    canChange={isSeniorOrAdmin}
-                    onPrev={() => handleChangerPhase(-1)}
-                    changing={changingPhase}
-                />
+                {(() => {
+                    let nextConfig = null;
+                    if (isSeniorOrAdmin && audit.statut !== 'termine') {
+                        if (audit.phase === 'cadrage') {
+                            const planOk = audit.validation_planning?.statut === 'valide';
+                            nextConfig = {
+                                label: 'Passer aux Prérequis',
+                                disabled: changingPhase || !planOk,
+                                title: !planOk ? 'Le planning doit être validé par le client avant de continuer' : '',
+                            };
+                        } else if (audit.phase === 'prerequis') {
+                            nextConfig = { label: 'Passer à la Revue doc', disabled: changingPhase, title: '' };
+                        } else if (audit.phase === 'revue_documentaire') {
+                            nextConfig = { label: 'Démarrer la Réalisation', disabled: changingPhase, title: '' };
+                        }
+                    }
+                    return (
+                        <PhasesStepper
+                            phase={audit.phase || 'cadrage'}
+                            statut={audit.statut}
+                            canChange={isSeniorOrAdmin}
+                            onPrev={() => handleChangerPhase(-1)}
+                            onNext={() => handleChangerPhase(1)}
+                            nextConfig={nextConfig}
+                            changing={changingPhase}
+                        />
+                    );
+                })()}
 
                 {/* Onglets — uniquement en réalisation/terminé */}
                 {(audit.phase === 'realisation' || audit.phase === 'termine') && (
@@ -944,32 +982,20 @@ const AuditDetailPage = () => {
                 {/* Phase cadrage */}
                 {audit.phase === 'cadrage' && (
                     <div className="space-y-5">
-                        <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">
-                            <div className="flex items-start gap-3">
-                                <svg className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                        {isSeniorOrAdmin && (
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">
+                                <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
                                 <div>
                                     <p className="text-sm font-semibold text-gray-700">Phase de cadrage</p>
                                     <p className="text-xs text-gray-500 mt-0.5">
                                         {audit.validation_planning?.statut === 'valide'
-                                            ? 'Planning validé par le client — vous pouvez passer à la phase suivante.'
-                                            : 'Soumettez le planning au client et attendez sa validation avant de continuer.'}
+                                            ? 'Planning validé par le client — utilisez le bouton ci-dessus pour passer à la phase suivante.'
+                                            : 'Soumettez le planning au client et attendez sa validation. Le bouton de passage de phase sera activé une fois le planning validé.'}
                                     </p>
                                 </div>
                             </div>
-                            {isSeniorOrAdmin && (
-                                <button
-                                    onClick={() => handleChangerPhase(1)}
-                                    disabled={changingPhase || audit.validation_planning?.statut !== 'valide'}
-                                    title={audit.validation_planning?.statut !== 'valide' ? 'Le planning doit être validé par le client avant de continuer' : ''}
-                                    className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                    style={{ backgroundColor: 'var(--brand-red)' }}>
-                                    {changingPhase ? 'En cours…' : 'Passer aux Prérequis'}
-                                    {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
-                                </button>
-                            )}
-                        </div>
-                        <TabCadrage audit={audit} referentiel={referentiel} identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} readOnly={isClient} />
-                        <TabIdentification identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />
+                        )}
+                        <TabCadrageComplet audit={audit} referentiel={referentiel} identification={identification} setIdentification={setIdentification} onSave={() => handleSaveInfo('identification', identification)} saving={savingInfo} isISO={isISO} readOnly={isClient} />
                         <PlanningAuditCard
                             audit={audit}
                             identification={identification}
@@ -983,6 +1009,7 @@ const AuditDetailPage = () => {
                             validation={audit.validation_planning}
                             isSeniorOrAdmin={isSeniorOrAdmin}
                             isClient={isClient}
+                            planningData={identification.planning}
                             onAction={handleValidationClient}
                             loading={validatingClient}
                         />
@@ -994,34 +1021,20 @@ const AuditDetailPage = () => {
                     <div className="space-y-4">
                         {/* Bandeau rôle-spécifique */}
                         {isClient ? (
-                            <div className="flex items-start gap-4 p-5 rounded-xl bg-orange-50 border border-orange-200">
-                                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                                    <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                                </div>
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-orange-50 border border-orange-200">
+                                <svg className="w-5 h-5 text-orange-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                                 <div>
-                                    <p className="text-sm font-bold text-orange-900">Action requise — Dépôt des documents</p>
-                                    <p className="text-xs text-orange-700 mt-1">Veuillez déposer tous les documents nécessaires à l'audit (politiques, procédures, rapports précédents…). L'équipe d'audit pourra ensuite les examiner.</p>
+                                    <p className="text-sm font-semibold text-orange-900">Action requise — Dépôt des documents</p>
+                                    <p className="text-xs text-orange-700 mt-0.5">Veuillez déposer tous les documents nécessaires à l'audit (politiques, procédures, rapports précédents…).</p>
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
-                                <div className="flex items-center gap-3">
-                                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-700">Prérequis — collecte des documents</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">
-                                            {documents.length > 0 ? `${documents.length} fichier(s) reçu(s)` : 'En attente des documents du client'}
-                                        </p>
-                                    </div>
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">
+                                <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-700">Prérequis — collecte des documents</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{documents.length > 0 ? `${documents.length} fichier(s) reçu(s)` : 'En attente des documents du client'}</p>
                                 </div>
-                                {isSeniorOrAdmin && (
-                                    <button onClick={() => handleChangerPhase(1)} disabled={changingPhase}
-                                        className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition"
-                                        style={{ backgroundColor: 'var(--brand-red)' }}>
-                                        {changingPhase ? 'En cours…' : 'Passer à la Revue doc'}
-                                        {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
-                                    </button>
-                                )}
                             </div>
                         )}
                         <DepotDocuments
@@ -1044,28 +1057,18 @@ const AuditDetailPage = () => {
                 {audit.phase === 'revue_documentaire' && (
                     <div className="space-y-4">
                         {/* Bandeau rôle-spécifique */}
-                        <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
-                            <div className="flex items-center gap-3">
-                                <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                <div>
-                                    <p className="text-sm font-semibold text-gray-700">
-                                        {isClient ? 'Documents transmis — Revue en cours' : 'Revue documentaire — Analyse des fichiers'}
-                                    </p>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        {isClient
-                                            ? "L'équipe d'audit examine vos documents. Vous serez notifié si une correction est requise."
-                                            : `${documents.filter(d => d.uploader?.role === 'client').length} document(s) client à examiner`}
-                                    </p>
-                                </div>
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">
+                            <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            <div>
+                                <p className="text-sm font-semibold text-gray-700">
+                                    {isClient ? 'Documents transmis — Revue en cours' : 'Revue documentaire — Analyse des fichiers'}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    {isClient
+                                        ? "L'équipe d'audit examine vos documents. Vous serez notifié si une correction est requise."
+                                        : `${documents.filter(d => d.uploader?.role === 'client').length} document(s) client à examiner`}
+                                </p>
                             </div>
-                            {isSeniorOrAdmin && (
-                                <button onClick={() => handleChangerPhase(1)} disabled={changingPhase}
-                                    className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition"
-                                    style={{ backgroundColor: 'var(--brand-red)' }}>
-                                    {changingPhase ? 'En cours…' : 'Démarrer la Réalisation'}
-                                    {!changingPhase && <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
-                                </button>
-                            )}
                         </div>
                         <RevueDocuments
                             documents={documents}
@@ -1417,7 +1420,7 @@ const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, t
                     {!editing && !readOnly && (
                         <button
                             onClick={() => setEditing(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
@@ -1515,33 +1518,32 @@ const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, t
 // ─── Planning de l'audit ─────────────────────────────────────────────────────
 
 const ETAPES_DEF = [
-    { nom: 'Cadrage', activites: 'Réunion de lancement, définition du périmètre, collecte des informations générales', responsable: '', date_debut: '', date_fin: '', livrables: 'Lettre de mission, planning validé', statut: 'a_planifier' },
-    { nom: 'Prérequis / Collecte documents', activites: 'Envoi de la liste de documents requis, relance et suivi de réception', responsable: '', date_debut: '', date_fin: '', livrables: 'Documents clients réceptionnés', statut: 'a_planifier' },
-    { nom: 'Revue documentaire', activites: 'Analyse des politiques, procédures et preuves fournies par le client', responsable: '', date_debut: '', date_fin: '', livrables: 'Grille d\'analyse documentaire', statut: 'a_planifier' },
-    { nom: 'Réalisation', activites: 'Entretiens, tests techniques, évaluations des mesures de contrôle', responsable: '', date_debut: '', date_fin: '', livrables: 'Grille d\'évaluation complétée', statut: 'a_planifier' },
-    { nom: 'Rendu du rapport', activites: 'Rédaction, relecture et remise du rapport final au client', responsable: '', date_debut: '', date_fin: '', livrables: 'Rapport d\'audit final, plan d\'actions priorisé', statut: 'a_planifier' },
+    { nom: 'Cadrage', activites: 'Réunion de lancement, définition du périmètre, collecte des informations générales', date_debut: '', date_fin: '', duree: '1 semaine', livrables: 'Lettre de mission, planning validé' },
+    { nom: 'Prérequis / Collecte documents', activites: 'Envoi de la liste de documents requis, relance et suivi de réception', date_debut: '', date_fin: '', duree: '1 semaine', livrables: 'Documents clients réceptionnés' },
+    { nom: 'Revue documentaire', activites: 'Analyse des politiques, procédures et preuves fournies par le client', date_debut: '', date_fin: '', duree: '1 semaine', livrables: 'Grille d\'analyse documentaire' },
+    { nom: 'Réalisation', activites: 'Entretiens, tests techniques, évaluations des mesures de contrôle', date_debut: '', date_fin: '', duree: '2 semaines', livrables: 'Grille d\'évaluation complétée' },
+    { nom: 'Rendu du rapport', activites: 'Rédaction, relecture et remise du rapport final au client', date_debut: '', date_fin: '', duree: '1 semaine', livrables: 'Rapport d\'audit final, plan d\'actions priorisé' },
 ];
-
-const STATUT_ETAPE = {
-    a_planifier: { label: 'À planifier', bg: 'bg-gray-100', text: 'text-gray-500' },
-    en_cours:    { label: 'En cours',    bg: 'bg-blue-50',  text: 'text-blue-600' },
-    termine:     { label: 'Terminé',     bg: 'bg-green-50', text: 'text-green-700' },
-    reporte:     { label: 'Reporté',     bg: 'bg-orange-50',text: 'text-orange-600' },
-};
 
 const migrateEtapes = (etapes) =>
     (etapes || []).map(e =>
         typeof e === 'string'
-            ? { nom: e, activites: '', responsable: '', date_debut: '', date_fin: '', livrables: '', statut: 'a_planifier' }
-            : { activites: '', responsable: '', livrables: '', statut: 'a_planifier', ...e }
+            ? { nom: e, activites: '', date_debut: '', date_fin: '', duree: '', livrables: '' }
+            : { activites: '', date_debut: '', date_fin: '', duree: '', livrables: '', ...e }
     );
 
 const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, saving, readOnly }) => {
     const planning = identification.planning || {};
     const rawEtapes = planning.etapes;
-    const hasData = !!(planning.objectifs || planning.methodes || planning.documents_attendus || (rawEtapes || []).some(e => e.date_debut || e.date_fin || e.activites));
+    const sessions = planning.sessions || [];
+    const hasData = !!(planning.objectifs || planning.methodes || planning.documents_attendus
+        || (rawEtapes || []).some(e => e.activites || e.duree || e.date_debut)
+        || sessions.length > 0);
 
     const [editing, setEditing] = useState(!readOnly && !hasData);
+    const [expandedRow, setExpandedRow] = useState(null);
+    const [exporting, setExporting] = useState(false);
+    const exportRef = useRef(null);
 
     const setP = (key, val) => setIdentification(prev => ({
         ...prev,
@@ -1557,24 +1559,58 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
     };
 
     const addEtape = () => {
-        setP('etapes', [...etapes, { nom: '', activites: '', responsable: '', date_debut: '', date_fin: '', livrables: '', statut: 'a_planifier' }]);
+        const next = [...etapes, { nom: '', activites: '', date_debut: '', date_fin: '', duree: '', livrables: '' }];
+        setP('etapes', next);
+        setExpandedRow(next.length - 1);
     };
 
     const removeEtape = (idx) => {
         setP('etapes', etapes.filter((_, i) => i !== idx));
+        setExpandedRow(null);
     };
 
-    const handleSave = () => { onSave(); setEditing(false); };
+    const setSession = (si, field, val) => {
+        const next = sessions.map((s, i) => i === si ? { ...s, [field]: val } : s);
+        setP('sessions', next);
+    };
+    const addSession = () => setP('sessions', [...sessions, { date: '', entretiens: [{ interlocuteur: '', plage: '', exigences: '' }] }]);
+    const removeSession = (si) => setP('sessions', sessions.filter((_, i) => i !== si));
+    const setEntretien = (si, ei, field, val) => {
+        const next = sessions.map((s, i) => {
+            if (i !== si) return s;
+            return { ...s, entretiens: s.entretiens.map((e, j) => j === ei ? { ...e, [field]: val } : e) };
+        });
+        setP('sessions', next);
+    };
+    const addEntretien = (si) => {
+        const next = sessions.map((s, i) => i === si ? { ...s, entretiens: [...s.entretiens, { interlocuteur: '', plage: '', exigences: '' }] } : s);
+        setP('sessions', next);
+    };
+    const removeEntretien = (si, ei) => {
+        const next = sessions.map((s, i) => i === si ? { ...s, entretiens: s.entretiens.filter((_, j) => j !== ei) } : s);
+        setP('sessions', next);
+    };
 
-    const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : '—';
+    const fmtDateSession = (d) => {
+        if (!d) return { jour: '', date: '' };
+        const date = new Date(d + 'T00:00:00');
+        const jour = date.toLocaleDateString('fr-FR', { weekday: 'long' }).replace(/^\w/, c => c.toUpperCase());
+        const dateStr = date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return { jour, date: dateStr };
+    };
 
-    const duree = (debut, fin) => {
-        if (!debut || !fin) return '—';
+    const handleSave = () => { onSave(); setEditing(false); setExpandedRow(null); };
+
+    const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : null;
+
+    const dureeCalc = (debut, fin) => {
+        if (!debut || !fin) return null;
         const d = Math.round((new Date(fin) - new Date(debut)) / 86400000);
-        return d > 0 ? `${d}j` : '—';
+        return d > 0 ? `${d}j` : null;
     };
 
-    const auditeurOptions = (audit.auditeurs || []).map(a => `${a.prenom} ${a.nom}`);
+    const inputCls = "w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 bg-white";
+    const inputStyle = { color: '#111827' };
 
     const SH = ({ children }) => (
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">{children}</h3>
@@ -1586,17 +1622,68 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
         </div>
     );
 
+    const handleExport = async () => {
+        setExporting(true);
+        await new Promise(r => setTimeout(r, 250));
+        try {
+            const el = exportRef.current;
+            const canvas = await html2canvas(el, {
+                scale: 2, useCORS: true, allowTaint: true,
+                backgroundColor: '#ffffff', logging: false,
+            });
+            const imgData = canvas.toDataURL('image/jpeg', 0.92);
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pw = pdf.internal.pageSize.getWidth();
+            const ph = pdf.internal.pageSize.getHeight();
+            const imgH = (canvas.height * pw) / canvas.width;
+            let y = 0;
+            while (y < imgH) {
+                if (y > 0) pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, -y, pw, imgH);
+                y += ph;
+            }
+            const safeName = (audit.nom || 'audit').replace(/[^a-zA-Z0-9_-]/g, '_');
+            pdf.save(`Plan_Audit_${safeName}.pdf`);
+        } catch {
+            toast.error('Erreur lors de la génération du PDF.');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    /* ── Données pour le rendu export ── */
+    const exportRows = rawEtapes ? migrateEtapes(rawEtapes) : ETAPES_DEF.map(e => ({ ...e }));
+    const fmtEx = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : '—';
+    const auditeurs = (audit.auditeurs || []).map(a => `${a.prenom} ${a.nom}`).join(', ') || '—';
+    const dateAudit = [audit.date_debut, audit.date_fin].filter(Boolean).map(d => fmtEx(d.split('T')[0])).join(' → ') || '—';
+    const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const year = new Date().getFullYear();
+
+    /* ── Mode lecture ── */
     if (!editing) {
         return (
+            <>
             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
                 <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-gray-800">Planning de l'audit</h2>
-                    {!readOnly && (
-                        <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
-                            Modifier
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {hasData && (
+                            <button onClick={handleExport} disabled={exporting}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed">
+                                {exporting
+                                    ? <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                                    : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                }
+                                {exporting ? 'Génération…' : 'Exporter PDF'}
+                            </button>
+                        )}
+                        {!readOnly && (
+                            <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
+                                Modifier
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {!hasData ? (
@@ -1625,35 +1712,34 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
 
                         <div>
                             <SH>Calendrier prévisionnel</SH>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm border-collapse min-w-[700px]">
+                            <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                <table className="w-full text-xs border-collapse">
                                     <thead>
                                         <tr className="bg-gray-50 border-b border-gray-200">
-                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[160px]">Phase</th>
-                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2">Activités</th>
-                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[120px]">Responsable</th>
-                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[90px]">Début</th>
-                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[90px]">Fin</th>
-                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[55px]">Durée</th>
-                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2">Livrables</th>
-                                            <th className="text-left text-xs font-semibold text-gray-500 px-3 py-2 w-[100px]">Statut</th>
+                                            <th className="text-center font-semibold text-gray-400 px-3 py-2.5 w-8">N°</th>
+                                            <th className="text-left font-semibold text-gray-600 px-3 py-2.5 w-[160px]">Phase</th>
+                                            <th className="text-left font-semibold text-gray-600 px-3 py-2.5">Activités</th>
+                                            <th className="text-left font-semibold text-gray-600 px-3 py-2.5 w-[140px]">Période</th>
+                                            <th className="text-left font-semibold text-gray-600 px-3 py-2.5 w-[70px]">Durée</th>
+                                            <th className="text-left font-semibold text-gray-600 px-3 py-2.5">Livrables</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {etapes.map((e, i) => {
-                                            const sc = STATUT_ETAPE[e.statut] || STATUT_ETAPE.a_planifier;
+                                            const dc = dureeCalc(e.date_debut, e.date_fin);
+                                            const dureeAff = dc || e.duree || '—';
+                                            const debut = fmt(e.date_debut);
+                                            const fin = fmt(e.date_fin);
                                             return (
-                                                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                                                    <td className="px-3 py-2 font-medium text-gray-800 text-xs">{e.nom || '—'}</td>
-                                                    <td className="px-3 py-2 text-xs text-gray-600">{e.activites || '—'}</td>
-                                                    <td className="px-3 py-2 text-xs text-gray-600">{e.responsable || '—'}</td>
-                                                    <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">{fmt(e.date_debut)}</td>
-                                                    <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">{fmt(e.date_fin)}</td>
-                                                    <td className="px-3 py-2 text-xs text-gray-500">{duree(e.date_debut, e.date_fin)}</td>
-                                                    <td className="px-3 py-2 text-xs text-gray-600">{e.livrables || '—'}</td>
-                                                    <td className="px-3 py-2">
-                                                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${sc.bg} ${sc.text}`}>{sc.label}</span>
+                                                <tr key={i} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition">
+                                                    <td className="px-3 py-2.5 text-center text-gray-400 font-medium">{i + 1}</td>
+                                                    <td className="px-3 py-2.5 font-semibold text-gray-800">{e.nom || '—'}</td>
+                                                    <td className="px-3 py-2.5 text-gray-600 leading-relaxed">{e.activites || '—'}</td>
+                                                    <td className="px-3 py-2.5 text-gray-600 whitespace-nowrap">
+                                                        {debut && fin ? `${debut} → ${fin}` : debut || fin || '—'}
                                                     </td>
+                                                    <td className="px-3 py-2.5 text-gray-600 font-medium">{dureeAff}</td>
+                                                    <td className="px-3 py-2.5 text-gray-600 leading-relaxed">{e.livrables || '—'}</td>
                                                 </tr>
                                             );
                                         })}
@@ -1661,137 +1747,507 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                 </table>
                             </div>
                         </div>
+
+                        {sessions.length > 0 && (
+                            <div>
+                                <SH>Programme des entretiens</SH>
+                                <div className="space-y-4">
+                                    {sessions.map((s, si) => {
+                                        const { jour, date: dateStr } = fmtDateSession(s.date);
+                                        const nb = (s.entretiens || []).length;
+                                        return (
+                                            <div key={si} className="rounded-xl border border-gray-200 overflow-hidden">
+                                                {/* En-tête journée */}
+                                                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200">
+                                                    <div className="w-0.5 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--brand-red)' }} />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-bold text-gray-800">{jour || '—'}</p>
+                                                        {dateStr && <p className="text-xs text-gray-500 mt-0.5">{dateStr}</p>}
+                                                    </div>
+                                                    <span className="flex-shrink-0 text-xs font-medium bg-white border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full">
+                                                        {nb} entretien{nb > 1 ? 's' : ''}
+                                                    </span>
+                                                </div>
+                                                {/* Colonnes */}
+                                                <div className="grid bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide" style={{ gridTemplateColumns: '1fr 200px 2fr' }}>
+                                                    <span className="px-4 py-2">Interlocuteur</span>
+                                                    <span className="px-4 py-2">Plage d'horaire</span>
+                                                    <span className="px-4 py-2">Exigences ISO 27001:2022</span>
+                                                </div>
+                                                {/* Lignes */}
+                                                {(s.entretiens || []).map((e, ei) => {
+                                                    const plageAff = e.plage_debut && e.plage_fin
+                                                        ? `${e.plage_debut} → ${e.plage_fin}`
+                                                        : e.plage || '—';
+                                                    const lignes = (e.exigences || '').split('\n').filter(l => l.trim());
+                                                    return (
+                                                        <div key={ei} className="grid border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors" style={{ gridTemplateColumns: '1fr 200px 2fr' }}>
+                                                            <div className="px-4 py-3 font-medium text-gray-800 text-sm align-top">{e.interlocuteur || '—'}</div>
+                                                            <div className="px-4 py-3 align-top">
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-medium text-gray-700 whitespace-nowrap">
+                                                                    <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                    {plageAff}
+                                                                </span>
+                                                            </div>
+                                                            <div className="px-4 py-3 align-top">
+                                                                {lignes.length > 0 ? (
+                                                                    <ul className="space-y-1">
+                                                                        {lignes.map((l, li) => (
+                                                                            <li key={li} className="flex items-start gap-2 text-xs text-gray-600">
+                                                                                <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-400 flex-shrink-0" />
+                                                                                {l}
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                ) : <span className="text-xs text-gray-400 italic">—</span>}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
+
+            {/* ── Document export (off-screen, html2canvas target) ── */}
+            {exporting && (
+                <div ref={exportRef} style={{
+                    position: 'fixed', left: '-9999px', top: 0,
+                    width: '794px', backgroundColor: '#ffffff',
+                    fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+                    color: '#111827', fontSize: '10px', lineHeight: '1.5',
+                }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 32px 18px', borderBottom: '3px solid #CC0000' }}>
+                        <img src={logoDataprotect} alt="DataProtect" style={{ height: '38px', objectFit: 'contain' }} crossOrigin="anonymous" />
+                        <img src={logoZerogap} alt="ZeroGap" style={{ height: '30px', objectFit: 'contain' }} crossOrigin="anonymous" />
+                    </div>
+
+                    {/* Meta strip */}
+                    <div style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', padding: '10px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        {[
+                            { label: 'Référence', value: `REF-PA-${year}-001` },
+                            { label: 'Version', value: 'V1.0' },
+                            { label: "Date d'émission", value: today },
+                        ].map(({ label, value }, i) => (
+                            <div key={i}>
+                                <p style={{ margin: 0, fontSize: '8px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9ca3af' }}>{label}</p>
+                                <p style={{ margin: '2px 0 0', fontSize: '10px', fontWeight: 700, color: '#111827' }}>{value}</p>
+                            </div>
+                        ))}
+                        <div>
+                            <span style={{ fontSize: '8px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#ffffff', backgroundColor: '#111827', padding: '3px 9px', borderRadius: '3px' }}>CONFIDENTIEL</span>
+                        </div>
+                    </div>
+
+                    {/* Title block */}
+                    <div style={{ padding: '26px 32px 18px' }}>
+                        <p style={{ margin: 0, fontSize: '9px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#CC0000' }}>DataProtect — Plan d'audit</p>
+                        <h1 style={{ margin: '6px 0 5px', fontSize: '21px', fontWeight: 700, color: '#111111', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{audit.nom || 'Audit ISO 27001'}</h1>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#4b5563', fontWeight: 400 }}>
+                            {audit.client || ''}{audit.referentiel?.nom ? ` · ${audit.referentiel.nom}` : ''}
+                        </p>
+                    </div>
+
+                    {/* Identification box */}
+                    <div style={{ margin: '0 32px 22px', border: '1px solid #e5e7eb', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{ backgroundColor: '#f3f4f6', padding: '7px 14px', borderBottom: '1px solid #e5e7eb' }}>
+                            <p style={{ margin: 0, fontSize: '8px', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#374151' }}>Identification de la mission</p>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+                            {[
+                                { label: 'Organisation auditée', value: audit.client || '—' },
+                                { label: 'Référentiel', value: audit.referentiel?.nom || '—' },
+                                { label: "Période d'audit", value: dateAudit },
+                                { label: "Équipe d'audit", value: auditeurs },
+                            ].map(({ label, value }, idx) => (
+                                <div key={idx} style={{
+                                    padding: '10px 14px',
+                                    borderBottom: idx < 2 ? '1px solid #f3f4f6' : 'none',
+                                    borderRight: idx % 2 === 0 ? '1px solid #f3f4f6' : 'none',
+                                }}>
+                                    <p style={{ margin: '0 0 2px', fontSize: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#9ca3af' }}>{label}</p>
+                                    <p style={{ margin: 0, fontSize: '10px', fontWeight: 500, color: '#111827' }}>{value}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Section 1 — Contexte */}
+                    {(planning.objectifs || planning.methodes || planning.documents_attendus) && (
+                        <div style={{ padding: '0 32px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                <div style={{ width: '3px', height: '16px', backgroundColor: '#CC0000', borderRadius: '2px', flexShrink: 0 }} />
+                                <h2 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#111111', letterSpacing: '-0.005em' }}>1. Contexte et périmètre</h2>
+                            </div>
+                            {[
+                                { label: 'Objectifs', value: planning.objectifs },
+                                { label: "Méthodes d'audit", value: planning.methodes },
+                                { label: 'Documents attendus', value: planning.documents_attendus },
+                            ].filter(r => r.value).map(({ label, value }, i) => (
+                                <div key={i} style={{ marginBottom: '10px' }}>
+                                    <p style={{ margin: '0 0 3px', fontSize: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#6b7280' }}>{label}</p>
+                                    <p style={{ margin: 0, fontSize: '10px', color: '#374151', lineHeight: '1.6', paddingLeft: '10px', borderLeft: '2px solid #e5e7eb' }}>{value}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Section 2 — Calendrier */}
+                    {exportRows.length > 0 && (
+                        <div style={{ padding: '0 32px 22px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                <div style={{ width: '3px', height: '16px', backgroundColor: '#CC0000', borderRadius: '2px', flexShrink: 0 }} />
+                                <h2 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#111111', letterSpacing: '-0.005em' }}>2. Calendrier prévisionnel</h2>
+                            </div>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: '#111111', color: '#ffffff' }}>
+                                        {['N°', 'Phase', 'Activités principales', 'Période', 'Durée', 'Livrables'].map((h, i) => (
+                                            <th key={i} style={{ padding: '7px 9px', textAlign: i === 0 ? 'center' : 'left', fontWeight: 600, fontSize: '8px', letterSpacing: '0.05em', textTransform: 'uppercase', borderRight: i < 5 ? '1px solid #374151' : 'none' }}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {exportRows.map((e, i) => {
+                                        const dc = dureeCalc(e.date_debut, e.date_fin);
+                                        const dureeAff = dc || e.duree || '—';
+                                        const debut = fmtEx(e.date_debut);
+                                        const fin = fmtEx(e.date_fin);
+                                        const periode = debut !== '—' && fin !== '—' ? `${debut} → ${fin}` : debut !== '—' ? debut : fin !== '—' ? fin : '—';
+                                        return (
+                                            <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                                                <td style={{ padding: '7px 9px', textAlign: 'center', fontWeight: 700, color: '#CC0000', borderRight: '1px solid #e5e7eb', width: '22px' }}>{i + 1}</td>
+                                                <td style={{ padding: '7px 9px', fontWeight: 600, color: '#111111', borderRight: '1px solid #e5e7eb', width: '110px' }}>{e.nom || '—'}</td>
+                                                <td style={{ padding: '7px 9px', color: '#374151', borderRight: '1px solid #e5e7eb', lineHeight: '1.5' }}>{e.activites || '—'}</td>
+                                                <td style={{ padding: '7px 9px', color: '#374151', borderRight: '1px solid #e5e7eb', whiteSpace: 'nowrap', width: '115px' }}>{periode}</td>
+                                                <td style={{ padding: '7px 9px', color: '#374151', borderRight: '1px solid #e5e7eb', whiteSpace: 'nowrap', width: '55px', fontWeight: 500 }}>{dureeAff}</td>
+                                                <td style={{ padding: '7px 9px', color: '#374151', lineHeight: '1.5' }}>{e.livrables || '—'}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Section 3 — Programme des entretiens */}
+                    {sessions.length > 0 && (
+                        <div style={{ padding: '0 32px 22px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                <div style={{ width: '3px', height: '16px', backgroundColor: '#CC0000', borderRadius: '2px', flexShrink: 0 }} />
+                                <h2 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#111111', letterSpacing: '-0.005em' }}>3. Programme des entretiens</h2>
+                            </div>
+                            {sessions.map((s, si) => {
+                                const { jour, date: dateStr } = fmtDateSession(s.date);
+                                return (
+                                    <div key={si} style={{ marginBottom: '14px' }}>
+                                        <div style={{ backgroundColor: '#111111', color: '#ffffff', padding: '7px 12px', borderRadius: '4px 4px 0 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div style={{ width: '3px', height: '14px', backgroundColor: '#CC0000', borderRadius: '1px', flexShrink: 0 }} />
+                                            <span style={{ fontSize: '10px', fontWeight: 700 }}>{jour || '—'}</span>
+                                            {dateStr && <span style={{ fontSize: '9px', color: '#9ca3af' }}>{dateStr}</span>}
+                                            <span style={{ marginLeft: 'auto', fontSize: '8px', backgroundColor: 'rgba(255,255,255,0.12)', padding: '2px 7px', borderRadius: '10px', color: '#d1d5db' }}>
+                                                {(s.entretiens || []).length} entretien{(s.entretiens || []).length > 1 ? 's' : ''}
+                                            </span>
+                                        </div>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', border: '1px solid #e5e7eb', borderTop: 'none' }}>
+                                            <thead>
+                                                <tr style={{ backgroundColor: '#f3f4f6' }}>
+                                                    {['Interlocuteur', 'Plage horaire', 'Exigences ISO 27001:2022'].map((h, hi) => (
+                                                        <th key={hi} style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 600, fontSize: '8px', letterSpacing: '0.05em', textTransform: 'uppercase', color: '#6b7280', borderBottom: '1px solid #e5e7eb', borderRight: hi < 2 ? '1px solid #e5e7eb' : 'none' }}>{h}</th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(s.entretiens || []).map((e, ei) => {
+                                                    const plageAff = e.plage_debut && e.plage_fin ? `${e.plage_debut} – ${e.plage_fin}` : e.plage || '—';
+                                                    return (
+                                                        <tr key={ei} style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: ei % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                                                            <td style={{ padding: '7px 10px', fontWeight: 600, color: '#111111', borderRight: '1px solid #e5e7eb', width: '150px' }}>{e.interlocuteur || '—'}</td>
+                                                            <td style={{ padding: '7px 10px', color: '#374151', fontWeight: 500, borderRight: '1px solid #e5e7eb', whiteSpace: 'nowrap', width: '95px' }}>{plageAff}</td>
+                                                            <td style={{ padding: '7px 10px', color: '#374151', lineHeight: '1.6' }}>{e.exigences || '—'}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Footer */}
+                    <div style={{ margin: '8px 32px 0', borderTop: '1px solid #e5e7eb', padding: '12px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '8px', color: '#9ca3af' }}>© {year} DataProtect · Tous droits réservés</span>
+                        <span style={{ fontSize: '8px', color: '#9ca3af', fontWeight: 500 }}>Document confidentiel — Usage restreint aux parties concernées</span>
+                        <span style={{ fontSize: '8px', color: '#9ca3af' }}>REF-PA-{year}-001 / V1.0</span>
+                    </div>
+                </div>
+            )}
+            </>
         );
     }
 
+    /* ── Mode édition ── */
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-800">Planning de l'audit</h2>
-                {hasData && <button onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>}
+                {hasData && <button onClick={() => { setEditing(false); setExpandedRow(null); }} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>}
             </div>
 
-            {/* Infos générales */}
             <div>
                 <SH>Objectifs de l'audit</SH>
                 <textarea rows={3} value={planning.objectifs || ''} onChange={e => setP('objectifs', e.target.value)}
                     placeholder="Décrire les objectifs de l'audit…"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
-                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
+                    style={{ color: '#111827' }} />
             </div>
 
             <div>
                 <SH>Méthodes d'audit</SH>
                 <textarea rows={2} value={planning.methodes || ''} onChange={e => setP('methodes', e.target.value)}
                     placeholder="Entretiens, revue documentaire, tests techniques, observations terrain…"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
-                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
+                    style={{ color: '#111827' }} />
             </div>
 
             <div>
                 <SH>Documents attendus du client</SH>
                 <textarea rows={2} value={planning.documents_attendus || ''} onChange={e => setP('documents_attendus', e.target.value)}
-                    placeholder="Politique de sécurité, procédures internes, schémas réseau, contrats prestataires…"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
-                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                    placeholder="Politique de sécurité, procédures internes, schémas réseau…"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
+                    style={{ color: '#111827' }} />
             </div>
 
-            {/* Tableau des phases */}
             <div>
                 <SH>Calendrier prévisionnel</SH>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse min-w-[900px]">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200">
-                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[140px]">Phase</th>
-                                <th className="text-left font-semibold text-gray-500 px-2 py-2">Activités</th>
-                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[140px]">Responsable</th>
-                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[115px]">Début</th>
-                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[115px]">Fin</th>
-                                <th className="text-left font-semibold text-gray-500 px-2 py-2">Livrables</th>
-                                <th className="text-left font-semibold text-gray-500 px-2 py-2 w-[115px]">Statut</th>
-                                <th className="w-8"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {etapes.map((e, i) => (
-                                <tr key={i} className="border-b border-gray-100 align-top">
-                                    <td className="px-2 py-1.5">
-                                        <input value={e.nom} onChange={ev => setEtape(i, 'nom', ev.target.value)}
-                                            placeholder="Phase…"
-                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
-                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                                    </td>
-                                    <td className="px-2 py-1.5">
+                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                    {/* En-tête tableau */}
+                    <div className="grid bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 px-3 py-2" style={{ gridTemplateColumns: '28px 1fr 32px' }}>
+                        <span className="text-center">N°</span>
+                        <span>Phase</span>
+                        <span></span>
+                    </div>
+
+                    {/* Lignes */}
+                    {etapes.map((e, i) => (
+                        <div key={i} className="border-b border-gray-100 last:border-0">
+                            {/* Ligne résumé — clic pour développer */}
+                            <div
+                                className="grid items-center px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition"
+                                style={{ gridTemplateColumns: '28px 1fr auto 32px' }}
+                                onClick={() => setExpandedRow(expandedRow === i ? null : i)}
+                            >
+                                <span className="text-xs text-gray-400 font-medium text-center">{i + 1}</span>
+                                <span className="text-sm font-medium text-gray-800 truncate pr-2">{e.nom || <span className="text-gray-400 italic">Nouvelle étape</span>}</span>
+                                <span className="text-xs text-gray-400 mr-2">
+                                    {e.duree || dureeCalc(e.date_debut, e.date_fin) || ''}
+                                </span>
+                                <svg className={`w-4 h-4 text-gray-400 transition-transform ${expandedRow === i ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </div>
+
+                            {/* Panneau édition déplié */}
+                            {expandedRow === i && (
+                                <div className="px-4 pb-4 pt-2 bg-gray-50 border-t border-gray-100 space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">Intitulé de la phase</label>
+                                            <input value={e.nom} onChange={ev => setEtape(i, 'nom', ev.target.value)}
+                                                placeholder="Ex : Cadrage" className={inputCls} style={inputStyle} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">Durée</label>
+                                            <input value={e.duree} onChange={ev => setEtape(i, 'duree', ev.target.value)}
+                                                placeholder="Ex : 1 semaine" className={inputCls} style={inputStyle} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Activités</label>
                                         <textarea rows={2} value={e.activites} onChange={ev => setEtape(i, 'activites', ev.target.value)}
-                                            placeholder="Activités prévues…"
-                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 resize-none"
-                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                                    </td>
-                                    <td className="px-2 py-1.5">
-                                        {auditeurOptions.length > 0 ? (
-                                            <select value={e.responsable} onChange={ev => setEtape(i, 'responsable', ev.target.value)}
-                                                className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
-                                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}>
-                                                <option value="">— Choisir —</option>
-                                                {auditeurOptions.map(name => <option key={name} value={name}>{name}</option>)}
-                                            </select>
-                                        ) : (
-                                            <input value={e.responsable} onChange={ev => setEtape(i, 'responsable', ev.target.value)}
-                                                placeholder="Responsable…"
-                                                className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
-                                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                                        )}
-                                    </td>
-                                    <td className="px-2 py-1.5">
-                                        <input type="date" value={e.date_debut} onChange={ev => setEtape(i, 'date_debut', ev.target.value)}
-                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
-                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                                    </td>
-                                    <td className="px-2 py-1.5">
-                                        <input type="date" value={e.date_fin} onChange={ev => setEtape(i, 'date_fin', ev.target.value)}
-                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
-                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                                    </td>
-                                    <td className="px-2 py-1.5">
+                                            placeholder="Décrire les activités de cette phase…"
+                                            className={`${inputCls} resize-none`} style={inputStyle} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">Date début <span className="text-gray-300">(optionnel)</span></label>
+                                            <input type="date" value={e.date_debut} onChange={ev => setEtape(i, 'date_debut', ev.target.value)}
+                                                className={inputCls} style={inputStyle} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">Date fin <span className="text-gray-300">(optionnel)</span></label>
+                                            <input type="date" value={e.date_fin} onChange={ev => setEtape(i, 'date_fin', ev.target.value)}
+                                                className={inputCls} style={inputStyle} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Livrables</label>
                                         <textarea rows={2} value={e.livrables} onChange={ev => setEtape(i, 'livrables', ev.target.value)}
-                                            placeholder="Livrables attendus…"
-                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 resize-none"
-                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                                    </td>
-                                    <td className="px-2 py-1.5">
-                                        <select value={e.statut} onChange={ev => setEtape(i, 'statut', ev.target.value)}
-                                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1"
-                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}>
-                                            <option value="a_planifier">À planifier</option>
-                                            <option value="en_cours">En cours</option>
-                                            <option value="termine">Terminé</option>
-                                            <option value="reporte">Reporté</option>
-                                        </select>
-                                    </td>
-                                    <td className="px-1 py-1.5 text-center">
-                                        {etapes.length > 1 && (
-                                            <button onClick={() => removeEtape(i)} className="text-gray-300 hover:text-red-400 transition text-base leading-none" title="Supprimer">×</button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                            placeholder="Livrables attendus à la fin de cette phase…"
+                                            className={`${inputCls} resize-none`} style={inputStyle} />
+                                    </div>
+                                    {etapes.length > 1 && (
+                                        <div className="flex justify-end">
+                                            <button onClick={() => removeEtape(i)}
+                                                className="text-xs text-red-500 hover:text-red-700 transition">
+                                                Supprimer cette étape
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+
+                    {/* Ajouter une étape */}
+                    <button onClick={addEtape}
+                        className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition border-t border-gray-100">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        Ajouter une étape
+                    </button>
                 </div>
-                <button onClick={addEtape}
-                    className="mt-2 flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition">
-                    <span className="w-4 h-4 rounded-full border border-gray-300 flex items-center justify-center text-gray-400 text-sm leading-none">+</span>
-                    Ajouter une étape
-                </button>
+            </div>
+
+            {/* Programme des entretiens */}
+            <div>
+                <SH>Programme des entretiens</SH>
+
+                {sessions.length === 0 ? (
+                    /* État vide — incite à créer la première journée */
+                    <button onClick={addSession}
+                        className="w-full flex flex-col items-center gap-2 py-8 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500 hover:bg-gray-50 transition group">
+                        <svg className="w-8 h-8 text-gray-300 group-hover:text-gray-400 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" />
+                        </svg>
+                        <div className="text-center">
+                            <p className="text-sm font-medium">Aucune journée planifiée</p>
+                            <p className="text-xs mt-0.5">Cliquez pour ajouter la première journée d'entretiens</p>
+                        </div>
+                    </button>
+                ) : (
+                    <div className="space-y-4">
+                        {sessions.map((s, si) => {
+                            const { jour, date: dateStr } = fmtDateSession(s.date);
+                            return (
+                                <div key={si} className="rounded-xl border border-gray-200 overflow-hidden">
+                                    {/* En-tête journée */}
+                                    <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200">
+                                        <div className="w-0.5 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--brand-red)' }} />
+                                        <div className="flex-1 min-w-0">
+                                            {jour
+                                                ? <p className="text-sm font-bold text-gray-800">{jour} <span className="font-normal text-gray-500 ml-1">{dateStr}</span></p>
+                                                : <p className="text-sm text-gray-400 italic">Date non définie</p>
+                                            }
+                                        </div>
+                                        <input
+                                            type="date"
+                                            value={s.date}
+                                            onChange={ev => setSession(si, 'date', ev.target.value)}
+                                            className="px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400"
+                                            style={{ color: '#111827' }}
+                                        />
+                                        <button onClick={() => removeSession(si)}
+                                            className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition px-2 py-1 rounded-lg hover:bg-red-50">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                            Supprimer
+                                        </button>
+                                    </div>
+
+                                    {/* En-têtes colonnes */}
+                                    <div className="grid bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide" style={{ gridTemplateColumns: '1fr 230px 2fr 32px' }}>
+                                        <span className="px-4 py-2">Interlocuteur</span>
+                                        <span className="px-4 py-2">Plage d'horaire</span>
+                                        <span className="px-4 py-2">Exigences ISO 27001:2022</span>
+                                        <span />
+                                    </div>
+
+                                    {/* Lignes entretiens */}
+                                    {(s.entretiens || []).map((e, ei) => (
+                                        <div key={ei} className="grid items-start border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors group/row" style={{ gridTemplateColumns: '1fr 230px 2fr 32px' }}>
+                                            <div className="px-3 py-2.5">
+                                                <input
+                                                    value={e.interlocuteur}
+                                                    onChange={ev => setEntretien(si, ei, 'interlocuteur', ev.target.value)}
+                                                    placeholder="Ex : RSSI, DSI, DRH…"
+                                                    className="w-full px-2.5 py-1.5 text-sm border border-transparent rounded-lg hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white transition"
+                                                    style={{ color: '#111827' }}
+                                                />
+                                            </div>
+                                            <div className="px-3 py-2.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <input
+                                                        type="time"
+                                                        value={e.plage_debut || ''}
+                                                        onChange={ev => setEntretien(si, ei, 'plage_debut', ev.target.value)}
+                                                        className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-transparent rounded-lg hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white transition"
+                                                        style={{ color: '#111827' }}
+                                                    />
+                                                    <span className="text-gray-300 text-xs">—</span>
+                                                    <input
+                                                        type="time"
+                                                        value={e.plage_fin || ''}
+                                                        onChange={ev => setEntretien(si, ei, 'plage_fin', ev.target.value)}
+                                                        className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-transparent rounded-lg hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white transition"
+                                                        style={{ color: '#111827' }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="px-3 py-2.5">
+                                                <textarea
+                                                    rows={3}
+                                                    value={e.exigences || ''}
+                                                    onChange={ev => setEntretien(si, ei, 'exigences', ev.target.value)}
+                                                    placeholder={'Une exigence par ligne :\nA.5.1 — Politiques de sécurité\nA.6.1 — Organisation interne'}
+                                                    className="w-full px-2.5 py-1.5 text-xs border border-transparent rounded-lg hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white resize-none transition"
+                                                    style={{ color: '#111827' }}
+                                                />
+                                            </div>
+                                            <div className="flex items-center justify-center pt-3">
+                                                {s.entretiens.length > 1 && (
+                                                    <button
+                                                        onClick={() => removeEntretien(si, ei)}
+                                                        className="opacity-0 group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
+                                                        title="Supprimer cette ligne">
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Ajouter un interlocuteur */}
+                                    <button
+                                        onClick={() => addEntretien(si)}
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition border-t border-dashed border-gray-200">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                        Ajouter un interlocuteur
+                                    </button>
+                                </div>
+                            );
+                        })}
+
+                        <button onClick={addSession}
+                            className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            Ajouter une journée
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="flex justify-end pt-1">
                 <button onClick={handleSave} disabled={saving}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition">
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition hover:opacity-90"
+                    style={{ backgroundColor: 'var(--brand-red)' }}>
+                    {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                     {saving ? 'Enregistrement…' : 'Enregistrer le planning'}
                 </button>
             </div>
@@ -1801,7 +2257,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
 
 // ─── Validation client ────────────────────────────────────────────────────────
 
-const ValidationClientCard = ({ type, validation, isSeniorOrAdmin, isClient, onAction, loading }) => {
+const ValidationClientCard = ({ type, validation, isSeniorOrAdmin, isClient, onAction, loading, planningData }) => {
     const [commentaire, setCommentaire] = useState('');
     const [showModifForm, setShowModifForm] = useState(false);
 
@@ -1817,16 +2273,61 @@ const ValidationClientCard = ({ type, validation, isSeniorOrAdmin, isClient, onA
     const statut = validation?.statut;
     const cfg = statut ? statusConfig[statut] : null;
 
+    /* Résumé du planning pour le type "planning" */
+    const PlanningResume = () => {
+        if (type !== 'planning' || !planningData) return null;
+        const etapes = planningData.etapes || [];
+        const sessions = planningData.sessions || [];
+        const nbEtapes = etapes.length;
+        const nbJournees = sessions.length;
+        const nbEntretiens = sessions.reduce((acc, s) => acc + (s.entretiens || []).length, 0);
+        const hasCalendrier = nbEtapes > 0;
+        const hasProgramme = nbJournees > 0;
+
+        return (
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ce planning comprend</p>
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-2.5">
+                        {hasCalendrier
+                            ? <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0"><svg className="w-2.5 h-2.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg></span>
+                            : <span className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-gray-400" /></span>
+                        }
+                        <span className="text-xs text-gray-700">
+                            Calendrier prévisionnel
+                            {hasCalendrier && <span className="ml-1 text-gray-400">— {nbEtapes} phase{nbEtapes > 1 ? 's' : ''}</span>}
+                            {!hasCalendrier && <span className="ml-1 text-gray-400 italic">non défini</span>}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                        {hasProgramme
+                            ? <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0"><svg className="w-2.5 h-2.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg></span>
+                            : <span className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-gray-400" /></span>
+                        }
+                        <span className="text-xs text-gray-700">
+                            Programme des entretiens
+                            {hasProgramme && <span className="ml-1 text-gray-400">— {nbJournees} journée{nbJournees > 1 ? 's' : ''} · {nbEntretiens} entretien{nbEntretiens > 1 ? 's' : ''}</span>}
+                            {!hasProgramme && <span className="ml-1 text-gray-400 italic">non défini</span>}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
             <h3 className="text-sm font-semibold text-gray-800">{titles[type]}</h3>
+
+            <PlanningResume />
 
             {/* Pas encore soumis */}
             {!validation && isSeniorOrAdmin && (
                 <button
                     onClick={() => onAction(type, 'soumettre')}
                     disabled={loading}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition hover:opacity-90"
+                    style={{ backgroundColor: 'var(--brand-red)' }}
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
                     {loading ? 'Envoi…' : submitLabels[type]}
@@ -1855,18 +2356,18 @@ const ValidationClientCard = ({ type, validation, isSeniorOrAdmin, isClient, onA
             {statut === 'en_attente' && isClient && (
                 <div className="flex flex-col gap-3">
                     {!showModifForm ? (
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                             <button
                                 onClick={() => onAction(type, 'valider')}
                                 disabled={loading}
-                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition"
+                                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition shadow-sm"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                Valider
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                {loading ? 'Envoi…' : 'Valider le planning'}
                             </button>
                             <button
                                 onClick={() => setShowModifForm(true)}
-                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition"
+                                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-orange-200 text-orange-600 bg-orange-50 text-sm font-medium hover:bg-orange-100 hover:border-orange-300 transition"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
                                 Demander des modifications
@@ -1897,15 +2398,30 @@ const ValidationClientCard = ({ type, validation, isSeniorOrAdmin, isClient, onA
                 </div>
             )}
 
-            {/* Senior/admin peut resoumettre si modification demandée ou déjà soumis */}
-            {(statut === 'modification_demandee') && isSeniorOrAdmin && (
-                <button
-                    onClick={() => onAction(type, 'soumettre')}
-                    disabled={loading}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition"
-                >
-                    {loading ? 'Envoi…' : 'Resoumettre au client'}
-                </button>
+            {/* Senior/admin : actions secondaires (resoumettre + annuler) */}
+            {isSeniorOrAdmin && validation && (
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                    {statut === 'modification_demandee' && (
+                        <button
+                            onClick={() => onAction(type, 'soumettre')}
+                            disabled={loading}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 disabled:opacity-50 transition"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                            {loading ? 'Envoi…' : 'Resoumettre au client'}
+                        </button>
+                    )}
+                    {statut !== 'valide' && (
+                        <button
+                            onClick={() => onAction(type, 'annuler')}
+                            disabled={loading}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 text-xs font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-50 transition"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            Annuler la validation
+                        </button>
+                    )}
+                </div>
             )}
         </div>
     );
@@ -2590,7 +3106,7 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
     );
 };
 
-// ─── TAB CADRAGE : Périmètre & Planification ─────────────────────────────────
+// ─── TAB CADRAGE COMPLET : Cadrage + Identification fusionnés ─────────────────
 
 const TYPE_AUDIT_OPTIONS = [
     { value: 'diagnostique', label: 'Audit diagnostique' },
@@ -2598,16 +3114,16 @@ const TYPE_AUDIT_OPTIONS = [
     { value: 'conformite', label: 'Audit de conformité' },
 ];
 
-const TabCadrage = ({ audit, referentiel, identification, setIdentification, onSave, saving, readOnly }) => {
-    const hasData = !!(identification.type_audit || identification.perimetre_physique || identification.perimetre_logique || identification.perimetre_organisationnel);
+const TabCadrageComplet = ({ audit, referentiel, identification, setIdentification, onSave, saving, isISO, readOnly }) => {
+    const hasData = !!(identification.type_audit || identification.perimetre_physique || identification.denomination);
     const [editing, setEditing] = useState(!readOnly && !hasData);
     const set = (k, v) => setIdentification(prev => ({ ...prev, [k]: v }));
 
     const typeLabel = TYPE_AUDIT_OPTIONS.find(t => t.value === identification.type_audit)?.label;
-
+    const entityLabel = isISO ? "Identification de l'organisme" : "Identification de l'entité";
     const handleSave = () => { onSave(); setEditing(false); };
 
-    const SectionTitle = ({ children }) => (
+    const SH = ({ children }) => (
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">{children}</h3>
     );
     const InfoRow = ({ label, value }) => !value ? null : (
@@ -2616,41 +3132,91 @@ const TabCadrage = ({ audit, referentiel, identification, setIdentification, onS
             <dd className="text-sm text-gray-800 mt-0.5">{value}</dd>
         </div>
     );
+    const Field = ({ label, fieldKey, type = 'text', span = false }) => (
+        <div className={span ? 'col-span-2' : ''}>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
+            <input type={type} value={identification[fieldKey] || ''} onChange={e => set(fieldKey, e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+        </div>
+    );
 
     if (!editing) {
         return (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
                 <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-gray-800">Cadrage de l'audit</h2>
                     {!readOnly && (
-                        <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                        <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
                             Modifier
                         </button>
                     )}
                 </div>
+
                 <div>
-                    <SectionTitle>Informations générales</SectionTitle>
+                    <SH>Informations de l'audit</SH>
                     <dl className="grid grid-cols-2 gap-3">
                         <InfoRow label="Nom de l'audit" value={audit.nom} />
                         <InfoRow label="Client" value={audit.client} />
                         <InfoRow label="Référentiel" value={referentiel?.nom} />
                         <InfoRow label="Type d'audit" value={typeLabel || '—'} />
-                        <InfoRow label="Date début" value={audit.date_debut} />
-                        <InfoRow label="Date fin" value={audit.date_fin} />
+                        <InfoRow label="Date de début" value={audit.date_debut} />
+                        <InfoRow label="Date de fin" value={audit.date_fin} />
                     </dl>
                 </div>
+
                 <div>
-                    <SectionTitle>Périmètre</SectionTitle>
-                    <dl className="space-y-3">
-                        <InfoRow label="Périmètre physique" value={identification.perimetre_physique} />
-                        <InfoRow label="Périmètre logique" value={identification.perimetre_logique} />
-                        <InfoRow label="Périmètre organisationnel" value={identification.perimetre_organisationnel} />
-                    </dl>
-                    {!identification.perimetre_physique && !identification.perimetre_logique && !identification.perimetre_organisationnel && (
-                        <p className="text-xs text-gray-400 italic">Périmètre non encore défini.</p>
-                    )}
+                    <SH>Périmètre</SH>
+                    {(identification.perimetre_physique || identification.perimetre_logique || identification.perimetre_organisationnel) ? (
+                        <dl className="space-y-3">
+                            <InfoRow label="Périmètre physique" value={identification.perimetre_physique} />
+                            <InfoRow label="Périmètre logique" value={identification.perimetre_logique} />
+                            <InfoRow label="Périmètre organisationnel" value={identification.perimetre_organisationnel} />
+                        </dl>
+                    ) : <p className="text-xs text-gray-400 italic">Périmètre non encore défini.</p>}
                 </div>
+
+                <div className="border-t border-gray-100" />
+
+                <div>
+                    <SH>{entityLabel}</SH>
+                    {(identification.denomination || identification.departement || identification.adresse) ? (
+                        <dl className="grid grid-cols-2 gap-3">
+                            {identification.denomination && identification.denomination !== audit.client && (
+                                <InfoRow label="Dénomination" value={identification.denomination} />
+                            )}
+                            <InfoRow label="Département" value={identification.departement} />
+                            <InfoRow label="Adresse" value={identification.adresse} />
+                            <InfoRow label="Ville" value={identification.ville} />
+                            <InfoRow label="Site web" value={identification.site_web} />
+                        </dl>
+                    ) : <p className="text-xs text-gray-400 italic">Non encore renseigné.</p>}
+                </div>
+
+                {(identification.rssi_nom_prenom || identification.rssi_email) && (
+                    <div>
+                        <SH>RSSI</SH>
+                        <dl className="grid grid-cols-2 gap-3">
+                            <InfoRow label="Nom et Prénom" value={identification.rssi_nom_prenom} />
+                            <InfoRow label="Rattachement" value={identification.rssi_rattachement} />
+                            <InfoRow label="E-mail" value={identification.rssi_email} />
+                            <InfoRow label="Téléphone" value={identification.rssi_telephone} />
+                        </dl>
+                    </div>
+                )}
+
+                {(identification.auteur_evaluation || identification.valide_par) && (
+                    <div>
+                        <SH>Gestion du document</SH>
+                        <dl className="grid grid-cols-2 gap-3">
+                            <InfoRow label="Auteur de l'évaluation" value={identification.auteur_evaluation} />
+                            <InfoRow label="Date de l'évaluation" value={identification.date_evaluation ? fmtISODate(identification.date_evaluation) : null} />
+                            <InfoRow label="Validé par" value={identification.valide_par} />
+                            <InfoRow label="Date de validation" value={identification.date_validation ? fmtISODate(identification.date_validation) : null} />
+                        </dl>
+                    </div>
+                )}
             </div>
         );
     }
@@ -2659,14 +3225,12 @@ const TabCadrage = ({ audit, referentiel, identification, setIdentification, onS
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-800">Cadrage de l'audit</h2>
-                {hasData && (
-                    <button onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>
-                )}
+                {hasData && <button onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>}
             </div>
 
-            {/* Infos générales (lecture seule) */}
+            {/* Infos audit (lecture seule) */}
             <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Informations générales</h3>
+                <SH>Informations de l'audit</SH>
                 <dl className="grid grid-cols-2 gap-3 text-sm">
                     <div><dt className="text-xs font-medium text-gray-500">Nom</dt><dd className="text-gray-800 mt-0.5">{audit.nom}</dd></div>
                     <div><dt className="text-xs font-medium text-gray-500">Client</dt><dd className="text-gray-800 mt-0.5">{audit.client}</dd></div>
@@ -2677,18 +3241,11 @@ const TabCadrage = ({ audit, referentiel, identification, setIdentification, onS
 
             {/* Type d'audit */}
             <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Type d'audit</h3>
+                <SH>Type d'audit</SH>
                 <div className="grid grid-cols-3 gap-3">
                     {TYPE_AUDIT_OPTIONS.map(opt => (
-                        <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => set('type_audit', opt.value)}
-                            className={`px-4 py-3 rounded-lg border text-sm font-medium transition text-left ${identification.type_audit === opt.value
-                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                                }`}
-                        >
+                        <button key={opt.value} type="button" onClick={() => set('type_audit', opt.value)}
+                            className={`px-4 py-3 rounded-lg border text-sm font-medium transition text-left ${identification.type_audit === opt.value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'}`}>
                             {opt.label}
                         </button>
                     ))}
@@ -2697,35 +3254,83 @@ const TabCadrage = ({ audit, referentiel, identification, setIdentification, onS
 
             {/* Périmètre */}
             <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b border-gray-100">Périmètre</h3>
+                <SH>Périmètre</SH>
                 <div className="space-y-4">
                     {[
-                        { key: 'perimetre_physique', label: 'Périmètre physique', placeholder: 'Sites, bâtiments, équipements physiques concernés…' },
-                        { key: 'perimetre_logique', label: 'Périmètre logique', placeholder: 'Systèmes, réseaux, applications, bases de données…' },
-                        { key: 'perimetre_organisationnel', label: 'Périmètre organisationnel', placeholder: 'Entités, directions, processus métier concernés…' },
+                        { key: 'perimetre_physique', label: 'Physique', placeholder: 'Sites, bâtiments, équipements physiques concernés…' },
+                        { key: 'perimetre_logique', label: 'Logique', placeholder: 'Systèmes, réseaux, applications, bases de données…' },
+                        { key: 'perimetre_organisationnel', label: 'Organisationnel', placeholder: 'Entités, directions, processus métier concernés…' },
                     ].map(({ key, label, placeholder }) => (
                         <div key={key}>
                             <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
-                            <textarea
-                                rows={3}
-                                value={identification[key] || ''}
-                                onChange={e => set(key, e.target.value)}
+                            <textarea rows={2} value={identification[key] || ''} onChange={e => set(key, e.target.value)}
                                 placeholder={placeholder}
                                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
-                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
-                            />
+                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="border-t border-gray-100" />
+
+            {/* Identification entité */}
+            <div>
+                <SH>{entityLabel}</SH>
+                <div className="grid grid-cols-2 gap-4">
+                    <Field label="Dénomination" fieldKey="denomination" />
+                    <Field label="Département d'appartenance" fieldKey="departement" />
+                    <Field label="Adresse" fieldKey="adresse" span />
+                    <Field label="Ville" fieldKey="ville" />
+                    <Field label="Site web" fieldKey="site_web" />
+                </div>
+            </div>
+
+            {/* RSSI */}
+            <div>
+                <SH>Responsable de la Sécurité des SI (RSSI)</SH>
+                <div className="grid grid-cols-2 gap-4">
+                    <Field label="Nom et Prénom" fieldKey="rssi_nom_prenom" />
+                    <Field label="Rattachement" fieldKey="rssi_rattachement" />
+                    <Field label="E-mail" fieldKey="rssi_email" type="email" />
+                    <Field label="Téléphone" fieldKey="rssi_telephone" type="tel" />
+                </div>
+            </div>
+
+            {/* Gestion du document */}
+            <div>
+                <SH>Gestion du document</SH>
+                <div className="grid grid-cols-2 gap-4">
+                    {[
+                        { key: 'auteur_evaluation', label: "Auteur de l'évaluation", isDate: false },
+                        { key: 'date_evaluation', label: "Date de l'évaluation", isDate: true },
+                        { key: 'valide_par', label: 'Validé par', isDate: false },
+                        { key: 'date_validation', label: 'Date de validation', isDate: true },
+                    ].map(({ key, label, isDate }) => (
+                        <div key={key}>
+                            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                                {label}{isDate && <span className="ml-1 text-gray-400 font-normal">(jj/mm/aaaa)</span>}
+                            </label>
+                            {isDate ? (
+                                <DateInput value={identification[key] || ''} onChange={v => set(key, v)}
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                            ) : (
+                                <input type="text" value={identification[key] || ''} onChange={e => set(key, e.target.value)}
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                            )}
                         </div>
                     ))}
                 </div>
             </div>
 
             <div className="flex justify-end pt-1">
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
-                >
-                    {saving ? 'Enregistrement…' : 'Enregistrer le cadrage'}
+                <button onClick={handleSave} disabled={saving}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition hover:opacity-90"
+                    style={{ backgroundColor: 'var(--brand-red)' }}>
+                    {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                    {saving ? 'Enregistrement…' : 'Enregistrer'}
                 </button>
             </div>
         </div>
@@ -2767,7 +3372,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                         {!readOnly && (
                             <button
                                 onClick={() => setEditing(true)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition"
                             >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />

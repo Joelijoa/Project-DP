@@ -135,9 +135,43 @@ const repondreValidationRapport = async (req, res) => {
     }
 };
 
+// PUT /api/audits/:id/validation-planning/annuler  (admin/senior)
+const annulerValidationPlanning = async (req, res) => {
+    try {
+        const audit = await Audit.findByPk(req.params.id);
+        if (!audit) return res.status(404).json({ message: 'Audit non trouvé.' });
+
+        await audit.update({ validation_planning: null });
+        log(req.user.userId, 'validation_planning_annuler', 'audit', audit.id, audit.nom, getIp(req));
+
+        const updated = await Audit.findByPk(audit.id);
+        res.json({ audit: updated });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// PUT /api/audits/:id/validation-rapport/annuler  (admin/senior)
+const annulerValidationRapport = async (req, res) => {
+    try {
+        const audit = await Audit.findByPk(req.params.id);
+        if (!audit) return res.status(404).json({ message: 'Audit non trouvé.' });
+
+        await audit.update({ validation_rapport: null });
+        log(req.user.userId, 'validation_rapport_annuler', 'audit', audit.id, audit.nom, getIp(req));
+
+        const updated = await Audit.findByPk(audit.id);
+        res.json({ audit: updated });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
 module.exports = {
     soumettreValidationPlanning,
     repondreValidationPlanning,
+    annulerValidationPlanning,
     soumettreValidationRapport,
     repondreValidationRapport,
+    annulerValidationRapport,
 };

@@ -15,8 +15,10 @@ export const rejeterAudit   = (id, commentaire) => api.put(`/audits/${id}/rejete
 export const changerPhase   = (id, phase) => api.put(`/audits/${id}/phase`, { phase });
 export const soumettreValidationPlanning = (id) => api.put(`/audits/${id}/validation-planning/soumettre`);
 export const repondreValidationPlanning  = (id, action, commentaire) => api.put(`/audits/${id}/validation-planning/repondre`, { action, commentaire });
+export const annulerValidationPlanning   = (id) => api.put(`/audits/${id}/validation-planning/annuler`);
 export const soumettreValidationRapport  = (id) => api.put(`/audits/${id}/validation-rapport/soumettre`);
 export const repondreValidationRapport   = (id, action, commentaire) => api.put(`/audits/${id}/validation-rapport/repondre`, { action, commentaire });
+export const annulerValidationRapport    = (id) => api.put(`/audits/${id}/validation-rapport/annuler`);
 export const getDocuments    = (id) => api.get(`/audits/${id}/documents`);
 export const uploadDocuments = (id, formData) => api.post(`/audits/${id}/documents`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const deleteDocument  = (id, docId) => api.delete(`/audits/${id}/documents/${docId}`);

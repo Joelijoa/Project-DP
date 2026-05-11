@@ -513,7 +513,7 @@ router.put('/:id/rejeter', verifyToken, verifyRole('admin', 'auditeur_senior'), 
 router.put('/:id/phase', verifyToken, verifyRole('admin', 'auditeur_senior'), changerPhase);
 
 // ─── Validation client ───────────────────────────────────────────────────────
-const { soumettreValidationPlanning, repondreValidationPlanning, soumettreValidationRapport, repondreValidationRapport } = require('../controllers/validationClientController');
+const { soumettreValidationPlanning, repondreValidationPlanning, annulerValidationPlanning, soumettreValidationRapport, repondreValidationRapport, annulerValidationRapport } = require('../controllers/validationClientController');
 
 /**
  * @swagger
@@ -580,6 +580,7 @@ router.put('/:id/validation-planning/soumettre', verifyToken, verifyRole('admin'
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.put('/:id/validation-planning/repondre',  verifyToken, repondreValidationPlanning);
+router.put('/:id/validation-planning/annuler',   verifyToken, verifyRole('admin', 'auditeur_senior'), annulerValidationPlanning);
 
 /**
  * @swagger
@@ -639,6 +640,7 @@ router.put('/:id/validation-rapport/soumettre',  verifyToken, verifyRole('admin'
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.put('/:id/validation-rapport/repondre',   verifyToken, repondreValidationRapport);
+router.put('/:id/validation-rapport/annuler',    verifyToken, verifyRole('admin', 'auditeur_senior'), annulerValidationRapport);
 
 // ─── Documents ───────────────────────────────────────────────────────────────
 
