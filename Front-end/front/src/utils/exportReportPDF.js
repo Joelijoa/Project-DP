@@ -35,6 +35,11 @@ const CONF_LABELS = ['Conforme', 'Partiellement conf.', 'NC Mineure', 'NC Majeur
 const CONF_COLORS = ['#16a34a', '#ca8a04', '#ea580c', '#dc2626', '#991b1b', '#9ca3af'];
 
 // ─── UTILITAIRES ──────────────────────────────────────────────────────────────
+function stripObjPrefix(text) {
+    if (!text) return '';
+    return text.replace(/^Objectif\s+\d+\s*:\s*/i, '').trim() || text;
+}
+
 async function imgToBase64(url) {
     try {
         const res = await fetch(url);
@@ -136,18 +141,17 @@ function drawFooter(doc, p, total, ref) {
 }
 
 function sectionTitle(doc, num, title, y) {
-    doc.setFillColor(...RED); doc.rect(M, y, 3, 10, 'F');
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
-    doc.text(`${num}. ${title}`, M + 7, y + 8);
-    return y + 16;
+    doc.setFillColor(...NAVY);
+    doc.rect(M, y, CW, 11, 'F');
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(...WHITE);
+    doc.text(`${num}.  ${title}`, M + 5, y + 7.5);
+    return y + 17;
 }
 
 function subTitle(doc, title, y) {
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY);
     doc.text(title, M, y);
-    doc.setDrawColor(...BDR); doc.setLineWidth(0.3);
-    doc.line(M, y + 2, W - M, y + 2);
-    return y + 9;
+    return y + 10;
 }
 
 function bodyText(doc, text, y, maxW) {
@@ -159,120 +163,95 @@ function bodyText(doc, text, y, maxW) {
 
 // ─── PAGE DE COUVERTURE ───────────────────────────────────────────────────────
 function renderCover(doc, audit, logo, refCode, today) {
-    const SPLIT = 145; // frontière navy / blanc
-
-    // ── Zone navy (haut)
+    // Fond navy pleine page
     doc.setFillColor(...NAVY);
-    doc.rect(0, 0, W, SPLIT, 'F');
+    doc.rect(0, 0, W, H, 'F');
 
-    // Barre rouge gauche (accent vertical)
+    // Barre rouge en haut (fine)
     doc.setFillColor(...RED);
-    doc.rect(0, 0, 5, SPLIT, 'F');
+    doc.rect(0, 0, W, 5, 'F');
 
-    // Logo en haut à gauche
-    addLogo(doc, logo, 14, 14, 14);
-
-    // CONFIDENTIEL — discret, haut droite
-    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...RED);
-    doc.text('CONFIDENTIEL', W - M, 20, { align: 'right' });
-
-    // Label type rapport
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(148, 163, 184);
-    doc.text('RAPPORT D\'AUDIT DE SÉCURITÉ', 14, 55);
-
-    // Séparateur rouge court sous le label
-    doc.setFillColor(...RED);
-    doc.rect(14, 58, 22, 1.5, 'F');
-
-    // Titre principal — nom de l'audit
-    const nomLines = doc.splitTextToSize(audit.nom || 'Rapport d\'Audit', W - 34);
-    doc.setFontSize(26); doc.setFont('helvetica', 'bold'); doc.setTextColor(...WHITE);
-    doc.text(nomLines.slice(0, 3), 14, 70);
-
-    const afterNom = 70 + Math.min(nomLines.length, 3) * 11;
-
-    // Client
-    doc.setFontSize(12); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(148, 163, 184);
-    doc.text(audit.client || '', 14, afterNom + 6);
-
-    // Référentiel (plus petit, italic)
-    if (audit.referentiel?.nom) {
-        doc.setFontSize(8.5); doc.setFont('helvetica', 'italic');
-        doc.setTextColor(100, 116, 139);
-        doc.text(audit.referentiel.nom, 14, afterNom + 15);
+    // Logo centré horizontalement, dans le tiers supérieur
+    if (logo.b64) {
+        const lh = 16;
+        const lw = Math.min(lh * logo.ar, 60);
+        doc.addImage(logo.b64, 'PNG', M, 20, lw, lh, '', 'FAST');
     }
 
-    // ── Bande rouge séparatrice
+    // ── Bloc titre centré verticalement dans la zone navy
+    const titleY = 90;
+
+    // Catégorie (petite étiquette)
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(148, 163, 184);
+    doc.text('RAPPORT D\'AUDIT DE SÉCURITÉ', M, titleY);
+
+    // Ligne rouge sous l'étiquette
     doc.setFillColor(...RED);
-    doc.rect(0, SPLIT, W, 3, 'F');
+    doc.rect(M, titleY + 3, 28, 1.5, 'F');
 
-    // ── Zone blanche (bas)
-    doc.setFillColor(...WHITE);
-    doc.rect(0, SPLIT + 3, W, H - SPLIT - 3, 'F');
+    // Nom de l'audit (grand titre)
+    const nomLines = doc.splitTextToSize(audit.nom || 'Rapport d\'Audit', W - M - 24);
+    doc.setFontSize(28); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...WHITE);
+    doc.text(nomLines.slice(0, 3), M, titleY + 16);
 
-    // Barre rouge gauche prolongée sur zone blanche
-    doc.setFillColor(...RED);
-    doc.rect(0, SPLIT + 3, 5, H - SPLIT - 3, 'F');
+    const afterTitle = titleY + 16 + Math.min(nomLines.length, 3) * 12;
 
+    // Client
+    if (audit.client) {
+        doc.setFontSize(13); doc.setFont('helvetica', 'normal');
+        doc.setTextColor(148, 163, 184);
+        doc.text(audit.client, M, afterTitle + 10);
+    }
+
+    // Référentiel
+    if (audit.referentiel?.nom) {
+        doc.setFontSize(8.5); doc.setFont('helvetica', 'italic');
+        doc.setTextColor(71, 85, 105);
+        const refLines = doc.splitTextToSize(audit.referentiel.nom, W - M - 24);
+        doc.text(refLines.slice(0, 2), M, afterTitle + 22);
+    }
+
+    // ── Séparateur blanc horizontal (avant le bloc infos)
+    const sepY = H - 70;
+    doc.setDrawColor(255, 255, 255, 0.15);
+    doc.setLineWidth(0.4);
+    doc.line(M, sepY, W - M, sepY);
+
+    // ── Bloc méta-données (bas de page, 3 colonnes)
     const auditeurs = audit.auditeurs?.map(a => `${a.prenom} ${a.nom}`).join(', ') || '—';
-    const periode   = audit.date_debut && audit.date_fin
-        ? `${new Date(audit.date_debut).toLocaleDateString('fr-FR')} – ${new Date(audit.date_fin).toLocaleDateString('fr-FR')}`
-        : '—';
+    const periode   = audit.date_debut
+        ? new Date(audit.date_debut).toLocaleDateString('fr-FR')
+        : today;
+    const phase     = { cadrage:'Cadrage', prerequis:'Prérequis', revue_documentaire:'Revue documentaire', realisation:'Réalisation', termine:'Terminé' }[audit.phase] || (audit.phase || '—');
 
-    // Bloc "Préparé pour"
-    let y = SPLIT + 18;
-    doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...GRAY);
-    doc.text('PRÉPARÉ POUR', 14, y);
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
-    doc.text(audit.client || '—', 14, y + 9);
-
-    // Ligne séparatrice légère
-    y += 18;
-    doc.setDrawColor(...BDR); doc.setLineWidth(0.3);
-    doc.line(14, y, W - M, y);
-    y += 10;
-
-    // Deux colonnes : Auditeur | Période
-    const col2 = W / 2 + 5;
-    doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...RED);
-    doc.text('AUDITEUR(S)', 14, y);
-    doc.text('PÉRIODE D\'AUDIT', col2, y);
-
-    y += 7;
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
-    const audLines = doc.splitTextToSize(auditeurs, W / 2 - 20);
-    doc.text(audLines.slice(0, 2), 14, y);
-    doc.text(periode, col2, y);
-
-    // Ligne séparatrice
-    y += Math.max(audLines.slice(0, 2).length, 1) * 5 + 8;
-    doc.setDrawColor(...BDR); doc.setLineWidth(0.3);
-    doc.line(14, y, W - M, y);
-    y += 10;
-
-    // Périmètre
-    doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...RED);
-    doc.text('PÉRIMÈTRE DE L\'AUDIT', 14, y);
-    y += 7;
-    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...DARK);
-    const perLines = doc.splitTextToSize(audit.perimetre || 'Non défini.', CW - 6);
-    doc.text(perLines.slice(0, 4), 14, y);
+    const colW = (W - 2 * M) / 3;
+    const infoY = sepY + 12;
+    const cols  = [
+        { label: 'AUDITEUR(S)',   value: auditeurs },
+        { label: 'DATE',          value: periode   },
+        { label: 'PHASE',         value: phase      },
+    ];
+    cols.forEach(({ label, value }, i) => {
+        const x = M + i * colW;
+        doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text(label, x, infoY);
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...WHITE);
+        const vLines = doc.splitTextToSize(value, colW - 6);
+        doc.text(vLines.slice(0, 2), x, infoY + 7);
+    });
 
     // ── Pied de couverture
-    const footY = H - 16;
-    doc.setFillColor(248, 250, 252);
-    doc.rect(5, footY - 6, W - 5, 22, 'F');
-    doc.setDrawColor(...BDR); doc.setLineWidth(0.3);
-    doc.line(14, footY - 6, W - M, footY - 6);
-
-    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
-    doc.text(`Réf. : ${refCode}`, 14, footY + 2);
-    doc.text(`Généré le ${today}`, W / 2, footY + 2, { align: 'center' });
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(...RED);
-    doc.text('CONFIDENTIEL', W - M, footY + 2, { align: 'right' });
+    const footY = H - 12;
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Réf. : ${refCode}`, M, footY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...RED);
+    doc.text('DOCUMENT CONFIDENTIEL', W - M, footY, { align: 'right' });
 }
 
 // ─── SOMMAIRE (rendu en dernier) ──────────────────────────────────────────────
@@ -281,30 +260,47 @@ function renderTOC(doc, logo, sections, tocPage) {
     drawHeader(doc, logo, 'Sommaire');
     let y = 32;
 
-    doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
-    doc.text('Sommaire', M, y);
-    y += 4;
-    doc.setFillColor(...RED); doc.rect(M, y, 20, 2, 'F');
-    y += 10;
+    // Titre "Sommaire" avec barre navy (même style que sectionTitle)
+    doc.setFillColor(...NAVY);
+    doc.rect(M, y, CW, 11, 'F');
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(...WHITE);
+    doc.text('Sommaire', M + 5, y + 7.5);
+    y += 20;
 
     for (const s of sections) {
+        const isMain = !s.sub;
+        const tx = s.sub ? M + 8 : M;
+
+        // Fond léger pour les entrées principales
+        if (isMain) {
+            doc.setFillColor(...LIGHT);
+            doc.rect(M, y - 5, CW, 9, 'F');
+        }
+
         doc.setFontSize(s.sub ? 9 : 10);
         doc.setFont('helvetica', s.sub ? 'normal' : 'bold');
-        doc.setTextColor(...(s.sub ? GRAY : DARK));
-        const tx = s.sub ? M + 6 : M;
+        doc.setTextColor(...(s.sub ? GRAY : NAVY));
         doc.text(s.title, tx, y);
-        doc.setFont('helvetica', 'bold'); doc.setTextColor(...RED);
+
+        // Numéro de page en navy
+        doc.setFontSize(s.sub ? 9 : 10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...NAVY);
         doc.text(String(s.page), W - M, y, { align: 'right' });
 
-        // Pointillés
-        const startX = tx + doc.getTextWidth(s.title) + 2;
+        // Pointillés en gris clair
+        const startX = tx + doc.getTextWidth(s.title) + 3;
         const endX = W - M - doc.getTextWidth(String(s.page)) - 3;
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(209, 213, 219);
         for (let x = startX; x < endX; x += 2.5) doc.text('.', x, y);
 
-        y += s.sub ? 7 : 9;
-        doc.setDrawColor(243, 244, 246); doc.setLineWidth(0.2);
-        doc.line(M, y - 1.5, W - M, y - 1.5);
+        y += s.sub ? 7.5 : 11;
+
+        // Séparateur seulement après les entrées principales
+        if (isMain) {
+            doc.setDrawColor(...BDR); doc.setLineWidth(0.2);
+            doc.line(M, y - 3, W - M, y - 3);
+        }
     }
 }
 
@@ -521,7 +517,7 @@ function renderPlanAudit(doc, audit, referentiel, logo) {
             [{ content: d.nom || d.code || '', colSpan: 2, styles: { fillColor: NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 8.5 } }],
             ...(d.objectifs || []).map(o => [
                 { content: o.code || '', styles: { fontStyle: 'bold', textColor: NAVY } },
-                o.description || o.nom || '',
+                stripObjPrefix(o.description || o.nom || ''),
             ]),
         ]);
         autoTable(doc, {

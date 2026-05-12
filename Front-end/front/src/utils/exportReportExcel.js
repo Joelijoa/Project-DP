@@ -37,6 +37,19 @@ const CONF_COLORS       = ['#16a34a','#ca8a04','#ea580c','#dc2626','#991b1b','#9
 const MAT_COLORS        = ['#9ca3af','#f59e0b','#f97316','#3b82f6','#8b5cf6','#16a34a'];
 
 // ─── UTILITAIRES DONNÉES ──────────────────────────────────────────────────────
+function stripObjPrefix(text) {
+    if (!text) return '';
+    return text.replace(/^Objectif\s+\d+\s*:\s*/i, '').trim() || text;
+}
+
+function objRowHeight(text, numMesures, colWidthChars = 32) {
+    if (!text) return 80;
+    const charsPerLine = Math.floor(colWidthChars * 0.8);
+    const lines = Math.ceil(text.length / charsPerLine) + 2;
+    const neededTotal = lines * 14;
+    return Math.max(80, Math.ceil(neededTotal / Math.max(1, numMesures)));
+}
+
 function sortDomaines(domaines) {
     return [...(domaines || [])].sort((a, b) =>
         (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
@@ -301,6 +314,8 @@ function addEvaluationSheet(wb, referentiel, evaluations) {
             const mesures  = [...(objectif.mesures || [])].sort((a, b) =>
                 (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
             );
+            const objText = stripObjPrefix(objectif.description) || objectif.code || '';
+            const rowH = objRowHeight(objText, mesures.length, 32);
 
             for (const mesure of mesures) {
                 const ev  = evalMap[mesure.id];
@@ -308,7 +323,7 @@ function addEvaluationSheet(wb, referentiel, evaluations) {
                 const ck  = ev?.conformite || 'na';
                 const cs  = confStyle(ck);
 
-                ws.getRow(r).height = 52;
+                ws.getRow(r).height = rowH;
 
                 // Col 1 : Chapitre (sera fusionnée)
                 const c1 = ws.getCell(r, 1);
@@ -322,7 +337,7 @@ function addEvaluationSheet(wb, referentiel, evaluations) {
                 // Col 2 : Objectif (sera fusionnée)
                 const c2 = ws.getCell(r, 2);
                 if (r === objStart) {
-                    c2.value = objectif.description || objectif.code || '';
+                    c2.value = stripObjPrefix(objectif.description) || objectif.code || '';
                     applyCell(c2, { bg: C.light, fontColor: C.navyMid, bold: false, size: 9, valign: 'middle' });
                 } else {
                     applyCell(c2, { bg: C.light, fontColor: C.navyMid, size: 9 });
@@ -387,9 +402,12 @@ function addEvaluationSheet(wb, referentiel, evaluations) {
 }
 
 // ─── ONGLET 4 : Synthèse maturité ────────────────────────────────────────────
-async function addSyntheseMaturiteSheet(wb, evaluations, matBarImg) {
+async function addSyntheseMaturiteSheet(wb, evaluations, matBarImg, referentiel) {
     const ws = wb.addWorksheet('Synthèse maturité');
-    ws.columns = [{ width: 26 }, { width: 18 }, { width: 14 }];
+    ws.columns = [
+        { width: 40 }, { width: 12 }, { width: 12 }, { width: 15 },
+        { width: 12 }, { width: 13 }, { width: 13 }, { width: 10 },
+    ];
 
     const counts = [0,0,0,0,0,0]; let na = 0;
     for (const ev of evaluations) {
@@ -399,7 +417,7 @@ async function addSyntheseMaturiteSheet(wb, evaluations, matBarImg) {
     const total = evaluations.length || 1;
 
     let r = 1;
-    titleRow(ws, r++, '3. Synthèse du niveau de maturité', 3);
+    titleRow(ws, r++, '3. Synthèse du niveau de maturité', 8);
     ws.addRow([]); r++;
     headerRow(ws, r, ['État de maturité', 'Nombre de règles', '% des règles'], 16); r++;
 
@@ -415,18 +433,41 @@ async function addSyntheseMaturiteSheet(wb, evaluations, matBarImg) {
         ws.getRow(r).commit(); r++;
     }
     ws.getRow(r).height = 20;
-    [['N/A', na, `${Math.round(na/total*100)} %`]].forEach(([l,v,p]) => {
-        [l,v,p].forEach((val, ci) => {
-            const cell = ws.getCell(r, ci + 1);
-            cell.value = val;
-            applyCell(cell, { bg: C.light, fontColor: C.gray, size: 10, align: ci > 0 ? 'center' : 'left' });
-        });
+    ['N/A', na, `${Math.round(na/total*100)} %`].forEach((val, ci) => {
+        const cell = ws.getCell(r, ci + 1);
+        cell.value = val;
+        applyCell(cell, { bg: C.light, fontColor: C.gray, size: 10, align: ci > 0 ? 'center' : 'left' });
     });
     ws.getRow(r).commit(); r++;
     ws.addRow([]); r++;
 
+    // ── Distribution par domaine
+    const evalMap = buildEvalMap(evaluations);
+    const domaines = sortDomaines(referentiel?.domaines);
+    if (domaines.length > 0) {
+        sectionRow(ws, r++, 'Distribution par domaine', 8);
+        headerRow(ws, r, ['Domaine', 'Aucun', 'Initial', 'Reproductible', 'Défini', 'Maîtrisé', 'Optimisé', 'N/A'], 18); r++;
+        for (const domaine of domaines) {
+            const mats = [0,0,0,0,0,0]; let dNa = 0;
+            const allMesures = (domaine.objectifs || []).flatMap(o => o.mesures || []);
+            for (const m of allMesures) {
+                const ev = evalMap[m.id];
+                const n = ev?.niveau_maturite;
+                if (n != null && n >= 0 && n <= 5) mats[n]++; else dNa++;
+            }
+            ws.getRow(r).height = 22;
+            [domaine.nom || domaine.code, ...mats, dNa].forEach((v, ci) => {
+                const cell = ws.getCell(r, ci + 1);
+                cell.value = v;
+                applyCell(cell, { bg: ci === 0 ? C.light : C.white, fontColor: ci === 0 ? C.navyMid : C.navy, bold: ci === 0, size: 9, align: ci > 0 ? 'center' : 'left' });
+            });
+            ws.getRow(r).commit(); r++;
+        }
+        ws.addRow([]); r++;
+    }
+
     if (matBarImg) {
-        sectionRow(ws, r++, 'Distribution par niveau de maturité', 3);
+        sectionRow(ws, r++, 'Distribution par niveau de maturité', 8);
         const id = wb.addImage({ base64: matBarImg, extension: 'png' });
         ws.addImage(id, { tl: { col: 0, row: r - 1 }, ext: { width: 580, height: 350 } });
         for (let i = 0; i < 20; i++) { ws.addRow([]); r++; }
@@ -434,9 +475,11 @@ async function addSyntheseMaturiteSheet(wb, evaluations, matBarImg) {
 }
 
 // ─── ONGLET 5 : Synthèse conformité ───────────────────────────────────────────
-async function addSyntheseConformiteSheet(wb, evaluations, confPieImg) {
+async function addSyntheseConformiteSheet(wb, evaluations, confPieImg, referentiel) {
     const ws = wb.addWorksheet('Synthèse conformité');
-    ws.columns = [{ width: 26 }, { width: 18 }, { width: 14 }];
+    ws.columns = [
+        { width: 40 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 12 },
+    ];
 
     const dnssi = { 'Non conforme':0, 'Partielle':0, 'Totale':0, 'N/A':0 };
     for (const ev of evaluations) {
@@ -444,11 +487,11 @@ async function addSyntheseConformiteSheet(wb, evaluations, confPieImg) {
         dnssi[m] = (dnssi[m] || 0) + 1;
     }
     const total = evaluations.length || 1;
-    const dnssiBg   = { 'Non conforme':C.redLight, 'Partielle':C.orangeLight, 'Totale':C.greenLight, 'N/A':C.light };
-    const dnssiFg   = { 'Non conforme':C.redFont,  'Partielle':C.orangeFont,  'Totale':C.greenFont,  'N/A':C.gray  };
+    const dnssiBg = { 'Non conforme':C.redLight, 'Partielle':C.orangeLight, 'Totale':C.greenLight, 'N/A':C.light };
+    const dnssiFg = { 'Non conforme':C.redFont,  'Partielle':C.orangeFont,  'Totale':C.greenFont,  'N/A':C.gray  };
 
     let r = 1;
-    titleRow(ws, r++, '4. Synthèse du niveau de conformité à la DNSSI', 3);
+    titleRow(ws, r++, '4. Synthèse du niveau de conformité à la DNSSI', 5);
     ws.addRow([]); r++;
     headerRow(ws, r, ['Niveau de conformité', 'Nb règles', '%'], 16); r++;
 
@@ -463,8 +506,38 @@ async function addSyntheseConformiteSheet(wb, evaluations, confPieImg) {
     }
     ws.addRow([]); r++;
 
+    // ── Conformité par domaine
+    const evalMap = buildEvalMap(evaluations);
+    const domaines = sortDomaines(referentiel?.domaines);
+    if (domaines.length > 0) {
+        sectionRow(ws, r++, 'Conformité par domaine', 5);
+        headerRow(ws, r, ['Domaine', 'Non conforme', 'Partielle', 'Totale', 'N/A'], 18); r++;
+        for (const domaine of domaines) {
+            const dc = { 'Non conforme':0, 'Partielle':0, 'Totale':0, 'N/A':0 };
+            const allMesures = (domaine.objectifs || []).flatMap(o => o.mesures || []);
+            for (const m of allMesures) {
+                const ev = evalMap[m.id];
+                const label = CONF_DNSSI[ev?.conformite || 'na'] || 'N/A';
+                dc[label] = (dc[label] || 0) + 1;
+            }
+            ws.getRow(r).height = 22;
+            [domaine.nom || domaine.code, dc['Non conforme'], dc['Partielle'], dc['Totale'], dc['N/A']].forEach((v, ci) => {
+                const cell = ws.getCell(r, ci + 1);
+                cell.value = v;
+                const style = ci === 0 ? { bg: C.light, fontColor: C.navyMid, bold: true, size: 9, align: 'left' }
+                    : ci === 1 ? { bg: C.redLight,    fontColor: C.redFont,    size: 9, align: 'center', bold: false }
+                    : ci === 2 ? { bg: C.orangeLight,  fontColor: C.orangeFont,  size: 9, align: 'center', bold: false }
+                    : ci === 3 ? { bg: C.greenLight,   fontColor: C.greenFont,   size: 9, align: 'center', bold: false }
+                    :            { bg: C.light,        fontColor: C.gray,        size: 9, align: 'center', bold: false };
+                applyCell(cell, style);
+            });
+            ws.getRow(r).commit(); r++;
+        }
+        ws.addRow([]); r++;
+    }
+
     if (confPieImg) {
-        sectionRow(ws, r++, 'Répartition de la conformité', 3);
+        sectionRow(ws, r++, 'Répartition de la conformité', 5);
         const id = wb.addImage({ base64: confPieImg, extension: 'png' });
         ws.addImage(id, { tl: { col: 0, row: r - 1 }, ext: { width: 500, height: 433 } });
         for (let i = 0; i < 24; i++) { ws.addRow([]); r++; }
@@ -500,6 +573,8 @@ function addEtatAvancementSheet(wb, referentiel, evaluations, planActions) {
             const mesures  = [...(objectif.mesures || [])].sort((a, b) =>
                 (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
             );
+            const objText2 = stripObjPrefix(objectif.description) || objectif.code || '';
+            const rowH2 = objRowHeight(objText2, mesures.length, 30);
 
             for (const mesure of mesures) {
                 const ev    = evalMap[mesure.id];
@@ -508,14 +583,14 @@ function addEtatAvancementSheet(wb, referentiel, evaluations, planActions) {
                 const ck    = ev?.conformite || 'na';
                 const cs    = confStyle(ck);
 
-                ws.getRow(r).height = 52;
+                ws.getRow(r).height = rowH2;
 
                 const c1 = ws.getCell(r, 1);
                 if (r === domStart) c1.value = domaine.nom || domaine.code || '';
                 applyCell(c1, { bg: C.navy, fontColor: C.white, bold: true, size: 9, align: 'center' });
 
                 const c2 = ws.getCell(r, 2);
-                if (r === objStart) c2.value = objectif.description || objectif.code || '';
+                if (r === objStart) c2.value = stripObjPrefix(objectif.description) || objectif.code || '';
                 applyCell(c2, { bg: C.light, fontColor: C.navyMid, size: 9 });
 
                 ws.getCell(r, 3).value = mesure.code || `M${mesure.id}`;
@@ -557,8 +632,8 @@ export async function exportAuditReportExcel({ audit, evaluations, planActions, 
     const dnssiCounts = {'Non conforme':0,'Partielle':0,'Totale':0,'N/A':0};
     for (const ev of evaluations) { const m=CONF_DNSSI[ev.conformite||'na']||'N/A'; dnssiCounts[m]++; }
 
-    const legendFont = { size: 15, family: 'Calibri' };
-    const tickFont   = { size: 14, family: 'Calibri' };
+    const legendFont = { size: 22, family: 'Calibri' };
+    const tickFont   = { size: 16, family: 'Calibri' };
     const chartBase  = { responsive: false, animation: false, layout: { padding: 16 } };
 
     const [donut, bar, matBar, confPie] = await Promise.all([
@@ -582,8 +657,8 @@ export async function exportAuditReportExcel({ audit, evaluations, planActions, 
     await addSyntheseSheet(wb, audit, evaluations, planActions, { donut, bar });
     addIdentificationSheet(wb, audit);
     addEvaluationSheet(wb, referentiel, evaluations);
-    await addSyntheseMaturiteSheet(wb, evaluations, matBar);
-    await addSyntheseConformiteSheet(wb, evaluations, confPie);
+    await addSyntheseMaturiteSheet(wb, evaluations, matBar, referentiel);
+    await addSyntheseConformiteSheet(wb, evaluations, confPie, referentiel);
     addEtatAvancementSheet(wb, referentiel, evaluations, planActions);
 
     const buffer = await wb.xlsx.writeBuffer();
