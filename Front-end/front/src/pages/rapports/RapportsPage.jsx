@@ -107,7 +107,7 @@ export default function RapportsPage() {
             if (format === 'pdf') {
                 await exportAuditReportPDF(payload);
             } else {
-                exportAuditReportExcel(payload);
+                await exportAuditReportExcel(payload);
             }
             toast.success(`Rapport ${format.toUpperCase()} exporté`);
         } catch (err) {
