@@ -78,6 +78,12 @@ async function chartToPNG(config, wPx, hPx) {
     }
 }
 
+function sortedDomaines(referentiel) {
+    return [...(referentiel?.domaines || [])].sort((a, b) =>
+        (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
+    );
+}
+
 function buildMesureMap(referentiel) {
     const map = {};
     for (const d of referentiel?.domaines || [])
@@ -409,9 +415,10 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
     y += 9;
 
     // Tableau par domaine
-    if (referentiel?.domaines?.length > 0) {
+    const doms = sortedDomaines(referentiel);
+    if (doms.length > 0) {
         y = subTitle(doc, '2.1  Résultats par domaine', y);
-        const domRows = referentiel.domaines.map(d => {
+        const domRows = doms.map(d => {
             const ids = new Set();
             for (const o of d.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
             const evs = evaluations.filter(e => ids.has(e.mesure_id));
@@ -419,7 +426,7 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
             const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
             const ncMin = evs.filter(e => e.conformite === 'nc_mineure').length;
             return [
-                `${d.code} — ${d.nom || ''}`,
+                d.nom || d.code || '',
                 String(evs.length),
                 String(conf),
                 String(ncMin),
@@ -508,10 +515,10 @@ function renderPlanAudit(doc, audit, referentiel, logo) {
     });
     y = doc.lastAutoTable.finalY + 10;
 
-    if (referentiel?.domaines?.length > 0) {
+    if (sortedDomaines(referentiel).length > 0) {
         y = subTitle(doc, '4.2  Domaines et objectifs couverts', y);
-        const rows = referentiel.domaines.flatMap(d => [
-            [{ content: `${d.code} — ${d.nom || ''}`, colSpan: 2, styles: { fillColor: NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 8.5 } }],
+        const rows = sortedDomaines(referentiel).flatMap(d => [
+            [{ content: d.nom || d.code || '', colSpan: 2, styles: { fillColor: NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 8.5 } }],
             ...(d.objectifs || []).map(o => [
                 { content: o.code || '', styles: { fontStyle: 'bold', textColor: NAVY } },
                 o.description || o.nom || '',
@@ -544,7 +551,7 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
     y += 10;
 
     // Par domaine
-    for (const domaine of referentiel?.domaines || []) {
+    for (const domaine of sortedDomaines(referentiel)) {
         const ids = new Set();
         for (const o of domaine.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
         const evs = evaluations.filter(e => ids.has(e.mesure_id));
@@ -558,7 +565,7 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
         doc.setFillColor(...NAVY);
         doc.roundedRect(M, y, CW, 13, 2, 2, 'F');
         doc.setFontSize(10.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...WHITE);
-        doc.text(`${domaine.code}  —  ${domaine.nom || ''}`, M + 6, y + 9);
+        doc.text(domaine.nom || domaine.code || '', M + 6, y + 9);
         const conf = evs.filter(e => e.conformite === 'conforme').length;
         const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
         doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(148, 163, 184);
@@ -603,7 +610,7 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
                     doc.setFillColor(...NAVY);
                     doc.roundedRect(M, 26, CW, 9, 1.5, 1.5, 'F');
                     doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...WHITE);
-                    doc.text(`${domaine.code} — ${domaine.nom || ''} (suite)`, M + 5, 32);
+                    doc.text(`${domaine.nom || domaine.code || ''} (suite)`, M + 5, 32);
                 }
             },
         });
