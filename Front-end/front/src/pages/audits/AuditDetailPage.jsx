@@ -8,8 +8,7 @@ import DateInput from '../../components/common/DateInput';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../store/auth/AuthContext';
-import logoDataprotect from '../../assets/images/Logo.png';
-import logoZerogap from '../../assets/icons/icone_logo.svg';
+import logoDataprotect from '../../assets/images/logoDataprotect.png';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -1823,9 +1822,8 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                     color: '#111827', fontSize: '10px', lineHeight: '1.5',
                 }}>
                     {/* Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 32px 18px', borderBottom: '3px solid #CC0000' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', padding: '24px 32px 18px', borderBottom: '3px solid #CC0000' }}>
                         <img src={logoDataprotect} alt="DataProtect" style={{ height: '38px', objectFit: 'contain' }} crossOrigin="anonymous" />
-                        <img src={logoZerogap} alt="ZeroGap" style={{ height: '30px', objectFit: 'contain' }} crossOrigin="anonymous" />
                     </div>
 
                     {/* Meta strip */}

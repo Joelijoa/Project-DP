@@ -5,7 +5,7 @@ import { getPlanActions } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { exportAuditReportPDF } from '../../utils/exportReportPDF';
 import { exportAuditReportExcel } from '../../utils/exportReportExcel';
-import logoDataprotect from '../../assets/images/Logo.png';
+import logoDataprotect from '../../assets/images/logoDataprotect.png';
 
 const STATUT_LABELS = {
     brouillon: 'Brouillon',
