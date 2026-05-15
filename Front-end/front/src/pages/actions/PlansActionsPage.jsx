@@ -123,8 +123,6 @@ const PlansActionsPage = () => {
     const startEdit = (plan) => {
         setEditingId(plan.id);
         setEditForm({
-            statut:            plan.statut            || 'a_faire',
-            priorite:          plan.priorite          || 'moyenne',
             responsable:       plan.responsable       || '',
             delai:             plan.delai             || '',
             action_corrective: plan.action_corrective || '',
@@ -369,19 +367,9 @@ const PlansActionsPage = () => {
                                                                 )}
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
-                                                                {isEditing ? (
-                                                                    <select value={editForm.priorite}
-                                                                        onChange={e => setEditForm(p => ({ ...p, priorite: e.target.value }))}
-                                                                        className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none">
-                                                                        <option value="basse">Basse</option>
-                                                                        <option value="moyenne">Moyenne</option>
-                                                                        <option value="haute">Haute</option>
-                                                                    </select>
-                                                                ) : (
-                                                                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${pr.bg} ${pr.text}`}>{pr.label}</span>
-                                                                )}
+                                                                <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${pr.bg} ${pr.text}`}>{pr.label}</span>
                                                             </td>
-                                                            {/* Statut — client : select direct, autres : inline edit */}
+                                                            {/* Statut — client : select direct, autres : badge fixe */}
                                                             <td className="px-4 py-3 text-center">
                                                                 {isClient ? (
                                                                     <select
@@ -389,14 +377,6 @@ const PlansActionsPage = () => {
                                                                         disabled={savingId === plan.id}
                                                                         onChange={e => handleUpdateStatut(plan, e.target.value)}
                                                                         className={`text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none transition ${savingId === plan.id ? 'opacity-50' : ''}`}>
-                                                                        <option value="a_faire">À faire</option>
-                                                                        <option value="en_cours">En cours</option>
-                                                                        <option value="cloture">Clôturé</option>
-                                                                    </select>
-                                                                ) : isEditing ? (
-                                                                    <select value={editForm.statut}
-                                                                        onChange={e => setEditForm(p => ({ ...p, statut: e.target.value }))}
-                                                                        className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none">
                                                                         <option value="a_faire">À faire</option>
                                                                         <option value="en_cours">En cours</option>
                                                                         <option value="cloture">Clôturé</option>
