@@ -67,6 +67,11 @@ const icons = {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
     ),
+    soumissions: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+    ),
     chevron: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -104,7 +109,8 @@ const menuSections = [
                     { path: '/audits/nouveau', label: 'Nouvel audit', roles: ['admin', 'auditeur_senior'] },
                 ],
             },
-            { path: '/validation', label: 'En attente de validation', icon: 'validation', roles: ['admin', 'auditeur_senior'] },
+            { path: '/validation', label: 'Travaux soumis', icon: 'validation', roles: ['admin', 'auditeur_senior'] },
+            { path: '/mes-soumissions', label: 'Mes soumissions', icon: 'soumissions', roles: ['auditeur_junior'] },
             { path: '/referentiels', label: 'Référentiels', icon: 'referentiel', roles: ['admin', 'auditeur_senior', 'auditeur_junior'] },
             { path: '/entites', label: 'Entités auditées', icon: 'building', roles: ['admin', 'auditeur_senior'] },
         ],
@@ -113,7 +119,7 @@ const menuSections = [
         title: 'RESULTATS & SUIVI',
         items: [
             { path: '/resultats', label: 'Graphiques & Rosace', icon: 'chart' },
-            { path: '/plans-actions', label: "Plans d'actions", icon: 'actions', roles: ['admin', 'auditeur_senior', 'auditeur_junior'] },
+            { path: '/plans-actions', label: "Plans d'actions", icon: 'actions', roles: ['admin', 'auditeur_senior', 'auditeur_junior', 'client'] },
             { path: '/indicateurs', label: 'Indicateurs SSI', icon: 'indicator', roles: ['admin', 'auditeur_senior'] },
             { path: '/rapports', label: 'Rapports & Exports', icon: 'export', roles: ['admin', 'auditeur_senior'] },
         ],

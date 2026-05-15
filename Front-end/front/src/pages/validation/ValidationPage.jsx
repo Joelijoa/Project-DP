@@ -93,10 +93,10 @@ const ValidationPage = () => {
             <div className="flex-shrink-0 mb-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h1 className="text-xl font-semibold text-gray-900">En attente de validation</h1>
+                        <h1 className="text-xl font-semibold text-gray-900">Travaux soumis</h1>
                         <p className="text-sm text-gray-500 mt-0.5">
                             {loading ? 'Chargement...' : total === 0
-                                ? 'Aucun élément en attente — tout est à jour'
+                                ? 'Aucun travail en attente — tout est à jour'
                                 : `${total} élément${total > 1 ? 's' : ''} nécessite${total > 1 ? 'nt' : ''} votre décision`}
                         </p>
                     </div>

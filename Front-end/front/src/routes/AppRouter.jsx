@@ -21,6 +21,7 @@ import JournauxPage from '../pages/journaux/JournauxPage';
 import ParametresPage from '../pages/parametres/ParametresPage';
 import ProfilPage from '../pages/profil/ProfilPage';
 import ValidationPage from '../pages/validation/ValidationPage';
+import MesSoumissionsPage from '../pages/messoumissions/MesSoumissionsPage';
 
 const AppRouter = () => {
     const { isAuthenticated } = useAuth();
@@ -69,10 +70,15 @@ const AppRouter = () => {
                         <ProtectedRoute roles={['admin', 'auditeur_senior']}><ValidationPage /></ProtectedRoute>
                     } />
 
+                    {/* Mes soumissions — auditeur_junior */}
+                    <Route path="/mes-soumissions" element={
+                        <ProtectedRoute roles={['auditeur_junior']}><MesSoumissionsPage /></ProtectedRoute>
+                    } />
+
                     {/* Résultats & Suivi */}
                     <Route path="/resultats" element={<ResultatsPage />} />
                     <Route path="/plans-actions" element={
-                        <ProtectedRoute roles={['admin', 'auditeur_senior', 'auditeur_junior']}>
+                        <ProtectedRoute roles={['admin', 'auditeur_senior', 'auditeur_junior', 'client']}>
                             <PlansActionsPage />
                         </ProtectedRoute>
                     } />
