@@ -4,6 +4,8 @@ import { getAllEntites } from '../../services/endpoints/entiteService';
 import { useAuth } from '../../store/auth/AuthContext';
 import { toast } from 'react-toastify';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import UserStatCard from './components/UserStatCard';
+import UserFormModal from './components/UserFormModal';
 
 const ROLES = ['admin', 'auditeur_senior', 'auditeur_junior', 'client'];
 
@@ -25,10 +27,6 @@ const emptyForm = { nom: '', prenom: '', email: '', role: 'auditeur_junior', org
 
 const getInitials = (prenom = '', nom = '') =>
     ((prenom[0] ?? '') + (nom[0] ?? '')).toUpperCase() || '?';
-
-const inputCls = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition';
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const UtilisateursPage = () => {
     const { user: me } = useAuth();
@@ -145,9 +143,9 @@ const UtilisateursPage = () => {
         return matchSearch && matchRole && matchActif;
     });
 
-    const totalActifs  = users.filter(u => u.actif).length;
+    const totalActifs   = users.filter(u => u.actif).length;
     const totalInactifs = users.filter(u => !u.actif).length;
-    const totalPending = users.filter(u => u.must_change_password).length;
+    const totalPending  = users.filter(u => u.must_change_password).length;
 
     return (
         <div>
@@ -169,10 +167,10 @@ const UtilisateursPage = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-4 gap-4 mb-5">
-                <StatCard value={users.length}  label="Total"                color="gray"  />
-                <StatCard value={totalActifs}   label="Actifs"               color="green" />
-                <StatCard value={totalInactifs} label="Inactifs"             color="red"   />
-                <StatCard value={totalPending}  label="Att. 1ère connexion"  color="amber" />
+                <UserStatCard value={users.length}  label="Total"                color="gray"  />
+                <UserStatCard value={totalActifs}   label="Actifs"               color="green" />
+                <UserStatCard value={totalInactifs} label="Inactifs"             color="red"   />
+                <UserStatCard value={totalPending}  label="Att. 1ère connexion"  color="amber" />
             </div>
 
             {/* Filtres */}
@@ -293,7 +291,6 @@ const UtilisateursPage = () => {
                 )}
             </div>
 
-            {/* Modal formulaire */}
             {showForm && (
                 <UserFormModal
                     form={form} setF={setF}
@@ -325,122 +322,5 @@ const UtilisateursPage = () => {
         </div>
     );
 };
-
-/* ── Stat Card ─────────────────────────────────────────────────────────────── */
-const COLOR_MAP = {
-    gray:  { bg: 'bg-gray-50',  value: 'text-gray-900', label: 'text-gray-400'  },
-    green: { bg: 'bg-green-50', value: 'text-green-700',label: 'text-green-500' },
-    red:   { bg: 'bg-red-50',   value: 'text-red-700',  label: 'text-red-400'   },
-    amber: { bg: 'bg-amber-50', value: 'text-amber-700',label: 'text-amber-500' },
-};
-
-const StatCard = ({ value, label, color = 'gray' }) => {
-    const c = COLOR_MAP[color];
-    return (
-        <div className={`rounded-xl border border-gray-200 p-4 ${c.bg}`}>
-            <p className={`text-2xl font-bold ${c.value}`}>{value}</p>
-            <p className={`text-xs mt-0.5 ${c.label}`}>{label}</p>
-        </div>
-    );
-};
-
-/* ── Form Modal ─────────────────────────────────────────────────────────────── */
-const UserFormModal = ({ form, setF, editingId, submitting, entites, onSubmit, onClose }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <div>
-                    <h2 className="text-base font-semibold text-gray-900">
-                        {editingId ? "Modifier l'utilisateur" : 'Nouvel utilisateur'}
-                    </h2>
-                    {!editingId && (
-                        <p className="text-xs text-gray-400 mt-0.5">Les identifiants seront envoyés par email automatiquement.</p>
-                    )}
-                </div>
-                <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-
-            <form onSubmit={onSubmit} className="px-6 py-5 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <Field label="Prénom" required>
-                        <input type="text" required value={form.prenom} onChange={e => setF('prenom', e.target.value)} placeholder="Prénom" className={inputCls} />
-                    </Field>
-                    <Field label="Nom" required>
-                        <input type="text" required value={form.nom} onChange={e => setF('nom', e.target.value)} placeholder="Nom" className={inputCls} />
-                    </Field>
-                </div>
-
-                {!editingId && (
-                    <Field label="Email" required>
-                        <input type="email" required value={form.email} onChange={e => setF('email', e.target.value)} placeholder="prenom.nom@organisation.ma" className={inputCls} />
-                    </Field>
-                )}
-
-                <Field label="Rôle" required>
-                    <select required value={form.role} onChange={e => setF('role', e.target.value)} className={inputCls}>
-                        {ROLES.map(r => <option key={r} value={r}>{ROLE_CONFIG[r].label}</option>)}
-                    </select>
-                </Field>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <Field label="Organisation">
-                        <input type="text" value={form.organisation} onChange={e => setF('organisation', e.target.value)} placeholder="Nom de l'organisation" className={inputCls} />
-                    </Field>
-                    <Field label="Téléphone">
-                        <input type="text" value={form.telephone} onChange={e => setF('telephone', e.target.value)} placeholder="+212 6 00 00 00 00" className={inputCls} />
-                    </Field>
-                </div>
-
-                {form.role === 'client' && (
-                    <Field label="Entité auditée" required>
-                        <select value={form.entite_id} onChange={e => setF('entite_id', e.target.value)} className={inputCls}>
-                            <option value="">— Sélectionner une entité —</option>
-                            {entites.map(e => (
-                                <option key={e.id} value={e.id}>{e.nom}</option>
-                            ))}
-                        </select>
-                    </Field>
-                )}
-
-                {editingId && (
-                    <div className="flex items-center gap-3 py-1">
-                        <button type="button" onClick={() => setF('actif', !form.actif)}
-                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${form.actif ? 'bg-green-500' : 'bg-gray-300'}`}>
-                            <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${form.actif ? 'translate-x-4' : 'translate-x-0'}`} />
-                        </button>
-                        <span className="text-sm text-gray-700">Compte {form.actif ? 'actif' : 'inactif'}</span>
-                    </div>
-                )}
-
-                <div className="flex gap-2 pt-2 border-t border-gray-100">
-                    <button type="submit" disabled={submitting}
-                        className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60 transition hover:opacity-90"
-                        style={{ backgroundColor: 'var(--brand-red)' }}>
-                        {submitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                        {editingId ? 'Enregistrer' : 'Créer et envoyer'}
-                    </button>
-                    <button type="button" onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
-                        Annuler
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-);
-
-const Field = ({ label, required, children }) => (
-    <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-            {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-        </label>
-        {children}
-    </div>
-);
 
 export default UtilisateursPage;
