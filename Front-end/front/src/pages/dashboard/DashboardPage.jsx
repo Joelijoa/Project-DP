@@ -225,20 +225,16 @@ const DashboardPage = () => {
                             ),
                         },
                     ].map((s, i) => (
-                        <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm"
-                            style={s.accent ? { borderLeft: '3px solid var(--brand-red)' } : {}}>
-                            <div className="flex items-start justify-between mb-5">
-                                <div className="p-2 rounded-xl"
-                                    style={s.accent
-                                        ? { backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' }
-                                        : { backgroundColor: '#F9FAFB', color: '#6B7280' }}>
+                        <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                            <div className="flex items-start justify-between mb-4">
+                                <p className="text-xs font-medium text-gray-400">{s.label}</p>
+                                <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400">
                                     {s.icon}
                                 </div>
                             </div>
                             {loading
                                 ? <Sk className="h-8 w-16 mb-1.5" />
-                                : <p className="text-3xl font-extrabold tracking-tight"
-                                    style={{ color: s.accent ? 'var(--brand-red)' : '#111827' }}>{s.value}</p>
+                                : <p className="text-3xl font-bold text-gray-900 tracking-tight">{s.value}</p>
                             }
                             <p className="text-xs text-gray-400 mt-1.5">{s.sub}</p>
                         </div>

@@ -87,14 +87,14 @@ const ClientDashboard = ({ user, today, audits, plans, loading, refusedDocs, enC
                         { label: 'Audits terminés', value: termines, accent: false },
                         { label: 'Actions ouvertes', value: clientActionsOuvertes.length, accent: false },
                     ].map((s, i) => (
-                        <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm"
-                            style={s.accent ? { borderLeft: '3px solid var(--brand-red)' } : {}}>
+                        <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                            <div className="flex items-start justify-between mb-4">
+                                <p className="text-xs font-medium text-gray-400">{s.label}</p>
+                            </div>
                             {loading
                                 ? <Sk className="h-8 w-16 mb-1.5" />
-                                : <p className="text-3xl font-extrabold tracking-tight"
-                                    style={{ color: s.accent ? 'var(--brand-red)' : '#111827' }}>{s.value}</p>
+                                : <p className="text-3xl font-bold text-gray-900 tracking-tight">{s.value}</p>
                             }
-                            <p className="text-xs text-gray-400 mt-1.5">{s.label}</p>
                         </div>
                     ))}
                 </div>
