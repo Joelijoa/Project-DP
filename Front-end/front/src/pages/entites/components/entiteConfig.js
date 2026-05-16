@@ -39,4 +39,4 @@ export const getAvatarColor = (secteur) => SECTEUR_COLORS[secteur]?.avatar ?? '#
 export const isIncomplete = (entite) =>
     !entite.secteur && !entite.ville && !entite.email && !entite.telephone;
 
-export const inputCls = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition color-[#111827]';
+export const inputCls = 'w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition color-[#111827]';

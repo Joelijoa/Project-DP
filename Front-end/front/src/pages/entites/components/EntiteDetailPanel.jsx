@@ -8,7 +8,7 @@ const EntiteDetailPanel = ({ entite, onClose, onEdit }) => {
     const incomplete = isIncomplete(entite);
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden sticky top-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden sticky top-4">
             <div className="h-16 relative" style={{ backgroundColor: color + '22' }}>
                 <button onClick={onClose}
                     className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-gray-600 bg-white/70 hover:bg-white rounded-lg transition">
@@ -25,7 +25,7 @@ const EntiteDetailPanel = ({ entite, onClose, onEdit }) => {
                 </div>
 
                 {incomplete && (
-                    <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 mb-4">
+                    <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3 mb-4">
                         <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                         </svg>
@@ -87,7 +87,7 @@ const EntiteDetailPanel = ({ entite, onClose, onEdit }) => {
                                 const st = STATUT_CONFIG[audit.statut] ?? STATUT_CONFIG.brouillon;
                                 return (
                                     <Link key={audit.id} to={`/audits/${audit.id}`}
-                                        className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition group">
+                                        className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition group">
                                         <div className="min-w-0">
                                             <p className="text-xs font-medium text-gray-800 truncate group-hover:text-gray-900">{audit.nom}</p>
                                             {audit.referentiel && (

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/auth/AuthContext';
 import { getAllAudits, deleteAudit } from '../../services/endpoints/auditService';
 import { toast } from 'react-toastify';
+import AppSelect from '../../components/common/AppSelect';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -32,16 +33,26 @@ const StatutBadge = ({ statut }) => {
     );
 };
 
-const FilterSelect = ({ value, onChange, children }) => (
-    <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:border-transparent cursor-pointer"
-        style={{ '--tw-ring-color': 'var(--brand-red)' }}
-    >
-        {children}
-    </select>
-);
+const STATUT_OPTIONS = [
+    { value: '', label: 'Tous les statuts' },
+    { value: 'brouillon', label: 'Brouillon' },
+    { value: 'en_cours',  label: 'En cours' },
+    { value: 'termine',   label: 'Terminé' },
+    { value: 'archive',   label: 'Archivé' },
+];
+const REF_OPTIONS = [
+    { value: '',        label: 'Tous les référentiels' },
+    { value: 'DNSSI',   label: 'DNSSI' },
+    { value: 'ISO27001',label: 'ISO 27001' },
+];
+const PHASE_OPTIONS = [
+    { value: '',                   label: 'Toutes les phases' },
+    { value: 'cadrage',            label: 'Cadrage' },
+    { value: 'prerequis',          label: 'Prérequis' },
+    { value: 'revue_documentaire', label: 'Revue documentaire' },
+    { value: 'realisation',        label: 'Réalisation' },
+    { value: 'termine',            label: 'Terminé' },
+];
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -164,30 +175,13 @@ const AuditsListPage = () => {
                     <div className="h-5 w-px bg-gray-200 hidden sm:block" />
 
                     {/* Statut */}
-                    <FilterSelect value={filterStatut} onChange={setFilterStatut}>
-                        <option value="">Tous les statuts</option>
-                        <option value="brouillon">Brouillon</option>
-                        <option value="en_cours">En cours</option>
-                        <option value="termine">Terminé</option>
-                        <option value="archive">Archivé</option>
-                    </FilterSelect>
+                    <AppSelect value={filterStatut} onChange={setFilterStatut} options={STATUT_OPTIONS} />
 
                     {/* Référentiel */}
-                    <FilterSelect value={filterRef} onChange={setFilterRef}>
-                        <option value="">Tous les référentiels</option>
-                        <option value="DNSSI">DNSSI</option>
-                        <option value="ISO27001">ISO 27001</option>
-                    </FilterSelect>
+                    <AppSelect value={filterRef} onChange={setFilterRef} options={REF_OPTIONS} />
 
                     {/* Phase */}
-                    <FilterSelect value={filterPhase} onChange={setFilterPhase}>
-                        <option value="">Toutes les phases</option>
-                        <option value="cadrage">Cadrage</option>
-                        <option value="prerequis">Prérequis</option>
-                        <option value="revue_documentaire">Revue documentaire</option>
-                        <option value="realisation">Réalisation</option>
-                        <option value="termine">Terminé</option>
-                    </FilterSelect>
+                    <AppSelect value={filterPhase} onChange={setFilterPhase} options={PHASE_OPTIONS} />
 
                     {/* Reset */}
                     {hasActiveFilters && (

@@ -73,10 +73,10 @@ const DomaineRow = ({ domaine }) => {
     const totalMesures = domaine.objectifs?.reduce((acc, o) => acc + (o.mesures?.length || 0), 0) || 0;
     const nomPropre = stripNumericPrefix(domaine.nom || '');
     return (
-        <div className="border border-gray-100 rounded-lg mb-2">
+        <div className="border border-gray-100 rounded-xl mb-2">
             <button
                 onClick={() => setOpen(o => !o)}
-                className={`w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left ${open ? 'rounded-t-lg' : 'rounded-lg'}`}
+                className={`w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left ${open ? 'rounded-t-xl' : 'rounded-xl'}`}
             >
                 <span className="text-gray-500">{open ? <ChevronDown /> : <ChevronRight />}</span>
                 <span className="font-mono text-xs font-bold text-gray-600 w-8 shrink-0">{domaine.code}</span>
@@ -165,7 +165,7 @@ const ReferentielsPage = () => {
         <div>
             {/* En-tête */}
             <div className="mb-6">
-                <h1 className="text-xl font-semibold text-gray-900">Référentiels</h1>
+                <h1 className="text-xl font-bold text-gray-900">Référentiels</h1>
                 <p className="text-sm text-gray-500 mt-0.5">Vue arborescente des référentiels de contrôle</p>
             </div>
 
@@ -253,7 +253,7 @@ const ReferentielsPage = () => {
 
             {/* Vue arborescente */}
             {selected && (
-                <div className="bg-white rounded-xl border border-gray-200">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                         <div>
                             <h2 className="text-sm font-semibold text-gray-900">{selected.nom}</h2>
@@ -266,7 +266,7 @@ const ReferentielsPage = () => {
                             placeholder="Rechercher un code ou mot-clé..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 w-64 focus:outline-none focus:ring-1"
+                            className="text-sm border border-gray-200 rounded-xl px-3 py-1.5 w-64 focus:outline-none focus:ring-1"
                         />
                     </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAllEntites, createEntite, updateEntite, deleteEntite } from '../../services/endpoints/entiteService';
+import AppSelect from '../../components/common/AppSelect';
 import { toast } from 'react-toastify';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { SECTEURS, emptyForm, isIncomplete } from './components/entiteConfig';
@@ -111,11 +112,11 @@ const EntitesPage = () => {
             {/* En-tête */}
             <div className="flex items-center justify-between mb-5">
                 <div>
-                    <h1 className="text-xl font-semibold text-gray-900">Entités auditées</h1>
+                    <h1 className="text-xl font-bold text-gray-900">Entités auditées</h1>
                     <p className="text-sm text-gray-500 mt-0.5">Organismes et structures soumis à l'évaluation</p>
                 </div>
                 <button onClick={openCreate}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white rounded-lg transition hover:opacity-90"
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white rounded-xl transition hover:opacity-90"
                     style={{ backgroundColor: 'var(--brand-red)' }}>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -125,7 +126,7 @@ const EntitesPage = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-3 gap-3 mb-4">
                 <EntiteStatCard value={entites.length} label="Entités" icon="building" />
                 <EntiteStatCard value={totalAudits}    label="Audits liés" icon="clipboard" />
                 <EntiteStatCard value={totalSecteurs}  label="Secteurs" icon="tag" />
@@ -158,13 +159,14 @@ const EntitesPage = () => {
                     </svg>
                     <input type="text" placeholder="Rechercher par nom, secteur, ville..."
                         value={search} onChange={e => setSearch(e.target.value)}
-                        className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" />
+                        className="w-full text-sm border border-gray-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" />
                 </div>
-                <select value={filterSecteur} onChange={e => setFilterSecteur(e.target.value)}
-                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition min-w-[180px]">
-                    <option value="">Tous les secteurs</option>
-                    {SECTEURS.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <AppSelect
+                    value={filterSecteur}
+                    onChange={setFilterSecteur}
+                    options={[{ value: '', label: 'Tous les secteurs' }, ...SECTEURS.map(s => ({ value: s, label: s }))]}
+                    className="min-w-[180px]"
+                />
             </div>
 
             <div className="flex gap-5">

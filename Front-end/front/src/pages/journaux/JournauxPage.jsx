@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getLogs } from '../../services/endpoints/logService';
+import AppSelect from '../../components/common/AppSelect';
 
 // ── Config actions ─────────────────────────────────────────────────────────────
 
@@ -118,27 +119,17 @@ const JournauxPage = () => {
 
             {/* Filtres */}
             <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-center">
-                <select
+                <AppSelect
                     value={action}
-                    onChange={e => { setAction(e.target.value); setPage(1); }}
-                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none bg-white"
-                >
-                    <option value="">Toutes les actions</option>
-                    {ALL_ACTIONS.map(a => (
-                        <option key={a} value={a}>{ACTION_CONFIG[a].label}</option>
-                    ))}
-                </select>
+                    onChange={v => { setAction(v); setPage(1); }}
+                    options={[{ value: '', label: 'Toutes les actions' }, ...ALL_ACTIONS.map(a => ({ value: a, label: ACTION_CONFIG[a].label }))]}
+                />
 
-                <select
+                <AppSelect
                     value={resource}
-                    onChange={e => { setResource(e.target.value); setPage(1); }}
-                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none bg-white"
-                >
-                    <option value="">Toutes les ressources</option>
-                    {Object.entries(RESOURCE_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
-                    ))}
-                </select>
+                    onChange={v => { setResource(v); setPage(1); }}
+                    options={[{ value: '', label: 'Toutes les ressources' }, ...Object.entries(RESOURCE_LABELS).map(([k, v]) => ({ value: k, label: v }))]}
+                />
 
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">

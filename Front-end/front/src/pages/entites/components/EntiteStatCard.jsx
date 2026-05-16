@@ -5,16 +5,16 @@ const STAT_ICONS = {
 };
 
 const EntiteStatCard = ({ value, label, icon }) => (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
-            <svg className="w-4.5 h-4.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d={STAT_ICONS[icon]} />
-            </svg>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="flex items-start justify-between mb-3">
+            <p className="text-xs font-medium text-gray-400">{label}</p>
+            <div className="p-1.5 rounded-lg bg-gray-50">
+                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={STAT_ICONS[icon]} />
+                </svg>
+            </div>
         </div>
-        <div>
-            <p className="text-xl font-bold text-gray-900 leading-none">{value}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-        </div>
+        <p className="text-2xl font-bold text-gray-900 tracking-tight">{value}</p>
     </div>
 );
 

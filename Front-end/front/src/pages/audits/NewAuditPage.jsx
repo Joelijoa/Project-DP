@@ -4,6 +4,7 @@ import { createAudit } from '../../services/endpoints/auditService';
 import { getAllReferentiels } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
 import { toast } from 'react-toastify';
+import AppSelect from '../../components/common/AppSelect';
 
 const NewAuditPage = () => {
     const navigate = useNavigate();
@@ -158,14 +159,12 @@ const NewAuditPage = () => {
                                         <label className="block text-xs font-medium text-gray-600 mb-1.5">
                                             Référentiel <span className="text-red-500">*</span>
                                         </label>
-                                        <select value={form.referentiel_id} onChange={e => set('referentiel_id', e.target.value)}
-                                            className={inputCls('referentiel_id') + ' bg-white'}
-                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}>
-                                            <option value="">Sélectionner…</option>
-                                            {referentiels.map(r => (
-                                                <option key={r.id} value={r.id}>{r.nom} ({r.type})</option>
-                                            ))}
-                                        </select>
+                                        <AppSelect
+                                            value={form.referentiel_id}
+                                            onChange={v => set('referentiel_id', v)}
+                                            options={[{ value: '', label: 'Sélectionner…' }, ...referentiels.map(r => ({ value: String(r.id), label: `${r.nom} (${r.type})` }))]}
+                                            placeholder="Sélectionner…"
+                                        />
                                         {errors.referentiel_id && <p className="mt-1 text-xs text-red-500">{errors.referentiel_id}</p>}
                                     </div>
                                 </div>

@@ -7,7 +7,7 @@ const STATUT_AUDIT = {
 const AuditCard = ({ audit, onNavigate, onValider, onRejeter, saving }) => {
     const cfg = STATUT_AUDIT[audit.statut] || { label: audit.statut, cls: 'bg-gray-100 text-gray-500' };
     return (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-lg hover:border-gray-300 transition-all duration-200">
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4 flex-1 min-w-0">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-50 border border-gray-100">
