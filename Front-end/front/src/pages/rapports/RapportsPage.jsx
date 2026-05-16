@@ -6,6 +6,7 @@ import { getReferentielById } from '../../services/endpoints/referentielService'
 import { exportAuditReportPDF } from '../../utils/exportReportPDF';
 import { exportAuditReportExcel } from '../../utils/exportReportExcel';
 import logoDataprotect from '../../assets/images/logoDataprotect.png';
+import AppSelect from '../../components/common/AppSelect';
 
 const STATUT_LABELS = {
     brouillon: 'Brouillon',
@@ -124,14 +125,14 @@ export default function RapportsPage() {
     return (
         <div>
             <div className="mb-6">
-                <h1 className="text-xl font-semibold text-gray-900">Rapports & Exports</h1>
-                <p className="text-sm text-gray-500 mt-1">
+                <h1 className="text-xl font-bold text-gray-900">Rapports & Exports</h1>
+                <p className="text-sm text-gray-400 mt-1">
                     Générez et téléchargez les rapports d'audit terminés au format PDF ou Excel.
                 </p>
             </div>
 
             {/* Filtres */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
                 <div className="flex flex-wrap gap-3 items-center">
                     <div className="relative flex-1 min-w-[220px]">
                         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -142,20 +143,19 @@ export default function RapportsPage() {
                             placeholder="Rechercher par nom ou client..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-400"
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300"
                         />
                     </div>
 
-                    <select
+                    <AppSelect
                         value={filterPhase}
-                        onChange={e => setFilterPhase(e.target.value)}
-                        className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-gray-400"
-                    >
-                        <option value="">Toutes les phases</option>
-                        {Object.entries(PHASE_LABELS).map(([v, l]) => (
-                            <option key={v} value={v}>{l}</option>
-                        ))}
-                    </select>
+                        onChange={v => setFilterPhase(v)}
+                        options={[
+                            { value: '', label: 'Toutes les phases' },
+                            ...Object.entries(PHASE_LABELS).map(([v, l]) => ({ value: v, label: l }))
+                        ]}
+                        className="min-w-[160px]"
+                    />
 
                     {hasFilters && (
                         <button
@@ -173,7 +173,7 @@ export default function RapportsPage() {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 {loading ? (
                     <div className="flex items-center justify-center py-16 gap-2 text-sm text-gray-400">
                         <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -189,7 +189,7 @@ export default function RapportsPage() {
                 ) : (
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200">
+                            <tr className="bg-gray-50 border-b border-gray-100">
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Audit</th>
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Client</th>
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Référentiel</th>
@@ -230,7 +230,7 @@ export default function RapportsPage() {
                                                     onClick={() => handleExport(audit, 'pdf')}
                                                     disabled={!!exp}
                                                     title="Télécharger le rapport PDF"
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#CC0000] text-white hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#CC0000] text-white hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     {exp === 'pdf' ? <IconSpinner /> : <IconDownload />}
                                                     {exp === 'pdf' ? 'Génération…' : 'PDF'}
@@ -241,7 +241,7 @@ export default function RapportsPage() {
                                                     onClick={() => handleExport(audit, 'excel')}
                                                     disabled={!!exp}
                                                     title="Télécharger le rapport Excel"
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     {exp === 'excel' ? <IconSpinner /> : <IconTable />}
                                                     {exp === 'excel' ? 'Génération…' : 'Excel'}

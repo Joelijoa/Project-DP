@@ -4,23 +4,26 @@ import AppSelect from '../../components/common/AppSelect';
 
 // ── Config actions ─────────────────────────────────────────────────────────────
 
+const N = { bg: 'bg-gray-100', text: 'text-gray-600' };
+const D = { bg: 'bg-red-50',  text: 'text-red-700'  };
+
 const ACTION_CONFIG = {
-    LOGIN:              { label: 'Connexion',           bg: 'bg-green-50',   text: 'text-green-700'  },
-    LOGIN_FAILED:       { label: 'Échec connexion',     bg: 'bg-red-50',     text: 'text-red-700'    },
-    CREATE_AUDIT:       { label: 'Créer audit',         bg: 'bg-blue-50',    text: 'text-blue-700'   },
-    UPDATE_AUDIT:       { label: 'Modifier audit',      bg: 'bg-indigo-50',  text: 'text-indigo-700' },
-    DELETE_AUDIT:       { label: 'Supprimer audit',     bg: 'bg-red-50',     text: 'text-red-700'    },
-    CREATE_USER:        { label: 'Créer utilisateur',   bg: 'bg-purple-50',  text: 'text-purple-700' },
-    UPDATE_USER:        { label: 'Modifier utilisateur',bg: 'bg-violet-50',  text: 'text-violet-700' },
-    DELETE_USER:        { label: 'Supprimer utilisateur',bg:'bg-red-50',     text: 'text-red-700'    },
-    RESET_PASSWORD:     { label: 'Réinit. mot de passe',bg: 'bg-amber-50',   text: 'text-amber-700'  },
-    CHANGE_PASSWORD:    { label: 'Changer mot de passe',bg: 'bg-amber-50',   text: 'text-amber-700'  },
-    CREATE_ENTITE:      { label: 'Créer entité',        bg: 'bg-teal-50',    text: 'text-teal-700'   },
-    UPDATE_ENTITE:      { label: 'Modifier entité',     bg: 'bg-cyan-50',    text: 'text-cyan-700'   },
-    DELETE_ENTITE:      { label: 'Supprimer entité',    bg: 'bg-red-50',     text: 'text-red-700'    },
-    CREATE_PLAN_ACTION: { label: 'Créer plan action',   bg: 'bg-orange-50',  text: 'text-orange-700' },
-    UPDATE_PLAN_ACTION: { label: 'Modifier plan action',bg: 'bg-orange-50',  text: 'text-orange-700' },
-    DELETE_PLAN_ACTION: { label: 'Supprimer plan action',bg:'bg-red-50',     text: 'text-red-700'    },
+    LOGIN:              { label: 'Connexion',            ...N },
+    LOGIN_FAILED:       { label: 'Échec connexion',      ...D },
+    CREATE_AUDIT:       { label: 'Créer audit',          ...N },
+    UPDATE_AUDIT:       { label: 'Modifier audit',       ...N },
+    DELETE_AUDIT:       { label: 'Supprimer audit',      ...D },
+    CREATE_USER:        { label: 'Créer utilisateur',    ...N },
+    UPDATE_USER:        { label: 'Modifier utilisateur', ...N },
+    DELETE_USER:        { label: 'Supprimer utilisateur',...D },
+    RESET_PASSWORD:     { label: 'Réinit. mot de passe', ...N },
+    CHANGE_PASSWORD:    { label: 'Changer mot de passe', ...N },
+    CREATE_ENTITE:      { label: 'Créer entité',         ...N },
+    UPDATE_ENTITE:      { label: 'Modifier entité',      ...N },
+    DELETE_ENTITE:      { label: 'Supprimer entité',     ...D },
+    CREATE_PLAN_ACTION: { label: 'Créer plan action',    ...N },
+    UPDATE_PLAN_ACTION: { label: 'Modifier plan action', ...N },
+    DELETE_PLAN_ACTION: { label: 'Supprimer plan action',...D },
 };
 
 const RESOURCE_LABELS = {
@@ -105,20 +108,20 @@ const JournauxPage = () => {
             {/* En-tête */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-xl font-semibold text-gray-900">Journaux d'activité</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">
+                    <h1 className="text-xl font-bold text-gray-900">Journaux d'activité</h1>
+                    <p className="text-sm text-gray-400 mt-0.5">
                         Historique de toutes les actions effectuées sur la plateforme
                     </p>
                 </div>
                 {!loading && (
-                    <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                    <span className="text-xs text-gray-400 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
                         {total.toLocaleString('fr-FR')} entrée{total > 1 ? 's' : ''}
                     </span>
                 )}
             </div>
 
             {/* Filtres */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-center">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-center">
                 <AppSelect
                     value={action}
                     onChange={v => { setAction(v); setPage(1); }}
@@ -138,7 +141,7 @@ const JournauxPage = () => {
                             type="date"
                             value={dateFrom}
                             onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-                            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none"
+                            className="text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none"
                         />
                         <label className="text-xs text-gray-500">au</label>
                         <input
@@ -146,7 +149,7 @@ const JournauxPage = () => {
                             value={dateTo}
                             min={dateFrom || undefined}
                             onChange={e => { setDateTo(e.target.value); setPage(1); }}
-                            className={`text-sm border rounded-lg px-3 py-2 focus:outline-none ${
+                            className={`text-sm border rounded-xl px-3 py-2 focus:outline-none ${
                                 dateTo && dateFrom && dateTo < dateFrom ? 'border-red-300' : 'border-gray-200'
                             }`}
                         />
@@ -172,7 +175,7 @@ const JournauxPage = () => {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 {loading ? (
                     <div className="p-4 space-y-2.5">
                         {[...Array(8)].map((_, i) => <Sk key={i} className="h-10" />)}
@@ -257,7 +260,7 @@ const JournauxPage = () => {
                         <button
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             disabled={page === 1}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
                         >
                             ← Précédent
                         </button>
@@ -270,9 +273,9 @@ const JournauxPage = () => {
                                     className={`w-8 h-8 text-xs font-medium rounded-lg transition ${
                                         p === page
                                             ? 'text-white'
-                                            : 'text-gray-600 bg-white border border-gray-200 hover:bg-gray-50'
+                                            : 'text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50'
                                     }`}
-                                    style={p === page ? { backgroundColor: 'var(--brand-red)' } : {}}
+                                    style={p === page ? { backgroundColor: 'var(--brand-red)', borderRadius: '0.75rem' } : {}}
                                 >
                                     {p}
                                 </button>
@@ -281,7 +284,7 @@ const JournauxPage = () => {
                         <button
                             onClick={() => setPage(p => Math.min(pages, p + 1))}
                             disabled={page === pages}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
                         >
                             Suivant →
                         </button>

@@ -1,4 +1,5 @@
 import Field from './Field';
+import AppSelect from '../../../components/common/AppSelect';
 
 const ROLES = ['admin', 'auditeur_senior', 'auditeur_junior', 'client'];
 
@@ -9,7 +10,7 @@ const ROLE_CONFIG = {
     client:          { label: 'Client'           },
 };
 
-const inputCls = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition';
+const inputCls = 'w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-gray-300 transition';
 
 const UserFormModal = ({ form, setF, editingId, submitting, entites, onSubmit, onClose }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -24,7 +25,7 @@ const UserFormModal = ({ form, setF, editingId, submitting, entites, onSubmit, o
                         <p className="text-xs text-gray-400 mt-0.5">Les identifiants seront envoyés par email automatiquement.</p>
                     )}
                 </div>
-                <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -48,9 +49,11 @@ const UserFormModal = ({ form, setF, editingId, submitting, entites, onSubmit, o
                 )}
 
                 <Field label="Rôle" required>
-                    <select required value={form.role} onChange={e => setF('role', e.target.value)} className={inputCls}>
-                        {ROLES.map(r => <option key={r} value={r}>{ROLE_CONFIG[r].label}</option>)}
-                    </select>
+                    <AppSelect
+                        value={form.role}
+                        onChange={v => setF('role', v)}
+                        options={ROLES.map(r => ({ value: r, label: ROLE_CONFIG[r].label }))}
+                    />
                 </Field>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -64,12 +67,14 @@ const UserFormModal = ({ form, setF, editingId, submitting, entites, onSubmit, o
 
                 {form.role === 'client' && (
                     <Field label="Entité auditée" required>
-                        <select value={form.entite_id} onChange={e => setF('entite_id', e.target.value)} className={inputCls}>
-                            <option value="">— Sélectionner une entité —</option>
-                            {entites.map(e => (
-                                <option key={e.id} value={e.id}>{e.nom}</option>
-                            ))}
-                        </select>
+                        <AppSelect
+                            value={form.entite_id}
+                            onChange={v => setF('entite_id', v)}
+                            options={[
+                                { value: '', label: '— Sélectionner une entité —' },
+                                ...entites.map(e => ({ value: e.id, label: e.nom }))
+                            ]}
+                        />
                     </Field>
                 )}
 
@@ -85,13 +90,13 @@ const UserFormModal = ({ form, setF, editingId, submitting, entites, onSubmit, o
 
                 <div className="flex gap-2 pt-2 border-t border-gray-100">
                     <button type="submit" disabled={submitting}
-                        className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60 transition hover:opacity-90"
+                        className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-60 transition hover:opacity-90"
                         style={{ backgroundColor: 'var(--brand-red)' }}>
                         {submitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                         {editingId ? 'Enregistrer' : 'Créer et envoyer'}
                     </button>
                     <button type="button" onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition">
                         Annuler
                     </button>
                 </div>
