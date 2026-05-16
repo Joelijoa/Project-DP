@@ -140,21 +140,34 @@ const JournauxPage = () => {
                     ))}
                 </select>
 
-                <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-500">Du</label>
-                    <input
-                        type="date"
-                        value={dateFrom}
-                        onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-                        className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none"
-                    />
-                    <label className="text-xs text-gray-500">au</label>
-                    <input
-                        type="date"
-                        value={dateTo}
-                        onChange={e => { setDateTo(e.target.value); setPage(1); }}
-                        className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none"
-                    />
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-500">Du</label>
+                        <input
+                            type="date"
+                            value={dateFrom}
+                            onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none"
+                        />
+                        <label className="text-xs text-gray-500">au</label>
+                        <input
+                            type="date"
+                            value={dateTo}
+                            min={dateFrom || undefined}
+                            onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                            className={`text-sm border rounded-lg px-3 py-2 focus:outline-none ${
+                                dateTo && dateFrom && dateTo < dateFrom ? 'border-red-300' : 'border-gray-200'
+                            }`}
+                        />
+                    </div>
+                    {dateTo && dateFrom && dateTo < dateFrom && (
+                        <p className="text-xs text-red-500 flex items-center gap-1 ml-auto">
+                            <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
+                            La date de fin doit être après la date de début
+                        </p>
+                    )}
                 </div>
 
                 {hasFilters && (

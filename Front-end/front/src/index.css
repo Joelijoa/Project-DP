@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  font-size: 14px;
+}
+
 :root {
   --brand-red: #CC0000;
   --brand-red-light: rgba(204, 0, 0, 0.12);

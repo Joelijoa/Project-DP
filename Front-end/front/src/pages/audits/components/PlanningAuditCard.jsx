@@ -610,8 +610,21 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                         </div>
                                         <div>
                                             <label className="block text-xs text-gray-500 mb-1">Date fin <span className="text-gray-300">(optionnel)</span></label>
-                                            <input type="date" value={e.date_fin} onChange={ev => setEtape(i, 'date_fin', ev.target.value)}
-                                                className={inputCls} style={inputStyle} />
+                                            <input type="date" value={e.date_fin}
+                                                min={e.date_debut || undefined}
+                                                onChange={ev => setEtape(i, 'date_fin', ev.target.value)}
+                                                className={`w-full px-2 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 bg-white ${
+                                                    e.date_fin && e.date_debut && e.date_fin < e.date_debut ? 'border-red-300' : 'border-gray-200'
+                                                }`}
+                                                style={inputStyle} />
+                                            {e.date_fin && e.date_debut && e.date_fin < e.date_debut && (
+                                                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                                                    <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                                    </svg>
+                                                    Date de fin antérieure au début
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                     <div>
