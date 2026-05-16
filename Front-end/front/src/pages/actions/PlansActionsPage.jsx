@@ -4,6 +4,7 @@ import { useAuth } from '../../store/auth/AuthContext';
 import { getAllPlanActions, updatePlanAction, deletePlanAction, soumettreValidationPlan, validerPlanAction, rejeterPlanAction } from '../../services/endpoints/planActionService';
 import { toast } from 'react-toastify';
 import RejeterPlanModal from './components/RejeterPlanModal';
+import AppSelect from '../../components/common/AppSelect';
 
 const PLAN_VALIDATION_CONFIG = {
     en_attente: { label: 'En attente', bg: 'bg-amber-50',  text: 'text-amber-700' },
@@ -173,7 +174,7 @@ const PlansActionsPage = () => {
             {/* En-tête */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-xl font-semibold text-gray-900">Plans d'actions</h1>
+                    <h1 className="text-xl font-bold text-gray-900">Plans d'actions</h1>
                     <p className="text-sm text-gray-500 mt-0.5">
                         {isClient  ? 'Actions correctives à mettre en œuvre dans votre organisation'
                         : isJunior ? 'Actions correctives de vos audits assignés'
@@ -183,16 +184,23 @@ const PlansActionsPage = () => {
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
                 {[
-                    { label: 'Total',    value: stats.total,    color: '#111827' },
-                    { label: 'À faire',  value: stats.a_faire,  color: '#6B7280' },
-                    { label: 'En cours', value: stats.en_cours, color: '#1D4ED8' },
-                    { label: 'Clôturés', value: stats.cloture,  color: '#16a34a' },
+                    { label: 'Total',    value: stats.total,    color: '#111827', icon: 'M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z' },
+                    { label: 'À faire',  value: stats.a_faire,  color: '#6B7280', icon: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z' },
+                    { label: 'En cours', value: stats.en_cours, color: '#1D4ED8', icon: 'M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99' },
+                    { label: 'Clôturés', value: stats.cloture,  color: '#16a34a', icon: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
                 ].map((kpi, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
-                        <p className="text-2xl font-bold mt-1" style={{ color: kpi.color }}>
+                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                        <div className="flex items-start justify-between mb-4">
+                            <p className="text-xs font-medium text-gray-400">{kpi.label}</p>
+                            <div className="p-1.5 rounded-lg bg-gray-50">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d={kpi.icon} />
+                                </svg>
+                            </div>
+                        </div>
+                        <p className="text-3xl font-bold tracking-tight" style={{ color: kpi.color }}>
                             {loading ? '—' : kpi.value}
                         </p>
                     </div>
@@ -200,27 +208,42 @@ const PlansActionsPage = () => {
             </div>
 
             {/* Filtres */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3">
-                <input type="text" placeholder="Rechercher..." value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="flex-1 min-w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1" />
-                <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)}
-                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none">
-                    <option value="">Tous les statuts</option>
-                    <option value="a_faire">À faire</option>
-                    <option value="en_cours">En cours</option>
-                    <option value="cloture">Clôturé</option>
-                </select>
-                <select value={filterPriorite} onChange={e => setFilterPriorite(e.target.value)}
-                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none">
-                    <option value="">Toutes priorités</option>
-                    <option value="haute">Haute</option>
-                    <option value="moyenne">Moyenne</option>
-                    <option value="basse">Basse</option>
-                </select>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-4 flex flex-wrap gap-3 items-center">
+                <div className="relative flex-1 min-w-48">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
+                    <input type="text" placeholder="Rechercher..." value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full text-sm border border-gray-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent"
+                        style={{ '--tw-ring-color': 'var(--brand-red)' }} />
+                </div>
+                <AppSelect
+                    value={filterStatut}
+                    onChange={setFilterStatut}
+                    options={[
+                        { value: '',        label: 'Tous les statuts' },
+                        { value: 'a_faire', label: 'À faire' },
+                        { value: 'en_cours',label: 'En cours' },
+                        { value: 'cloture', label: 'Clôturé' },
+                    ]}
+                />
+                <AppSelect
+                    value={filterPriorite}
+                    onChange={setFilterPriorite}
+                    options={[
+                        { value: '',       label: 'Toutes priorités' },
+                        { value: 'haute',  label: 'Haute' },
+                        { value: 'moyenne',label: 'Moyenne' },
+                        { value: 'basse',  label: 'Basse' },
+                    ]}
+                />
                 {(filterStatut || filterPriorite || search) && (
                     <button onClick={() => { setFilterStatut(''); setFilterPriorite(''); setSearch(''); }}
-                        className="text-sm text-gray-500 hover:text-gray-700 px-2">
+                        className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 transition px-2 py-2">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                         Réinitialiser
                     </button>
                 )}
@@ -232,7 +255,7 @@ const PlansActionsPage = () => {
                     <div className="w-5 h-5 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: 'var(--brand-red)' }} />
                 </div>
             ) : groups.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 text-center py-16">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-16">
                     <p className="text-sm text-gray-500">Aucune action trouvée</p>
                     <p className="text-xs text-gray-400 mt-1">Les actions correctives sont créées depuis le détail d'un audit</p>
                     <Link to="/audits" className="mt-3 inline-block text-xs text-blue-600 hover:text-blue-800">
@@ -262,7 +285,7 @@ const PlansActionsPage = () => {
                         const hasHaute = groupPlans.some(p => p.priorite === 'haute' && p.statut !== 'cloture');
 
                         return (
-                            <div key={auditId} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                            <div key={auditId} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
                                 {/* ── En-tête du groupe ── */}
                                 <button onClick={() => toggleGroup(auditId)}
@@ -372,15 +395,17 @@ const PlansActionsPage = () => {
                                                             {/* Statut — client : select direct, autres : badge fixe */}
                                                             <td className="px-4 py-3 text-center">
                                                                 {isClient ? (
-                                                                    <select
+                                                                    <AppSelect
                                                                         value={plan.statut}
                                                                         disabled={savingId === plan.id}
-                                                                        onChange={e => handleUpdateStatut(plan, e.target.value)}
-                                                                        className={`text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none transition ${savingId === plan.id ? 'opacity-50' : ''}`}>
-                                                                        <option value="a_faire">À faire</option>
-                                                                        <option value="en_cours">En cours</option>
-                                                                        <option value="cloture">Clôturé</option>
-                                                                    </select>
+                                                                        onChange={v => handleUpdateStatut(plan, v)}
+                                                                        options={[
+                                                                            { value: 'a_faire',  label: 'À faire' },
+                                                                            { value: 'en_cours', label: 'En cours' },
+                                                                            { value: 'cloture',  label: 'Clôturé' },
+                                                                        ]}
+                                                                        className="min-w-[110px]"
+                                                                    />
                                                                 ) : (
                                                                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${st.bg} ${st.text}`}>{st.label}</span>
                                                                 )}
@@ -445,7 +470,7 @@ const PlansActionsPage = () => {
                                                                                 </svg>
                                                                             </button>
                                                                             <button onClick={() => handleDelete(plan)}
-                                                                                className="p-1 text-gray-400 hover:text-red-600 rounded" title="Supprimer">
+                                                                                className="p-1 text-red-500 hover:text-red-700 rounded" title="Supprimer">
                                                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                                                                                 </svg>
