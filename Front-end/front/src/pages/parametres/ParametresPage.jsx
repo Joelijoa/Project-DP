@@ -271,7 +271,7 @@ const ParametresPage = () => {
 
             {/* ── Colonne droite : Aide ── */}
             <div className="col-span-1 space-y-4">
-                <HelpPanel isAdmin={isAdmin} />
+                <HelpPanel role={user?.role} />
             </div>
 
             </div>{/* fin grid */}
@@ -311,7 +311,105 @@ const QUICK_LINKS = [
     { label: 'Journaux',        to: '/journaux',    icon: 'M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z' },
 ];
 
-const HelpPanel = ({ isAdmin }) => (
+const FAQ_BY_ROLE = {
+    admin: [
+        {
+            q: 'Comment créer un nouvel audit ?',
+            a: 'Rendez-vous dans Audits, cliquez sur Nouvel audit, renseignez le nom, le client, le référentiel et les dates, puis validez.',
+        },
+        {
+            q: 'Comment ajouter un utilisateur ?',
+            a: 'Dans Utilisateurs, cliquez sur Nouvel utilisateur. Un email avec les identifiants temporaires est envoyé automatiquement à l\'adresse renseignée.',
+        },
+        {
+            q: 'Comment réinitialiser le mot de passe d\'un compte ?',
+            a: 'Dans Utilisateurs, cliquez sur l\'icône de réinitialisation (↺) sur la ligne de l\'utilisateur. Un nouveau mot de passe temporaire lui sera envoyé par email.',
+        },
+        {
+            q: 'Comment valider un plan d\'action ou un audit soumis ?',
+            a: 'Dans Travaux soumis, utilisez les onglets Audits et Plans d\'actions pour consulter les soumissions en attente et modifier leur statut.',
+        },
+        {
+            q: 'Comment exporter un rapport ?',
+            a: 'Dans Rapports & Exports, sélectionnez un audit terminé et cliquez sur PDF ou Excel. L\'audit doit être au statut Terminé.',
+        },
+        {
+            q: 'Les emails de notification ne partent pas ?',
+            a: 'Vérifiez que l\'option Activer les emails globalement est activée dans Configuration ci-dessus, et que les préférences de l\'utilisateur concerné sont configurées.',
+        },
+    ],
+    auditeur_senior: [
+        {
+            q: 'Comment créer un nouvel audit ?',
+            a: 'Rendez-vous dans Audits, cliquez sur Nouvel audit, renseignez le nom, le client, le référentiel et les dates, puis validez.',
+        },
+        {
+            q: 'Comment avancer dans les phases d\'un audit ?',
+            a: 'Dans le détail d\'un audit, utilisez le bouton Changer de phase pour faire progresser l\'audit de Cadrage jusqu\'à Terminé.',
+        },
+        {
+            q: 'Comment soumettre un audit pour validation ?',
+            a: 'Dans le détail de l\'audit, cliquez sur Soumettre. L\'administrateur sera notifié et pourra valider ou rejeter l\'audit.',
+        },
+        {
+            q: 'Comment consulter les indicateurs de conformité ?',
+            a: 'Dans Indicateurs SSI, sélectionnez l\'audit souhaité. Les taux de conformité, l\'évolution et le classement des entités sont affichés automatiquement.',
+        },
+        {
+            q: 'Comment exporter un rapport ?',
+            a: 'Dans Rapports & Exports, sélectionnez un audit terminé et cliquez sur PDF ou Excel.',
+        },
+    ],
+    auditeur_junior: [
+        {
+            q: 'Comment accéder aux audits qui me sont assignés ?',
+            a: 'Rendez-vous dans la section Audits. Seuls les audits auxquels vous êtes assigné sont visibles. Cliquez sur un audit pour commencer l\'évaluation.',
+        },
+        {
+            q: 'Comment remplir une évaluation ?',
+            a: 'Dans le détail d\'un audit, onglet Évaluations, sélectionnez un domaine et renseignez le statut de conformité et les observations pour chaque exigence.',
+        },
+        {
+            q: 'Comment créer un plan d\'action ?',
+            a: 'Dans Plans d\'actions, cliquez sur Nouveau plan, sélectionnez l\'audit concerné, puis renseignez les actions correctives, responsables et échéances.',
+        },
+        {
+            q: 'Comment soumettre un plan d\'action pour validation ?',
+            a: 'Dans Plans d\'actions, ouvrez le plan concerné et changez son statut à Soumis. Le senior ou l\'admin sera notifié.',
+        },
+        {
+            q: 'Comment suivre l\'avancement d\'un audit ?',
+            a: 'Le tableau de bord affiche l\'état de vos audits en cours. Le détail de chaque audit montre la phase actuelle et le taux de complétion des évaluations.',
+        },
+    ],
+    client: [
+        {
+            q: 'Comment consulter les résultats de mon audit ?',
+            a: 'Dans la section Résultats, sélectionnez votre audit dans la liste déroulante. Les taux de conformité par domaine et les graphiques sont affichés.',
+        },
+        {
+            q: 'Comment télécharger mon rapport d\'audit ?',
+            a: 'Dans Rapports & Exports, votre rapport est disponible dès que l\'audit est au statut Terminé. Cliquez sur PDF ou Excel pour le télécharger.',
+        },
+        {
+            q: 'Comment suivre les plans d\'actions ?',
+            a: 'Dans Plans d\'actions, vous pouvez voir l\'avancement des actions correctives associées à votre audit et leur statut (en cours, validé, rejeté…).',
+        },
+        {
+            q: 'Comment voir les travaux soumis ?',
+            a: 'Dans Mes soumissions, retrouvez l\'historique des audits et plans d\'actions soumis pour validation, ainsi que leur statut actuel.',
+        },
+        {
+            q: 'Mes informations sont-elles à jour ?',
+            a: 'Vérifiez votre profil via l\'icône en haut à droite. Vous pouvez modifier votre nom, téléphone et organisation depuis la page Mon profil.',
+        },
+    ],
+};
+
+const HelpPanel = ({ role }) => {
+    const faqs = FAQ_BY_ROLE[role] ?? FAQ_BY_ROLE.auditeur_junior;
+
+    return (
     <div className="space-y-4">
         {/* FAQ */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -321,26 +419,15 @@ const HelpPanel = ({ isAdmin }) => (
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
                     </svg>
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900">Questions fréquentes</h3>
+                <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Questions fréquentes</h3>
+                    <p className="text-xs text-gray-400">Selon votre rôle sur la plateforme</p>
+                </div>
             </div>
             <div className="px-5">
-                <FaqItem question="Comment créer un nouvel audit ?">
-                    Rendez-vous dans la section <strong>Audits</strong>, cliquez sur <em>Nouvel audit</em>, renseignez le nom, le client, le référentiel et les dates, puis validez.
-                </FaqItem>
-                <FaqItem question="Comment ajouter un utilisateur ?">
-                    Dans <strong>Utilisateurs</strong>, cliquez sur <em>Nouvel utilisateur</em>. Un email avec les identifiants temporaires est envoyé automatiquement à l'adresse renseignée.
-                </FaqItem>
-                <FaqItem question="Comment exporter un rapport ?">
-                    Allez dans <strong>Rapports & Exports</strong>, sélectionnez un audit terminé et cliquez sur <em>PDF</em> ou <em>Excel</em>. L'audit doit être au statut <em>Terminé</em>.
-                </FaqItem>
-                <FaqItem question="Comment valider un plan d'action ?">
-                    Dans <strong>Travaux soumis</strong>, onglet <em>Plans d'actions</em>, ouvrez le plan concerné et changez son statut via le menu déroulant.
-                </FaqItem>
-                {isAdmin && (
-                    <FaqItem question="Les emails de notification ne partent pas ?">
-                        Vérifiez que l'option <em>Activer les emails globalement</em> est bien activée dans la section Configuration ci-dessus, et que les préférences de l'utilisateur concerné sont configurées.
-                    </FaqItem>
-                )}
+                {faqs.map(({ q, a }) => (
+                    <FaqItem key={q} question={q}>{a}</FaqItem>
+                ))}
             </div>
         </div>
 
@@ -369,6 +456,7 @@ const HelpPanel = ({ isAdmin }) => (
             </div>
         </div>
     </div>
-);
+    );
+};
 
 export default ParametresPage;

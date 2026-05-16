@@ -160,43 +160,44 @@ const Sidebar = () => {
 
     return (
         <aside
-            className="text-white flex flex-col flex-shrink-0 transition-all duration-200"
+            className="relative text-white flex flex-col flex-shrink-0 transition-all duration-200"
             style={{ width: collapsed ? '3.5rem' : '16rem', backgroundColor: 'var(--brand-dark)' }}
         >
+            {/* ── Bouton flottant collapse ── */}
+            <button
+                onClick={() => setCollapsed(c => !c)}
+                className="absolute top-7 right-0 translate-x-1/2 -translate-y-1/2 z-50 w-5 h-5 rounded-full flex items-center justify-center shadow-lg border border-white/10 hover:border-white/20 transition-all duration-150"
+                style={{ backgroundColor: '#2d2d2d' }}
+                title={collapsed ? 'Agrandir la barre' : 'Réduire la barre'}
+            >
+                <svg className="w-2.5 h-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                        d={collapsed ? "M8.25 4.5l7.5 7.5-7.5 7.5" : "M15.75 19.5L8.25 12l7.5-7.5"} />
+                </svg>
+            </button>
+
             {/* ── Logo ── */}
             {collapsed ? (
-                <div className="border-b border-white/5 flex flex-col items-center gap-2 py-3">
+                <div className="h-14 border-b border-white/5 flex items-center justify-center">
                     <img src={logo} alt="ZeroGap logo" className="w-9 h-9 object-contain" />
-                    <button onClick={() => setCollapsed(c => !c)}
-                        className="w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
-                        title="Agrandir la barre">
-                        {icons.collapseRight}
-                    </button>
                 </div>
             ) : (
-                <div className="border-b border-white/5 flex items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                        <img src={logo} alt="ZeroGap logo" className="w-16 h-16 flex-shrink-0 object-contain" />
-                        <div className="min-w-0">
-                            <h1 className="leading-snug">
-                                <span className="text-base font-bold tracking-tight whitespace-nowrap">
+                <div className="h-14 border-b border-white/5 flex items-center px-4">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <img src={logo} alt="ZeroGap logo" className="w-8 h-8 flex-shrink-0 object-contain" />
+                        <div className="flex items-center justify-between gap-3 min-w-0 flex-1">
+                            <div>
+                                <p className="text-sm font-bold tracking-tight leading-none whitespace-nowrap">
                                     <span className="text-white">Zero</span><span style={{ color: 'var(--brand-red)' }}>Gap</span>
-                                </span>
-                                <br />
-                                <span className="text-[11px] text-gray-400 font-normal tracking-wide whitespace-nowrap">GRC audit platform</span>
-                            </h1>
-                            <div className="flex items-center gap-1.5 mt-1">
-                                <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider border border-gray-600 rounded px-1 py-px">DNSSI</span>
-                                <span className="text-[9px] text-gray-600">·</span>
-                                <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider border border-gray-600 rounded px-1 py-px">ISO 27001</span>
+                                </p>
+                                <p className="text-[9px] text-gray-500 mt-1 whitespace-nowrap">GRC platform</p>
+                            </div>
+                            <div className="flex flex-col items-end gap-0.5">
+                                <span className="text-[7px] font-semibold text-gray-600 border border-gray-700 rounded px-1 py-px whitespace-nowrap">DNSSI</span>
+                                <span className="text-[7px] font-semibold text-gray-600 border border-gray-700 rounded px-1 py-px whitespace-nowrap">ISO 27001</span>
                             </div>
                         </div>
                     </div>
-                    <button onClick={() => setCollapsed(c => !c)}
-                        className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
-                        title="Réduire la barre">
-                        {icons.collapseLeft}
-                    </button>
                 </div>
             )}
 
