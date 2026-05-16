@@ -590,6 +590,7 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
         autoTable(doc, {
             startY: y,
             showHead: 'everyPage',
+            rowPageBreak: 'avoid',
             head: [['Code', 'Mesure / Exigence', 'Conformité', 'Mat.', 'Constat', 'Recommandation']],
             body: evs.map(ev => {
                 const inf = mesureMap[ev.mesure_id];

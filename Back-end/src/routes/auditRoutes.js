@@ -580,6 +580,30 @@ router.put('/:id/validation-planning/soumettre', verifyToken, verifyRole('admin'
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.put('/:id/validation-planning/repondre',  verifyToken, repondreValidationPlanning);
+
+/**
+ * @swagger
+ * /api/audits/{id}/validation-planning/annuler:
+ *   put:
+ *     summary: Annuler la soumission du planning (admin / senior)
+ *     description: Remet la validation planning à null, permettant de resoumettre le planning au client.
+ *     tags: [Validation client]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Validation planning annulée
+ *       404:
+ *         description: Audit introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put('/:id/validation-planning/annuler',   verifyToken, verifyRole('admin', 'auditeur_senior'), annulerValidationPlanning);
 
 /**
@@ -640,6 +664,30 @@ router.put('/:id/validation-rapport/soumettre',  verifyToken, verifyRole('admin'
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.put('/:id/validation-rapport/repondre',   verifyToken, repondreValidationRapport);
+
+/**
+ * @swagger
+ * /api/audits/{id}/validation-rapport/annuler:
+ *   put:
+ *     summary: Annuler la soumission du rapport final (admin / senior)
+ *     description: Remet la validation rapport à null, permettant de resoumettre le rapport au client.
+ *     tags: [Validation client]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Validation rapport annulée
+ *       404:
+ *         description: Audit introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put('/:id/validation-rapport/annuler',    verifyToken, verifyRole('admin', 'auditeur_senior'), annulerValidationRapport);
 
 // ─── Documents ───────────────────────────────────────────────────────────────
