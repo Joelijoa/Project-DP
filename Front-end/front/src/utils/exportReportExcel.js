@@ -965,7 +965,10 @@ export async function exportAuditReportExcel({ audit, evaluations, planActions, 
     const blob   = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url    = URL.createObjectURL(blob);
     const a      = document.createElement('a');
-    a.href = url; a.download = `rapport-audit-${(audit.nom||'audit').toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${new Date().getFullYear()}.xlsx`;
+    const now2 = new Date();
+    const dateStr2 = `${String(now2.getDate()).padStart(2,'0')}-${String(now2.getMonth()+1).padStart(2,'0')}-${now2.getFullYear()}`;
+    const nomStr2  = (audit.nom || 'audit').replace(/[\\/:*?"<>|]/g, ' ').trim();
+    a.href = url; a.download = `${nomStr2} - ${dateStr2}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
 }

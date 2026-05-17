@@ -978,5 +978,8 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
     // Sommaire final
     renderTOC(doc, logo, tocSections, TOC_PAGE);
 
-    doc.save(`rapport-audit-${(audit.nom || 'audit').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${year}.pdf`);
+    const now = new Date();
+    const dateStr = `${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${now.getFullYear()}`;
+    const nomStr  = (audit.nom || 'audit').replace(/[\\/:*?"<>|]/g, ' ').trim();
+    doc.save(`${nomStr} - ${dateStr}.pdf`);
 }
