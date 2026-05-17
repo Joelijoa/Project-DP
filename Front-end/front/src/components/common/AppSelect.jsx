@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from 'react';
  *   placeholder: texte si aucune valeur (défaut: 'Sélectionner…')
  *   className  : classes additionnelles sur le trigger
  */
-const AppSelect = ({ value, onChange, options = [], placeholder = 'Sélectionner…', className = '', disabled = false }) => {
+const AppSelect = ({ value, onChange, options = [], placeholder = 'Sélectionner…', className = '', disabled = false, align = 'left' }) => {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
@@ -48,7 +48,7 @@ const AppSelect = ({ value, onChange, options = [], placeholder = 'Sélectionner
             </button>
 
             {open && (
-                <div className="absolute z-50 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden py-1 min-w-max">
+                <div className={`absolute z-50 mt-1 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden py-1 min-w-full w-max max-w-sm ${align === 'right' ? 'right-0' : 'left-0'}`}>
                     {options.map(opt => {
                         const isActive = String(opt.value) === String(value);
                         return (

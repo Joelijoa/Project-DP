@@ -66,15 +66,21 @@ const getAuditById = async (req, res) => {
 // POST /api/audits
 const createAudit = async (req, res) => {
     try {
-        const { nom, client, perimetre, date_debut, date_fin, referentiel_id, auditeurs_ids, identification } = req.body;
+        const { nom, client, entite_id, perimetre, date_debut, date_fin, referentiel_id, auditeurs_ids, identification } = req.body;
         if (!nom || !client || !referentiel_id) {
             return res.status(400).json({ message: 'nom, client et referentiel_id sont requis' });
         }
-        // Auto-create or find entity from client name
-        const [entite, created] = await Entite.findOrCreate({
-            where: { nom: client.trim() },
-            defaults: { nom: client.trim() },
-        });
+        // Use provided entite_id directly, or find/create by name
+        let entite, created = false;
+        if (entite_id) {
+            entite = await Entite.findByPk(entite_id);
+            if (!entite) return res.status(400).json({ message: 'Entité introuvable' });
+        } else {
+            [entite, created] = await Entite.findOrCreate({
+                where: { nom: client.trim() },
+                defaults: { nom: client.trim() },
+            });
+        }
         const audit = await Audit.create({
             nom,
             client,

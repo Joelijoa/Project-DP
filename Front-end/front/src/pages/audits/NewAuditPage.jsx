@@ -3,17 +3,21 @@ import { useNavigate, Link } from 'react-router-dom';
 import { createAudit } from '../../services/endpoints/auditService';
 import { getAllReferentiels } from '../../services/endpoints/referentielService';
 import { getAllUsers } from '../../services/endpoints/userService';
+import { getAllEntites } from '../../services/endpoints/entiteService';
 import { toast } from 'react-toastify';
 import AppSelect from '../../components/common/AppSelect';
+import EntityCombobox from '../../components/common/EntityCombobox';
 
 const NewAuditPage = () => {
     const navigate = useNavigate();
     const [loading, setLoading]           = useState(false);
     const [referentiels, setReferentiels] = useState([]);
     const [users, setUsers]               = useState([]);
+    const [entites, setEntites]           = useState([]);
     const [form, setForm] = useState({
         nom:            '',
         client:         '',
+        entite_id:      null,
         perimetre:      '',
         referentiel_id: '',
         date_debut:     '',
@@ -23,10 +27,11 @@ const NewAuditPage = () => {
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
-        Promise.all([getAllReferentiels(), getAllUsers()])
-            .then(([refRes, usersRes]) => {
+        Promise.all([getAllReferentiels(), getAllUsers(), getAllEntites()])
+            .then(([refRes, usersRes, entitesRes]) => {
                 setReferentiels(refRes.data.referentiels || []);
                 setUsers((usersRes.data.users || []).filter(u => u.actif && u.role !== 'client'));
+                setEntites(entitesRes.data.entites || []);
             })
             .catch(() => toast.error('Erreur lors du chargement des données'));
     }, []);
@@ -64,6 +69,7 @@ const NewAuditPage = () => {
             const res = await createAudit({
                 nom:            form.nom.trim(),
                 client:         form.client.trim(),
+                entite_id:      form.entite_id || undefined,
                 perimetre:      form.perimetre.trim() || null,
                 referentiel_id: parseInt(form.referentiel_id),
                 date_debut:     form.date_debut || null,
@@ -149,10 +155,15 @@ const NewAuditPage = () => {
                                         <label className="block text-xs font-medium text-gray-600 mb-1.5">
                                             Entité / Client audité <span className="text-red-500">*</span>
                                         </label>
-                                        <input type="text" value={form.client} onChange={e => set('client', e.target.value)}
-                                            placeholder="Ex : Ministère des Finances"
-                                            className={inputCls('client')}
-                                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                                        <EntityCombobox
+                                            value={form.client}
+                                            entities={entites}
+                                            error={errors.client}
+                                            onChange={({ nom, id }) => {
+                                                setForm(prev => ({ ...prev, client: nom, entite_id: id }));
+                                                if (errors.client) setErrors(prev => ({ ...prev, client: '' }));
+                                            }}
+                                        />
                                         {errors.client && <p className="mt-1 text-xs text-red-500">{errors.client}</p>}
                                     </div>
                                     <div>

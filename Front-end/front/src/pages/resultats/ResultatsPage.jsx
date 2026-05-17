@@ -99,6 +99,7 @@ const ResultatsPage = () => {
                         onChange={v => setSelectedId(v)}
                         options={auditOptions}
                         disabled={loadingList}
+                        align="right"
                         className="w-64"
                     />
                 </div>
