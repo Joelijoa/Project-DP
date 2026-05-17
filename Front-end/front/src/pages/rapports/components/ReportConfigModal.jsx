@@ -1,26 +1,42 @@
 import { useState } from 'react';
 
-const SECTIONS = [
-    { key: 'introduction',    label: 'Introduction',                      desc: "Contexte, périmètre, méthodologie, équipe d'audit" },
-    { key: 'resume',          label: 'Résumé exécutif',                   desc: 'KPIs, graphiques de conformité, résultats par domaine' },
-    { key: 'terminologie',    label: 'Terminologie et définitions',       desc: 'Glossaire des termes utilisés dans le rapport' },
-    { key: 'planAudit',       label: "Plan d'audit",                      desc: 'Informations générales et domaines couverts' },
-    { key: 'faitsConstates',  label: 'Faits constatés',                   desc: 'Détail des évaluations mesure par mesure' },
-    { key: 'recommandations', label: "Recommandations & Plans d'actions", desc: 'Mesures correctives classées par priorité' },
-    { key: 'soa',             label: 'Annexe A — SoA',                    desc: "Déclaration d'applicabilité complète" },
+const DNSSI_SECTIONS = [
+    { key: 'introduction',           label: 'Introduction',                      desc: "Contexte, périmètre, méthodologie, équipe d'audit" },
+    { key: 'resume',                 label: 'Résumé exécutif',                   desc: 'KPIs et graphiques de conformité globaux' },
+    { key: 'contexteReglementaire',  label: 'Contexte réglementaire',            desc: 'Cadre DNSSI, textes de référence, obligations' },
+    { key: 'planAudit',              label: "Plan d'audit",                      desc: 'Informations générales et domaines couverts' },
+    { key: 'faitsConstates',         label: 'Faits constatés',                   desc: 'Évaluations détaillées mesure par mesure' },
+    { key: 'tableauDeBord',          label: 'Tableau de bord par thème',         desc: 'Scores et maturité par domaine DNSSI' },
+    { key: 'recommandations',        label: "Recommandations & Plans d'actions", desc: 'Mesures correctives classées par priorité' },
+    { key: 'conclusion',             label: 'Conclusion & Prochaines étapes',    desc: 'Synthèse finale et feuille de route' },
 ];
 
-export const DEFAULT_REPORT_OPTIONS = Object.fromEntries(SECTIONS.map(s => [s.key, true]));
+const ISO_SECTIONS = [
+    { key: 'introduction',    label: 'Introduction',                      desc: "Contexte, périmètre, méthodologie, équipe d'audit" },
+    { key: 'resume',          label: 'Résumé exécutif',                   desc: 'KPIs et graphiques de conformité globaux' },
+    { key: 'terminologie',    label: 'Terminologie et définitions',       desc: 'Glossaire des termes utilisés dans le rapport' },
+    { key: 'planAudit',       label: "Plan d'audit",                      desc: 'Informations générales et domaines couverts' },
+    { key: 'faitsConstates',  label: 'Faits constatés',                   desc: 'Évaluations détaillées mesure par mesure' },
+    { key: 'recommandations', label: "Recommandations & Plans d'actions", desc: 'Mesures correctives classées par priorité' },
+    { key: 'soa',             label: 'Annexe A — SoA',                    desc: "Déclaration d'applicabilité complète (clause 6.1.3)" },
+];
+
+function getRefType(referentiel) {
+    const type = (referentiel?.type || '').toUpperCase();
+    const nom  = (referentiel?.nom  || '').toLowerCase();
+    if (type === 'DNSSI' || nom.includes('dnssi') || nom.includes('directive nationale')) return 'dnssi';
+    return 'iso27001';
+}
 
 const ReportConfigModal = ({ audit, onConfirm, onClose }) => {
-    const [options, setOptions] = useState({ ...DEFAULT_REPORT_OPTIONS });
+    const refType  = getRefType(audit?.referentiel);
+    const sections = refType === 'dnssi' ? DNSSI_SECTIONS : ISO_SECTIONS;
+
+    const [options, setOptions] = useState(Object.fromEntries(sections.map(s => [s.key, true])));
 
     const toggle = key => setOptions(prev => ({ ...prev, [key]: !prev[key] }));
-    const allChecked = SECTIONS.every(s => options[s.key]);
-    const toggleAll = () => {
-        const val = !allChecked;
-        setOptions(Object.fromEntries(SECTIONS.map(s => [s.key, val])));
-    };
+    const allChecked = sections.every(s => options[s.key]);
+    const toggleAll  = () => setOptions(Object.fromEntries(sections.map(s => [s.key, !allChecked])));
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -32,7 +48,12 @@ const ReportConfigModal = ({ audit, onConfirm, onClose }) => {
                 <div className="px-6 pt-5 pb-4 border-b border-gray-100 flex items-start justify-between">
                     <div>
                         <h2 className="text-sm font-bold text-gray-900">Configurer le rapport PDF</h2>
-                        <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[280px]">{audit.nom}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-xs text-gray-400 truncate max-w-[220px]">{audit.nom}</p>
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${refType === 'dnssi' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
+                                {refType === 'dnssi' ? 'DNSSI' : 'ISO 27001'}
+                            </span>
+                        </div>
                     </div>
                     <button onClick={onClose}
                         className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition flex-shrink-0">
@@ -74,8 +95,8 @@ const ReportConfigModal = ({ audit, onConfirm, onClose }) => {
                                 {allChecked ? 'Tout décocher' : 'Tout cocher'}
                             </button>
                         </div>
-                        <div className="space-y-0.5">
-                            {SECTIONS.map(s => (
+                        <div className="space-y-0.5 max-h-64 overflow-y-auto pr-1">
+                            {sections.map(s => (
                                 <div key={s.key} onClick={() => toggle(s.key)}
                                     className="flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors select-none">
                                     <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${options[s.key] ? 'border-transparent' : 'border-gray-300 bg-white'}`}

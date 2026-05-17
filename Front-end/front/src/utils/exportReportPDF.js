@@ -28,8 +28,6 @@ const PHASE = {
     cadrage: 'Cadrage', prerequis: 'Prérequis',
     revue_documentaire: 'Revue documentaire', realisation: 'Réalisation', termine: 'Terminé',
 };
-const STATUT      = { brouillon: 'Brouillon', en_cours: 'En cours', termine: 'Terminé', archive: 'Archivé' };
-const MATURITE    = ['Aucun (0)', 'Initial (1)', 'Reproductible (2)', 'Défini (3)', 'Maîtrisé (4)', 'Optimisé (5)'];
 const PRIORITE    = { haute: 'Haute', moyenne: 'Moyenne', basse: 'Basse' };
 const STATUT_PLAN = { a_faire: 'À faire', en_cours: 'En cours', cloture: 'Clôturé' };
 const STATUT_SOA  = { non_implemente: 'Non implémenté', planifie: 'Planifié', partiel: 'Partiel', implemente: 'Implémenté' };
@@ -37,6 +35,14 @@ const STATUT_SOA  = { non_implemente: 'Non implémenté', planifie: 'Planifié',
 const CONF_KEYS   = ['conforme', 'partiel', 'nc_mineure', 'nc_majeure', 'non_conforme', 'na'];
 const CONF_LABELS = ['Conforme', 'Partiellement conf.', 'NC Mineure', 'NC Majeure', 'Non conforme', 'N/A'];
 const CONF_COLORS = ['#16a34a', '#ca8a04', '#ea580c', '#dc2626', '#991b1b', '#9ca3af'];
+
+// ─── DÉTECTION RÉFÉRENTIEL ────────────────────────────────────────────────────
+export function getReferentielType(referentiel) {
+    const type = (referentiel?.type || '').toUpperCase();
+    const nom  = (referentiel?.nom  || '').toLowerCase();
+    if (type === 'DNSSI' || nom.includes('dnssi') || nom.includes('directive nationale')) return 'dnssi';
+    return 'iso27001';
+}
 
 // ─── UTILITAIRES ──────────────────────────────────────────────────────────────
 function stripObjPrefix(text) {
@@ -180,7 +186,6 @@ function bodyText(doc, text, y, maxW) {
 // ─── PAGE DE COUVERTURE ───────────────────────────────────────────────────────
 function renderCover(doc, audit, logo, today) {
     const year = new Date().getFullYear();
-
     doc.setFillColor(...WHITE);
     doc.rect(0, 0, W, H, 'F');
 
@@ -195,36 +200,27 @@ function renderCover(doc, audit, logo, today) {
     doc.line(M, M + 16, W - M, M + 16);
 
     const titleY = 80;
-
-    doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...GRAY);
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...GRAY);
     doc.text('RAPPORT D\'AUDIT DE SÉCURITÉ', M, titleY);
-
     doc.setFillColor(...RED);
     doc.rect(M, titleY + 3.5, 18, 1.2, 'F');
 
     const nomLines = doc.splitTextToSize(audit.nom || 'Rapport d\'Audit', W - 2 * M);
-    doc.setFontSize(26); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...NAVY2);
+    doc.setFontSize(26); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY2);
     doc.text(nomLines.slice(0, 3), M, titleY + 16);
     const afterTitle = titleY + 16 + Math.min(nomLines.length, 3) * 11;
 
     if (audit.client) {
-        doc.setFontSize(13); doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...NAVY3);
+        doc.setFontSize(13); doc.setFont('helvetica', 'normal'); doc.setTextColor(...NAVY3);
         doc.text(audit.client, M, afterTitle + 10);
     }
-
     const meta = [audit.referentiel?.nom, today].filter(Boolean).join('  ·  ');
-    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...GRAY);
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
     doc.text(meta, M, afterTitle + 20);
 
     const barY = H - 52;
-    doc.setFillColor(...LIGHT2);
-    doc.rect(0, barY, W, 52, 'F');
-    doc.setFillColor(...RED);
-    doc.rect(0, barY, W, 2, 'F');
+    doc.setFillColor(...LIGHT2); doc.rect(0, barY, W, 52, 'F');
+    doc.setFillColor(...RED);   doc.rect(0, barY, W, 2, 'F');
 
     const auditeurs = audit.auditeurs?.map(a => `${a.prenom} ${a.nom}`).join(', ') || '—';
     const periode   = audit.date_debut ? new Date(audit.date_debut).toLocaleDateString('fr-FR') : today;
@@ -246,8 +242,7 @@ function renderCover(doc, audit, logo, today) {
         doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
         doc.text(label.toUpperCase(), x, infoY);
         doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY2);
-        const v = doc.splitTextToSize(value, colW - 5);
-        doc.text(v.slice(0, 2), x, infoY + 8);
+        doc.text(doc.splitTextToSize(value, colW - 5).slice(0, 2), x, infoY + 8);
     });
 
     doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
@@ -282,7 +277,7 @@ function renderTOC(doc, logo, sections, tocPage) {
         doc.text(String(s.page), W - M, y, { align: 'right' });
 
         const startX = tx + doc.getTextWidth(s.title) + 3;
-        const endX = W - M - doc.getTextWidth(String(s.page)) - 3;
+        const endX   = W - M - doc.getTextWidth(String(s.page)) - 3;
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...BDR);
         for (let px = startX; px < endX; px += 2.5) doc.text('.', px, y);
 
@@ -290,7 +285,8 @@ function renderTOC(doc, logo, sections, tocPage) {
     }
 }
 
-// ─── INTRODUCTION ─────────────────────────────────────────────────────────────
+// ─── SECTIONS COMMUNES ────────────────────────────────────────────────────────
+
 function renderIntroduction(doc, audit, logo, num) {
     const hdr = `${num}. Introduction`;
     drawHeader(doc, logo, hdr);
@@ -298,10 +294,10 @@ function renderIntroduction(doc, audit, logo, num) {
     y = sectionTitle(doc, num, 'Introduction', y);
 
     y = subTitle(doc, `${num}.1  Contexte et objectifs`, y);
-    y = bodyText(doc, `Le présent document constitue le rapport d'audit de sécurité des systèmes d'information conduit auprès de ${audit.client || 'l\'entité auditée'}. Cet audit a été réalisé conformément au référentiel ${audit.referentiel?.nom || 'applicable'} dans le cadre d'une démarche d'évaluation et d'amélioration continue de la posture de sécurité.\n\nL'objectif est d'évaluer le niveau de conformité des mesures en place, d'identifier les écarts et risques associés, et de formuler des recommandations adaptées.`, y);
+    y = bodyText(doc, `Le présent document constitue le rapport d'audit de sécurité des systèmes d'information conduit auprès de ${audit.client || "l'entité auditée"}. Cet audit a été réalisé conformément au référentiel ${audit.referentiel?.nom || 'applicable'} dans le cadre d'une démarche d'évaluation et d'amélioration continue de la posture de sécurité.\n\nL'objectif est d'évaluer le niveau de conformité des mesures en place, d'identifier les écarts et risques associés, et de formuler des recommandations adaptées.`, y);
 
     y = subTitle(doc, `${num}.2  Périmètre d'audit`, y);
-    y = bodyText(doc, audit.perimetre || 'Le périmètre n\'a pas été formellement défini.', y);
+    y = bodyText(doc, audit.perimetre || "Le périmètre n'a pas été formellement défini.", y);
 
     y = subTitle(doc, `${num}.3  Normes de référence`, y);
     y = bodyText(doc, `Référentiel : ${audit.referentiel?.nom || '—'}${audit.referentiel?.type ? `  ·  Type : ${audit.referentiel.type}` : ''}`, y);
@@ -325,7 +321,6 @@ function renderIntroduction(doc, audit, logo, num) {
     }
 }
 
-// ─── RÉSUMÉ EXÉCUTIF ──────────────────────────────────────────────────────────
 async function renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num) {
     const hdr = `${num}. Résumé exécutif`;
     drawHeader(doc, logo, hdr);
@@ -333,13 +328,13 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
     y = sectionTitle(doc, num, 'Résumé exécutif', y);
 
     const ncMaj = stats.counts.nc_majeure;
-    y = bodyText(doc, `L'audit « ${audit.nom} » a permis d'évaluer ${stats.total} mesure(s). Le taux de conformité global s'établit à ${stats.tauxConformite} %. ${ncMaj > 0 ? `${ncMaj} non-conformité(s) majeure(s) requièrent une attention immédiate.` : 'Aucune non-conformité majeure n\'a été identifiée.'} ${planActions.length} plan(s) d'action ont été définis.`, y);
+    y = bodyText(doc, `L'audit « ${audit.nom} » a permis d'évaluer ${stats.total} mesure(s). Le taux de conformité global s'établit à ${stats.tauxConformite} %. ${ncMaj > 0 ? `${ncMaj} non-conformité(s) majeure(s) requièrent une attention immédiate.` : "Aucune non-conformité majeure n'a été identifiée."} ${planActions.length} plan(s) d'action ont été définis.`, y);
 
     const kpis = [
         { val: stats.total,                label: 'Mesures évaluées',   bg: NAVY },
         { val: `${stats.tauxConformite}%`, label: 'Taux de conformité', bg: [22, 163, 74] },
         { val: stats.counts.nc_majeure,    label: 'NC Majeures',        bg: [220, 38, 38] },
-        { val: planActions.length,         label: 'Plans d\'actions',   bg: RED },
+        { val: planActions.length,         label: "Plans d'actions",    bg: RED },
     ];
     const kW = (CW - 9) / 4;
     kpis.forEach((k, i) => {
@@ -355,9 +350,7 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
     const [donutPNG, barPNG] = await Promise.all([
         chartToPNG({
             type: 'doughnut',
-            data: {
-                datasets: [{ data: [stats.tauxConformite, 100 - stats.tauxConformite], backgroundColor: ['#16a34a', '#e5e7eb'], borderWidth: 0 }],
-            },
+            data: { datasets: [{ data: [stats.tauxConformite, 100 - stats.tauxConformite], backgroundColor: ['#16a34a', '#e5e7eb'], borderWidth: 0 }] },
             options: { cutout: '74%', plugins: { legend: { display: false }, tooltip: { enabled: false } } },
         }, 260, 260),
         chartToPNG({
@@ -373,7 +366,6 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
                     x: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 11 }, color: '#6b7280' }, beginAtZero: true },
                     y: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' }, color: '#1e293b' } },
                 },
-                layout: { padding: { right: 10 } },
             },
         }, 580, 310),
     ]);
@@ -388,7 +380,7 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
     y += Math.max(donutMM, barH) + 8;
 
     doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
-    doc.text(`Maturité moyenne : `, M, y);
+    doc.text('Maturité moyenne : ', M, y);
     doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY);
     doc.text(`${stats.maturiteMoyenne} / 5`, M + 38, y);
     y += 9;
@@ -399,18 +391,11 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
         const domRows = doms.map(d => {
             const ids = new Set();
             for (const o of d.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
-            const evs = evaluations.filter(e => ids.has(e.mesure_id));
+            const evs   = evaluations.filter(e => ids.has(e.mesure_id));
             const conf  = evs.filter(e => e.conformite === 'conforme').length;
             const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
             const ncMin = evs.filter(e => e.conformite === 'nc_mineure').length;
-            return [
-                d.nom || d.code || '',
-                String(evs.length),
-                String(conf),
-                String(ncMin),
-                String(ncMaj),
-                evs.length ? `${Math.round(conf / evs.length * 100)} %` : '—',
-            ];
+            return [d.nom || d.code || '', String(evs.length), String(conf), String(ncMin), String(ncMaj), evs.length ? `${Math.round(conf / evs.length * 100)} %` : '—'];
         });
         autoTable(doc, {
             startY: y,
@@ -436,39 +421,6 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
     }
 }
 
-// ─── TERMINOLOGIE ─────────────────────────────────────────────────────────────
-function renderTerminologie(doc, logo, num) {
-    const hdr = `${num}. Terminologie`;
-    drawHeader(doc, logo, hdr);
-    let y = 32;
-    y = sectionTitle(doc, num, 'Terminologie et définitions', y);
-    autoTable(doc, {
-        startY: y,
-        head: [['Terme', 'Définition']],
-        body: [
-            ['Audit de sécurité', 'Évaluation systématique des mesures de sécurité d\'un SI par rapport à un référentiel défini.'],
-            ['Conformité', 'État d\'un contrôle satisfaisant pleinement les exigences du référentiel.'],
-            ['NC Mineure', 'Non-conformité à impact limité, ne compromettant pas significativement la sécurité. Correction planifiée requise.'],
-            ['NC Majeure', 'Non-conformité critique présentant un risque élevé. Action corrective urgente requise.'],
-            ['Partiellement conforme', 'Contrôle partiellement mis en œuvre, avec des lacunes identifiées à corriger.'],
-            ['N/A (Non Applicable)', 'Mesure ne s\'appliquant pas au contexte de l\'entité auditée.'],
-            ['Niveau de maturité', 'Indicateur de 0 à 5 mesurant le degré d\'implémentation d\'une mesure (0 = Aucun, 5 = Optimisé).'],
-            ['Plan d\'action', 'Ensemble de mesures correctives pour remédier à une non-conformité identifiée.'],
-            ['SoA', 'Déclaration d\'Applicabilité — liste des mesures et leur applicabilité à l\'entité auditée.'],
-            ['Périmètre d\'audit', 'Ensemble des systèmes, processus et ressources inclus dans le champ de l\'audit.'],
-            ['Constat', 'Observation factuelle résultant des travaux d\'audit sur une mesure évaluée.'],
-            ['Recommandation', 'Mesure corrective ou préventive proposée pour améliorer la posture de sécurité.'],
-        ],
-        styles: { fontSize: 8.5, cellPadding: 4, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
-        headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', cellPadding: 4 },
-        alternateRowStyles: { fillColor: LIGHT },
-        columnStyles: { 0: { cellWidth: 46, fontStyle: 'bold', textColor: NAVY }, 1: { cellWidth: 124 } },
-        margin: { left: M, right: M, top: 28 },
-        didDrawPage: () => drawHeader(doc, logo, hdr),
-    });
-}
-
-// ─── PLAN D'AUDIT ─────────────────────────────────────────────────────────────
 function renderPlanAudit(doc, audit, referentiel, logo, num) {
     const hdr = `${num}. Plan d'audit`;
     drawHeader(doc, logo, hdr);
@@ -515,7 +467,6 @@ function renderPlanAudit(doc, audit, referentiel, logo, num) {
     }
 }
 
-// ─── FAITS CONSTATÉS ──────────────────────────────────────────────────────────
 function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num) {
     const hdr = `${num}. Faits constatés`;
     drawHeader(doc, logo, hdr);
@@ -543,15 +494,11 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
         const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
         const ncMin = evs.filter(e => e.conformite === 'nc_mineure').length;
 
-        doc.setFillColor(...RED);
-        doc.rect(M, y, 2, 12, 'F');
+        doc.setFillColor(...RED); doc.rect(M, y, 2, 12, 'F');
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY2);
         doc.text(domaine.nom || domaine.code || '', M + 6, y + 8.5);
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
-        doc.text(
-            `${evs.length} mesures  ·  Conformes : ${conf}  ·  NC Min. : ${ncMin}  ·  NC Maj. : ${ncMaj}`,
-            W - M, y + 8.5, { align: 'right' }
-        );
+        doc.text(`${evs.length} mesures  ·  Conformes : ${conf}  ·  NC Min. : ${ncMin}  ·  NC Maj. : ${ncMaj}`, W - M, y + 8.5, { align: 'right' });
         doc.setDrawColor(...RED); doc.setLineWidth(0.4);
         doc.line(M, y + 12, W - M, y + 12);
         doc.setLineWidth(0.25);
@@ -565,22 +512,12 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
             body: evs.map(ev => {
                 const inf = mesureMap[ev.mesure_id];
                 const mat = ev.niveau_maturite != null && ev.niveau_maturite >= 0 ? `${ev.niveau_maturite}/5` : 'N/A';
-                return [
-                    inf?.mesure?.code || `M${ev.mesure_id}`,
-                    inf?.mesure?.description || '—',
-                    CONFORMITE[ev.conformite] || ev.conformite,
-                    mat,
-                    ev.commentaire || '—',
-                    ev.recommandation || '—',
-                ];
+                return [inf?.mesure?.code || `M${ev.mesure_id}`, inf?.mesure?.description || '—', CONFORMITE[ev.conformite] || ev.conformite, mat, ev.commentaire || '—', ev.recommandation || '—'];
             }),
             styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
             headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', fontSize: 8, cellPadding: 4 },
             alternateRowStyles: { fillColor: LIGHT },
-            columnStyles: {
-                0: { cellWidth: 22 }, 1: { cellWidth: 32 }, 2: { cellWidth: 26 },
-                3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 39 }, 5: { cellWidth: 39 },
-            },
+            columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 32 }, 2: { cellWidth: 26 }, 3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 39 }, 5: { cellWidth: 39 } },
             margin: { left: M, right: M, top: 26, bottom: 16 },
             didParseCell: d => {
                 if (d.section === 'body' && d.column.index === 2) {
@@ -591,14 +528,11 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
                     else if (v === 'Partiellement conforme') d.cell.styles.textColor = [161, 98, 7];
                 }
             },
-            didDrawPage: d => {
-                if (d.pageNumber > 1) drawHeader(doc, logo, hdr);
-            },
+            didDrawPage: d => { if (d.pageNumber > 1) drawHeader(doc, logo, hdr); },
         });
     }
 }
 
-// ─── RECOMMANDATIONS ──────────────────────────────────────────────────────────
 function renderRecommandations(doc, planActions, mesureMap, logo, num) {
     const hdr = `${num}. Recommandations`;
     drawHeader(doc, logo, hdr);
@@ -630,23 +564,12 @@ function renderRecommandations(doc, planActions, mesureMap, logo, num) {
         head: [['Code', 'Description NC', 'Action corrective', 'Responsable', 'Délai', 'Priorité', 'Statut']],
         body: planActions.map(p => {
             const inf = mesureMap[p.mesure_id];
-            return [
-                inf?.mesure?.code || `M${p.mesure_id}`,
-                p.description_nc || '—',
-                p.action_corrective || '—',
-                p.responsable || '—',
-                p.delai ? new Date(p.delai).toLocaleDateString('fr-FR') : '—',
-                PRIORITE[p.priorite] || p.priorite || '—',
-                STATUT_PLAN[p.statut] || p.statut || '—',
-            ];
+            return [inf?.mesure?.code || `M${p.mesure_id}`, p.description_nc || '—', p.action_corrective || '—', p.responsable || '—', p.delai ? new Date(p.delai).toLocaleDateString('fr-FR') : '—', PRIORITE[p.priorite] || p.priorite || '—', STATUT_PLAN[p.statut] || p.statut || '—'];
         }),
         styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
         headStyles: { fillColor: RED, textColor: WHITE, fontStyle: 'bold', fontSize: 8 },
         alternateRowStyles: { fillColor: LIGHT },
-        columnStyles: {
-            0: { cellWidth: 14 }, 1: { cellWidth: 31 }, 2: { cellWidth: 38 },
-            3: { cellWidth: 24 }, 4: { cellWidth: 18 }, 5: { cellWidth: 18 }, 6: { cellWidth: 16 },
-        },
+        columnStyles: { 0: { cellWidth: 14 }, 1: { cellWidth: 31 }, 2: { cellWidth: 38 }, 3: { cellWidth: 24 }, 4: { cellWidth: 18 }, 5: { cellWidth: 18 }, 6: { cellWidth: 16 } },
         margin: { left: M, right: M, top: 28, bottom: 16 },
         didParseCell: d => {
             if (d.section === 'body' && d.column.index === 5) {
@@ -658,11 +581,42 @@ function renderRecommandations(doc, planActions, mesureMap, logo, num) {
     });
 }
 
-// ─── SOA ──────────────────────────────────────────────────────────────────────
+// ─── SECTIONS ISO 27001 ───────────────────────────────────────────────────────
+
+function renderTerminologie(doc, logo, num) {
+    const hdr = `${num}. Terminologie`;
+    drawHeader(doc, logo, hdr);
+    let y = 32;
+    y = sectionTitle(doc, num, 'Terminologie et définitions', y);
+    autoTable(doc, {
+        startY: y,
+        head: [['Terme', 'Définition']],
+        body: [
+            ['Audit de sécurité',    "Évaluation systématique des mesures de sécurité d'un SI par rapport à un référentiel défini."],
+            ['Conformité',           "État d'un contrôle satisfaisant pleinement les exigences du référentiel."],
+            ['NC Mineure',           "Non-conformité à impact limité, ne compromettant pas significativement la sécurité. Correction planifiée requise."],
+            ['NC Majeure',           "Non-conformité critique présentant un risque élevé. Action corrective urgente requise."],
+            ['Partiellement conforme','Contrôle partiellement mis en œuvre, avec des lacunes identifiées à corriger.'],
+            ['N/A (Non Applicable)', "Mesure ne s'appliquant pas au contexte de l'entité auditée."],
+            ['Niveau de maturité',   "Indicateur de 0 à 5 mesurant le degré d'implémentation d'une mesure (0 = Aucun, 5 = Optimisé)."],
+            ["Plan d'action",        "Ensemble de mesures correctives pour remédier à une non-conformité identifiée."],
+            ['SoA',                  "Déclaration d'Applicabilité — liste des mesures et leur applicabilité à l'entité auditée."],
+            ["Périmètre d'audit",    "Ensemble des systèmes, processus et ressources inclus dans le champ de l'audit."],
+            ['Constat',              "Observation factuelle résultant des travaux d'audit sur une mesure évaluée."],
+            ['Recommandation',       "Mesure corrective ou préventive proposée pour améliorer la posture de sécurité."],
+        ],
+        styles: { fontSize: 8.5, cellPadding: 4, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
+        headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', cellPadding: 4 },
+        alternateRowStyles: { fillColor: LIGHT },
+        columnStyles: { 0: { cellWidth: 46, fontStyle: 'bold', textColor: NAVY }, 1: { cellWidth: 124 } },
+        margin: { left: M, right: M, top: 28 },
+        didDrawPage: () => drawHeader(doc, logo, hdr),
+    });
+}
+
 function renderSoA(doc, soaEntries, mesureMap, logo) {
     drawHeader(doc, logo, 'Annexe A — SoA');
     let y = 32;
-
     doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
     doc.text("Annexe A — Déclaration d'Applicabilité (SoA)", M, y);
     doc.setFillColor(...RED); doc.rect(M, y + 4, 20, 1.5, 'F');
@@ -681,23 +635,12 @@ function renderSoA(doc, soaEntries, mesureMap, logo) {
             const justif = s.applicable === false
                 ? (s.justification_exclusion || '—')
                 : (Array.isArray(s.raisons_inclusion) && s.raisons_inclusion.length ? s.raisons_inclusion.join(', ') : '—');
-            return [
-                inf?.domaine?.code || '—',
-                inf?.mesure?.code || `M${s.mesure_id}`,
-                inf?.mesure?.description || '—',
-                s.applicable === true ? 'Oui' : s.applicable === false ? 'Non' : '—',
-                justif,
-                STATUT_SOA[s.statut_implementation] || s.statut_implementation || '—',
-                s.reference_document || '—',
-            ];
+            return [inf?.domaine?.code || '—', inf?.mesure?.code || `M${s.mesure_id}`, inf?.mesure?.description || '—', s.applicable === true ? 'Oui' : s.applicable === false ? 'Non' : '—', justif, STATUT_SOA[s.statut_implementation] || s.statut_implementation || '—', s.reference_document || '—'];
         }),
         styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
         headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: LIGHT },
-        columnStyles: {
-            0: { cellWidth: 14 }, 1: { cellWidth: 16 }, 2: { cellWidth: 42 },
-            3: { cellWidth: 14, halign: 'center' }, 4: { cellWidth: 38 }, 5: { cellWidth: 24 }, 6: { cellWidth: 22 },
-        },
+        columnStyles: { 0: { cellWidth: 14 }, 1: { cellWidth: 16 }, 2: { cellWidth: 42 }, 3: { cellWidth: 14, halign: 'center' }, 4: { cellWidth: 38 }, 5: { cellWidth: 24 }, 6: { cellWidth: 22 } },
         margin: { left: M, right: M, top: 28, bottom: 16 },
         didParseCell: d => {
             if (d.section === 'body' && d.column.index === 3) {
@@ -709,18 +652,199 @@ function renderSoA(doc, soaEntries, mesureMap, logo) {
     });
 }
 
+// ─── SECTIONS DNSSI ───────────────────────────────────────────────────────────
+
+function renderContexteReglementaire(doc, audit, logo, num) {
+    const hdr = `${num}. Contexte réglementaire`;
+    drawHeader(doc, logo, hdr);
+    let y = 32;
+    y = sectionTitle(doc, num, 'Contexte réglementaire', y);
+
+    y = subTitle(doc, `${num}.1  La DNSSI`, y);
+    y = bodyText(doc, `La Direction Nationale de la Sécurité des Systèmes d'Information (DNSSI) est l'autorité nationale compétente en matière de cybersécurité à Madagascar. Elle est chargée de définir et de coordonner la politique nationale de sécurité des systèmes d'information, d'accompagner les organismes dans leur démarche de conformité et d'assurer la protection des infrastructures critiques du pays.`, y);
+
+    y = subTitle(doc, `${num}.2  Cadre de l'audit`, y);
+    y = bodyText(doc, `Le présent audit de sécurité a été conduit conformément au référentiel ${audit.referentiel?.nom || 'DNSSI'}, applicable aux organismes publics et privés soumis aux exigences nationales de cybersécurité. L'entité auditée, ${audit.client || '—'}, entre dans le périmètre des organismes assujettis à ce cadre réglementaire.`, y);
+
+    y = subTitle(doc, `${num}.3  Textes de référence`, y);
+    autoTable(doc, {
+        startY: y,
+        head: [['Référence', 'Description']],
+        body: [
+            ['Référentiel DNSSI',          `Référentiel de sécurité des systèmes d'information — ${audit.referentiel?.nom || 'DNSSI'}`],
+            ['Politique nationale SSI',    "Politique Nationale de Sécurité des Systèmes d'Information de Madagascar"],
+            ['Loi sur la cybercriminalité','Loi n° 2014-006 relative à la lutte contre la cybercriminalité'],
+        ],
+        styles: { fontSize: 8.5, cellPadding: 4, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
+        headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', cellPadding: 4 },
+        alternateRowStyles: { fillColor: LIGHT },
+        columnStyles: { 0: { cellWidth: 54, fontStyle: 'bold', textColor: NAVY }, 1: { cellWidth: 116 } },
+        margin: { left: M, right: M, top: 28 },
+        didDrawPage: () => drawHeader(doc, logo, hdr),
+    });
+    y = doc.lastAutoTable.finalY + 10;
+
+    y = subTitle(doc, `${num}.4  Obligations de l'entité auditée`, y);
+    bodyText(doc, `Dans le cadre du référentiel DNSSI, l'entité auditée est tenue de :\n— Mettre en place les mesures de sécurité définies par le référentiel\n— Conduire des audits de sécurité périodiques\n— Remédier aux non-conformités identifiées dans les délais impartis\n— Soumettre les rapports d'audit à la DNSSI selon les modalités définies\n— Former et sensibiliser son personnel aux enjeux de cybersécurité`, y);
+}
+
+async function renderTableauDeBordTheme(doc, audit, evaluations, referentiel, logo, num) {
+    const hdr = `${num}. Tableau de bord`;
+    drawHeader(doc, logo, hdr);
+    let y = 32;
+    y = sectionTitle(doc, num, 'Tableau de bord par thème', y);
+    y = bodyText(doc, `Cette section présente une vue synthétique du niveau de conformité par domaine thématique du référentiel ${audit.referentiel?.nom || 'DNSSI'}. Elle permet d'identifier rapidement les domaines nécessitant une attention prioritaire.`, y);
+
+    const doms = sortedDomaines(referentiel);
+    const domStats = doms.map(d => {
+        const ids = new Set();
+        for (const o of d.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
+        const evs    = evaluations.filter(e => ids.has(e.mesure_id));
+        const conf   = evs.filter(e => e.conformite === 'conforme').length;
+        const ncMaj  = evs.filter(e => e.conformite === 'nc_majeure').length;
+        const ncMin  = evs.filter(e => e.conformite === 'nc_mineure').length;
+        const taux   = evs.length ? Math.round(conf / evs.length * 100) : 0;
+        const sumMat = evs.reduce((s, e) => s + (e.niveau_maturite ?? 0), 0);
+        const moy    = evs.length ? (sumMat / evs.length).toFixed(1) : 'N/A';
+        return { nom: d.nom || d.code || '', total: evs.length, conf, ncMin, ncMaj, taux, maturite: moy };
+    }).filter(d => d.total > 0);
+
+    if (domStats.length > 0) {
+        const nbDoms  = domStats.length;
+        const chartH  = Math.min(90, Math.max(40, nbDoms * 11));
+        const barPNG  = await chartToPNG({
+            type: 'bar',
+            data: {
+                labels: domStats.map(d => d.nom.length > 28 ? d.nom.slice(0, 26) + '…' : d.nom),
+                datasets: [{
+                    data: domStats.map(d => d.taux),
+                    backgroundColor: domStats.map(d => d.taux >= 80 ? '#16a34a' : d.taux >= 50 ? '#ca8a04' : '#dc2626'),
+                    borderRadius: 4, borderSkipped: false,
+                }],
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: {
+                    x: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 }, color: '#6b7280' }, beginAtZero: true, max: 100 },
+                    y: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#1e293b' } },
+                },
+            },
+        }, 620, Math.max(200, nbDoms * 38));
+
+        doc.addImage(barPNG, 'PNG', M, y, CW, chartH);
+        y += chartH + 6;
+
+        // Légende
+        const legendItems = [
+            { color: [22, 163, 74],  label: '≥ 80 % — Conforme' },
+            { color: [161, 98, 7],   label: '50–79 % — Partiel' },
+            { color: [220, 38, 38],  label: '< 50 % — Insuffisant' },
+        ];
+        let lx = M;
+        legendItems.forEach(({ color, label }) => {
+            doc.setFillColor(...color);
+            doc.roundedRect(lx, y, 3, 3, 0.5, 0.5, 'F');
+            doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
+            doc.text(label, lx + 5, y + 2.8);
+            lx += doc.getTextWidth(label) + 12;
+        });
+        y += 8;
+    }
+
+    y = subTitle(doc, `${num}.1  Détail par domaine`, y);
+    autoTable(doc, {
+        startY: y,
+        head: [['Domaine', 'Mesures', 'Conformes', 'NC Min.', 'NC Maj.', 'Taux', 'Maturité moy.']],
+        body: domStats.map(d => [d.nom, String(d.total), String(d.conf), String(d.ncMin), String(d.ncMaj), `${d.taux} %`, `${d.maturite} / 5`]),
+        styles: { fontSize: 8, cellPadding: 3.5, lineColor: BDR, lineWidth: 0.15 },
+        headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', cellPadding: 4 },
+        alternateRowStyles: { fillColor: LIGHT },
+        columnStyles: {
+            0: { cellWidth: 68 }, 1: { cellWidth: 18, halign: 'center' }, 2: { cellWidth: 20, halign: 'center' },
+            3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 16, halign: 'center' },
+            5: { cellWidth: 16, halign: 'center' }, 6: { cellWidth: 20, halign: 'center' },
+        },
+        margin: { left: M, right: M, top: 28 },
+        didParseCell: d => {
+            if (d.section === 'body') {
+                if (d.column.index === 4 && Number(d.cell.raw) > 0) { d.cell.styles.textColor = [220, 38, 38]; d.cell.styles.fontStyle = 'bold'; }
+                if (d.column.index === 3 && Number(d.cell.raw) > 0) d.cell.styles.textColor = [234, 88, 12];
+                if (d.column.index === 5) {
+                    const v = parseInt(d.cell.raw);
+                    d.cell.styles.fontStyle = 'bold';
+                    if (v >= 80)      d.cell.styles.textColor = [22, 163, 74];
+                    else if (v >= 50) d.cell.styles.textColor = [161, 98, 7];
+                    else              d.cell.styles.textColor = [220, 38, 38];
+                }
+            }
+        },
+        didDrawPage: () => drawHeader(doc, logo, hdr),
+    });
+}
+
+function renderConclusion(doc, audit, stats, planActions, logo, num) {
+    const hdr = `${num}. Conclusion`;
+    drawHeader(doc, logo, hdr);
+    let y = 32;
+    y = sectionTitle(doc, num, 'Conclusion et prochaines étapes', y);
+
+    // Bloc niveau global
+    const niveau      = stats.tauxConformite >= 80 ? 'SATISFAISANT' : stats.tauxConformite >= 50 ? 'PARTIEL' : 'INSUFFISANT';
+    const niveauColor = stats.tauxConformite >= 80 ? [22, 163, 74] : stats.tauxConformite >= 50 ? [161, 98, 7] : [220, 38, 38];
+    doc.setFillColor(...LIGHT2);
+    doc.roundedRect(M, y, CW, 18, 2, 2, 'F');
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
+    doc.text("Niveau de conformité global —", M + 6, y + 8);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...niveauColor);
+    doc.text(niveau, M + 68, y + 8);
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
+    doc.text(`${stats.tauxConformite} % de conformité  ·  Maturité : ${stats.maturiteMoyenne} / 5`, W - M - 4, y + 8, { align: 'right' });
+    // 2e ligne
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
+    doc.text(`NC Majeures : ${stats.counts.nc_majeure}  ·  NC Mineures : ${stats.counts.nc_mineure}  ·  Plans d'actions : ${planActions.length}`, M + 6, y + 14);
+    y += 24;
+
+    y = subTitle(doc, `${num}.1  Évaluation globale`, y);
+    y = bodyText(doc, `À l'issue de cet audit, le niveau de conformité de ${audit.client || "l'entité auditée"} au référentiel ${audit.referentiel?.nom || 'DNSSI'} est jugé ${niveau.toLowerCase()}. ${stats.counts.nc_majeure > 0 ? `${stats.counts.nc_majeure} non-conformité(s) majeure(s) requièrent une action corrective urgente.` : "Aucune non-conformité majeure n'a été identifiée, ce qui constitue un indicateur positif."}`, y);
+
+    y = subTitle(doc, `${num}.2  Points forts identifiés`, y);
+    y = bodyText(doc, `L'audit a permis d'identifier ${stats.counts.conforme} mesure(s) pleinement conforme(s) sur ${stats.total} évaluées, témoignant des efforts déjà déployés par l'entité en matière de sécurité des systèmes d'information.`, y);
+
+    y = subTitle(doc, `${num}.3  Axes d'amélioration prioritaires`, y);
+    y = bodyText(doc, `Les non-conformités identifiées (${stats.counts.nc_majeure} majeure(s), ${stats.counts.nc_mineure} mineure(s)) doivent faire l'objet d'un plan de remédiation structuré. Les domaines affichant les taux les plus faibles nécessitent une attention immédiate et des ressources dédiées.`, y);
+
+    y = subTitle(doc, `${num}.4  Prochaines étapes recommandées`, y);
+    autoTable(doc, {
+        startY: y,
+        head: [['Priorité', 'Action recommandée', 'Délai']],
+        body: [
+            ['1 — Immédiate',   `Remédier aux ${stats.counts.nc_majeure} NC majeure(s) identifiée(s)`,                                              '< 1 mois'],
+            ['2 — Court terme', `Mettre en œuvre les ${planActions.filter(p => p.priorite === 'haute').length} plan(s) d'action haute priorité`,     '1–3 mois'],
+            ['3 — Moyen terme', 'Traiter les NC mineures et améliorer le niveau de maturité global',                                                  '3–6 mois'],
+            ['4 — Long terme',  'Planifier le prochain audit de conformité DNSSI',                                                                    '12 mois'],
+        ],
+        styles: { fontSize: 8.5, cellPadding: 4, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
+        headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', cellPadding: 4 },
+        alternateRowStyles: { fillColor: LIGHT },
+        columnStyles: { 0: { cellWidth: 38, fontStyle: 'bold' }, 1: { cellWidth: 106 }, 2: { cellWidth: 30, halign: 'center' } },
+        margin: { left: M, right: M, top: 28 },
+        didParseCell: d => {
+            if (d.section === 'body' && d.column.index === 0) {
+                const v = String(d.cell.raw);
+                if (v.startsWith('1'))      d.cell.styles.textColor = [220, 38, 38];
+                else if (v.startsWith('2')) d.cell.styles.textColor = [234, 88, 12];
+                else if (v.startsWith('3')) d.cell.styles.textColor = [161, 98, 7];
+                else                        d.cell.styles.textColor = [22, 163, 74];
+            }
+        },
+        didDrawPage: () => drawHeader(doc, logo, hdr),
+    });
+}
+
 // ─── EXPORT PRINCIPAL ─────────────────────────────────────────────────────────
 export async function exportAuditReportPDF({ audit, evaluations, planActions, soaEntries, referentiel, logoDataprotectUrl, options = {} }) {
-    const {
-        introduction    = true,
-        resume          = true,
-        terminologie    = true,
-        planAudit       = true,
-        faitsConstates  = true,
-        recommandations = true,
-        soa             = true,
-    } = options;
-
+    const refType = getReferentielType(referentiel);
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     const logo      = logoDataprotectUrl ? await loadLogo(logoDataprotectUrl) : { b64: null, ar: 4 };
@@ -729,79 +853,129 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
     const mesureMap = buildMesureMap(referentiel);
     const stats     = buildStats(evaluations);
 
-    // ── Page de garde (toujours incluse)
+    // Page de garde (toujours)
     renderCover(doc, audit, logo, today);
 
-    // ── Sommaire placeholder (toujours inclus)
+    // Sommaire placeholder (toujours)
     doc.addPage();
     const TOC_PAGE = doc.internal.getNumberOfPages();
 
     const tocSections = [];
     let num = 0;
 
-    if (introduction) {
-        doc.addPage();
-        const page = doc.internal.getNumberOfPages();
-        num++;
-        renderIntroduction(doc, audit, logo, num);
-        tocSections.push({ title: `${num}. Introduction`, page });
+    const addPage = () => { doc.addPage(); return doc.internal.getNumberOfPages(); };
+
+    if (refType === 'dnssi') {
+        // ── FLUX DNSSI ───────────────────────────────────────────────────────
+        const o = {
+            introduction:          options.introduction          ?? true,
+            resume:                options.resume                ?? true,
+            contexteReglementaire: options.contexteReglementaire ?? true,
+            planAudit:             options.planAudit             ?? true,
+            faitsConstates:        options.faitsConstates        ?? true,
+            tableauDeBord:         options.tableauDeBord         ?? true,
+            recommandations:       options.recommandations        ?? true,
+            conclusion:            options.conclusion             ?? true,
+        };
+
+        if (o.introduction) {
+            const page = addPage(); num++;
+            renderIntroduction(doc, audit, logo, num);
+            tocSections.push({ title: `${num}. Introduction`, page });
+        }
+        if (o.resume) {
+            const page = addPage(); num++;
+            await renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num);
+            tocSections.push({ title: `${num}. Résumé exécutif`, page });
+        }
+        if (o.contexteReglementaire) {
+            const page = addPage(); num++;
+            renderContexteReglementaire(doc, audit, logo, num);
+            tocSections.push({ title: `${num}. Contexte réglementaire`, page });
+        }
+        if (o.planAudit) {
+            const page = addPage(); num++;
+            renderPlanAudit(doc, audit, referentiel, logo, num);
+            tocSections.push({ title: `${num}. Plan d'audit`, page });
+        }
+        if (o.faitsConstates) {
+            const page = addPage(); num++;
+            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num);
+            tocSections.push({ title: `${num}. Faits constatés`, page });
+        }
+        if (o.tableauDeBord) {
+            const page = addPage(); num++;
+            await renderTableauDeBordTheme(doc, audit, evaluations, referentiel, logo, num);
+            tocSections.push({ title: `${num}. Tableau de bord par thème`, page });
+        }
+        if (o.recommandations) {
+            const page = addPage(); num++;
+            renderRecommandations(doc, planActions, mesureMap, logo, num);
+            tocSections.push({ title: `${num}. Recommandations et plans d'actions`, page });
+        }
+        if (o.conclusion) {
+            const page = addPage(); num++;
+            renderConclusion(doc, audit, stats, planActions, logo, num);
+            tocSections.push({ title: `${num}. Conclusion et prochaines étapes`, page });
+        }
+
+    } else {
+        // ── FLUX ISO 27001 ───────────────────────────────────────────────────
+        const o = {
+            introduction:    options.introduction    ?? true,
+            resume:          options.resume          ?? true,
+            terminologie:    options.terminologie    ?? true,
+            planAudit:       options.planAudit       ?? true,
+            faitsConstates:  options.faitsConstates  ?? true,
+            recommandations: options.recommandations ?? true,
+            soa:             options.soa             ?? true,
+        };
+
+        if (o.introduction) {
+            const page = addPage(); num++;
+            renderIntroduction(doc, audit, logo, num);
+            tocSections.push({ title: `${num}. Introduction`, page });
+        }
+        if (o.resume) {
+            const page = addPage(); num++;
+            await renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num);
+            tocSections.push({ title: `${num}. Résumé exécutif`, page });
+        }
+        if (o.terminologie) {
+            const page = addPage(); num++;
+            renderTerminologie(doc, logo, num);
+            tocSections.push({ title: `${num}. Terminologie et définitions`, page });
+        }
+        if (o.planAudit) {
+            const page = addPage(); num++;
+            renderPlanAudit(doc, audit, referentiel, logo, num);
+            tocSections.push({ title: `${num}. Plan d'audit`, page });
+        }
+        if (o.faitsConstates) {
+            const page = addPage(); num++;
+            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num);
+            tocSections.push({ title: `${num}. Faits constatés`, page });
+        }
+        if (o.recommandations) {
+            const page = addPage(); num++;
+            renderRecommandations(doc, planActions, mesureMap, logo, num);
+            tocSections.push({ title: `${num}. Recommandations et plans d'actions`, page });
+        }
+        if (o.soa && soaEntries?.length > 0) {
+            const page = addPage();
+            renderSoA(doc, soaEntries, mesureMap, logo);
+            tocSections.push({ title: "Annexe A — Déclaration d'Applicabilité", page });
+        }
     }
 
-    if (resume) {
-        doc.addPage();
-        const page = doc.internal.getNumberOfPages();
-        num++;
-        await renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num);
-        tocSections.push({ title: `${num}. Résumé exécutif`, page });
-    }
-
-    if (terminologie) {
-        doc.addPage();
-        const page = doc.internal.getNumberOfPages();
-        num++;
-        renderTerminologie(doc, logo, num);
-        tocSections.push({ title: `${num}. Terminologie et définitions`, page });
-    }
-
-    if (planAudit) {
-        doc.addPage();
-        const page = doc.internal.getNumberOfPages();
-        num++;
-        renderPlanAudit(doc, audit, referentiel, logo, num);
-        tocSections.push({ title: `${num}. Plan d'audit`, page });
-    }
-
-    if (faitsConstates) {
-        doc.addPage();
-        const page = doc.internal.getNumberOfPages();
-        num++;
-        renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num);
-        tocSections.push({ title: `${num}. Faits constatés`, page });
-    }
-
-    if (recommandations) {
-        doc.addPage();
-        const page = doc.internal.getNumberOfPages();
-        num++;
-        renderRecommandations(doc, planActions, mesureMap, logo, num);
-        tocSections.push({ title: `${num}. Recommandations et plans d'actions`, page });
-    }
-
-    if (soa && soaEntries?.length > 0) {
-        doc.addPage();
-        const page = doc.internal.getNumberOfPages();
-        renderSoA(doc, soaEntries, mesureMap, logo);
-        tocSections.push({ title: "Annexe A — Déclaration d'Applicabilité", page });
-    }
-
-    // ── Footers sur toutes les pages (sauf couverture)
+    // Footers sur toutes les pages sauf couverture
     const totalPages = doc.internal.getNumberOfPages();
     for (let p = 2; p <= totalPages; p++) {
         doc.setPage(p);
         drawFooter(doc, p - 1, totalPages - 1);
     }
 
-    // ── Sommaire (retour page 2, numéros connus)
+    // Sommaire final
     renderTOC(doc, logo, tocSections, TOC_PAGE);
 
     doc.save(`rapport-audit-${(audit.nom || 'audit').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${year}.pdf`);
