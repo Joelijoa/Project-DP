@@ -7,6 +7,7 @@ import { exportAuditReportPDF } from '../../utils/exportReportPDF';
 import { exportAuditReportExcel } from '../../utils/exportReportExcel';
 import logoDataprotect from '../../assets/images/logoDataprotect.png';
 import AppSelect from '../../components/common/AppSelect';
+import ReportConfigModal from './components/ReportConfigModal';
 
 const STATUT_LABELS = {
     brouillon: 'Brouillon',
@@ -71,6 +72,7 @@ export default function RapportsPage() {
     const [search, setSearch] = useState('');
     const [filterPhase, setFilterPhase] = useState('');
     const [exporting, setExporting] = useState({});
+    const [configModal, setConfigModal] = useState({ open: false, audit: null });
 
     useEffect(() => {
         getAllAudits()
@@ -86,7 +88,7 @@ export default function RapportsPage() {
         return true;
     });
 
-    const handleExport = useCallback(async (audit, format) => {
+    const handleExport = useCallback(async (audit, format, options = {}) => {
         setExporting(prev => ({ ...prev, [audit.id]: format }));
         try {
             const [evRes, planRes, soaRes, refRes] = await Promise.all([
@@ -106,7 +108,7 @@ export default function RapportsPage() {
             };
 
             if (format === 'pdf') {
-                await exportAuditReportPDF(payload);
+                await exportAuditReportPDF({ ...payload, options });
             } else {
                 await exportAuditReportExcel(payload);
             }
@@ -118,6 +120,12 @@ export default function RapportsPage() {
             setExporting(prev => ({ ...prev, [audit.id]: null }));
         }
     }, []);
+
+    const handlePdfConfirm = useCallback((options) => {
+        const audit = configModal.audit;
+        setConfigModal({ open: false, audit: null });
+        handleExport(audit, 'pdf', options);
+    }, [configModal.audit, handleExport]);
 
     const resetFilters = () => { setSearch(''); setFilterPhase(''); };
     const hasFilters = search || filterPhase;
@@ -227,9 +235,9 @@ export default function RapportsPage() {
                                             <div className="flex items-center justify-end gap-2">
                                                 {/* PDF */}
                                                 <button
-                                                    onClick={() => handleExport(audit, 'pdf')}
+                                                    onClick={() => setConfigModal({ open: true, audit })}
                                                     disabled={!!exp}
-                                                    title="Télécharger le rapport PDF"
+                                                    title="Configurer et télécharger le rapport PDF"
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#CC0000] text-white hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     {exp === 'pdf' ? <IconSpinner /> : <IconDownload />}
@@ -258,8 +266,16 @@ export default function RapportsPage() {
 
             {/* Info export */}
             <p className="mt-3 text-xs text-gray-400 text-center">
-                Le rapport inclut : synthèse de conformité · évaluations par domaine · plans d'actions · déclaration d'applicabilité (SoA)
+                Le rapport PDF est configurable — choisissez les sections à inclure avant la génération.
             </p>
+
+            {configModal.open && (
+                <ReportConfigModal
+                    audit={configModal.audit}
+                    onConfirm={handlePdfConfirm}
+                    onClose={() => setConfigModal({ open: false, audit: null })}
+                />
+            )}
         </div>
     );
 }

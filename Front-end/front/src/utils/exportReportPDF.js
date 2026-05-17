@@ -3,16 +3,16 @@ import { autoTable } from 'jspdf-autotable';
 import Chart from 'chart.js/auto';
 
 // ─── CONSTANTES ───────────────────────────────────────────────────────────────
-const NAVY   = [15, 23, 42];       // #0f172a deep navy
-const NAVY2  = [30, 41, 59];       // #1e293b slate
-const NAVY3  = [51, 65, 85];       // #334155 lighter slate
-const RED    = [204, 0, 0];        // #CC0000 brand red
+const NAVY   = [15, 23, 42];
+const NAVY2  = [30, 41, 59];
+const NAVY3  = [51, 65, 85];
+const RED    = [204, 0, 0];
 const DARK   = [15, 23, 42];
-const GRAY   = [100, 116, 139];    // #64748b
-const LGRAY  = [148, 163, 184];    // #94a3b8
-const LIGHT  = [248, 250, 252];    // #f8fafc
-const LIGHT2 = [241, 245, 249];    // #f1f5f9
-const BDR    = [226, 232, 240];    // #e2e8f0
+const GRAY   = [100, 116, 139];
+const LGRAY  = [148, 163, 184];
+const LIGHT  = [248, 250, 252];
+const LIGHT2 = [241, 245, 249];
+const BDR    = [226, 232, 240];
 const WHITE  = [255, 255, 255];
 const M = 18;
 const W = 210;
@@ -28,9 +28,9 @@ const PHASE = {
     cadrage: 'Cadrage', prerequis: 'Prérequis',
     revue_documentaire: 'Revue documentaire', realisation: 'Réalisation', termine: 'Terminé',
 };
-const STATUT   = { brouillon: 'Brouillon', en_cours: 'En cours', termine: 'Terminé', archive: 'Archivé' };
-const MATURITE = ['Aucun (0)', 'Initial (1)', 'Reproductible (2)', 'Défini (3)', 'Maîtrisé (4)', 'Optimisé (5)'];
-const PRIORITE = { haute: 'Haute', moyenne: 'Moyenne', basse: 'Basse' };
+const STATUT      = { brouillon: 'Brouillon', en_cours: 'En cours', termine: 'Terminé', archive: 'Archivé' };
+const MATURITE    = ['Aucun (0)', 'Initial (1)', 'Reproductible (2)', 'Défini (3)', 'Maîtrisé (4)', 'Optimisé (5)'];
+const PRIORITE    = { haute: 'Haute', moyenne: 'Moyenne', basse: 'Basse' };
 const STATUT_PLAN = { a_faire: 'À faire', en_cours: 'En cours', cloture: 'Clôturé' };
 const STATUT_SOA  = { non_implemente: 'Non implémenté', planifie: 'Planifié', partiel: 'Partiel', implemente: 'Implémenté' };
 
@@ -122,27 +122,21 @@ function addLogo(doc, logo, x, y, h) {
 }
 
 function drawHeader(doc, logo, section) {
-    // Barre rouge fine en haut
     doc.setFillColor(...RED);
     doc.rect(0, 0, W, 3.5, 'F');
-    // Fond header blanc
     doc.setFillColor(...WHITE);
     doc.rect(0, 3.5, W, 18, 'F');
-    // Logo
     addLogo(doc, logo, M, 6, 9);
-    // Section name
     if (section) {
         doc.setFontSize(7); doc.setFont('helvetica', 'bold');
         doc.setTextColor(...GRAY);
         doc.text(section.toUpperCase(), W - M, 13.5, { align: 'right' });
     }
-    // Ligne séparatrice
     doc.setDrawColor(...BDR); doc.setLineWidth(0.25);
     doc.line(0, 21.5, W, 21.5);
 }
 
 function drawFooter(doc, p, total) {
-    // Ligne fine
     doc.setDrawColor(...BDR); doc.setLineWidth(0.25);
     doc.line(M, H - 13, W - M, H - 13);
     doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
@@ -152,25 +146,19 @@ function drawFooter(doc, p, total) {
     doc.text(`${p} / ${total}`, W / 2, H - 7, { align: 'center' });
     doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
     doc.text(`© ${new Date().getFullYear()}`, W - M, H - 7, { align: 'right' });
-    // Barre rouge en bas
     doc.setFillColor(...RED);
     doc.rect(0, H - 2.5, W, 2.5, 'F');
 }
 
 function sectionTitle(doc, num, title, y) {
-    // Filet fin au-dessus
     doc.setDrawColor(...BDR); doc.setLineWidth(0.25);
     doc.line(M, y, W - M, y);
-    // Barre gauche navy
     doc.setFillColor(...NAVY2);
     doc.rect(M, y + 2, 3, 10, 'F');
-    // Numéro en gris discret
     doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
     doc.text(String(num), M + 8, y + 10);
-    // Titre
     doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY2);
     doc.text(title, M + 15, y + 10);
-    // Filet fin en-dessous
     doc.setDrawColor(...BDR); doc.setLineWidth(0.25);
     doc.line(M, y + 15, W - M, y + 15);
     return y + 22;
@@ -193,11 +181,9 @@ function bodyText(doc, text, y, maxW) {
 function renderCover(doc, audit, logo, today) {
     const year = new Date().getFullYear();
 
-    // Fond blanc
     doc.setFillColor(...WHITE);
     doc.rect(0, 0, W, H, 'F');
 
-    // ── Logo + ligne séparatrice en-tête
     if (logo.b64) {
         const lh = 12;
         const lw = Math.min(lh * logo.ar, 55);
@@ -208,39 +194,32 @@ function renderCover(doc, audit, logo, today) {
     doc.setDrawColor(...BDR); doc.setLineWidth(0.3);
     doc.line(M, M + 16, W - M, M + 16);
 
-    // ── Zone titre (centré verticalement dans la moitié haute)
     const titleY = 80;
 
-    // Étiquette catégorie
     doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
     doc.setTextColor(...GRAY);
     doc.text('RAPPORT D\'AUDIT DE SÉCURITÉ', M, titleY);
 
-    // Trait court rouge
     doc.setFillColor(...RED);
     doc.rect(M, titleY + 3.5, 18, 1.2, 'F');
 
-    // Nom de l'audit
     const nomLines = doc.splitTextToSize(audit.nom || 'Rapport d\'Audit', W - 2 * M);
     doc.setFontSize(26); doc.setFont('helvetica', 'bold');
     doc.setTextColor(...NAVY2);
     doc.text(nomLines.slice(0, 3), M, titleY + 16);
     const afterTitle = titleY + 16 + Math.min(nomLines.length, 3) * 11;
 
-    // Client
     if (audit.client) {
         doc.setFontSize(13); doc.setFont('helvetica', 'normal');
         doc.setTextColor(...NAVY3);
         doc.text(audit.client, M, afterTitle + 10);
     }
 
-    // Référentiel · Date
     const meta = [audit.referentiel?.nom, today].filter(Boolean).join('  ·  ');
     doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
     doc.setTextColor(...GRAY);
     doc.text(meta, M, afterTitle + 20);
 
-    // ── Bandeau infos en bas
     const barY = H - 52;
     doc.setFillColor(...LIGHT2);
     doc.rect(0, barY, W, 52, 'F');
@@ -271,12 +250,11 @@ function renderCover(doc, audit, logo, today) {
         doc.text(v.slice(0, 2), x, infoY + 8);
     });
 
-    // Copyright
     doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
     doc.text(`© ${year} DataProtect · Tous droits réservés`, W / 2, H - 5, { align: 'center' });
 }
 
-// ─── SOMMAIRE (rendu en dernier) ──────────────────────────────────────────────
+// ─── SOMMAIRE ─────────────────────────────────────────────────────────────────
 function renderTOC(doc, logo, sections, tocPage) {
     doc.setPage(tocPage);
     drawHeader(doc, logo, 'Sommaire');
@@ -303,7 +281,6 @@ function renderTOC(doc, logo, sections, tocPage) {
         doc.setTextColor(...GRAY);
         doc.text(String(s.page), W - M, y, { align: 'right' });
 
-        // Pointillés fins
         const startX = tx + doc.getTextWidth(s.title) + 3;
         const endX = W - M - doc.getTextWidth(String(s.page)) - 3;
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...BDR);
@@ -314,25 +291,26 @@ function renderTOC(doc, logo, sections, tocPage) {
 }
 
 // ─── INTRODUCTION ─────────────────────────────────────────────────────────────
-function renderIntroduction(doc, audit, logo) {
-    drawHeader(doc, logo, '1. Introduction');
+function renderIntroduction(doc, audit, logo, num) {
+    const hdr = `${num}. Introduction`;
+    drawHeader(doc, logo, hdr);
     let y = 32;
-    y = sectionTitle(doc, 1, 'Introduction', y);
+    y = sectionTitle(doc, num, 'Introduction', y);
 
-    y = subTitle(doc, '1.1  Contexte et objectifs', y);
+    y = subTitle(doc, `${num}.1  Contexte et objectifs`, y);
     y = bodyText(doc, `Le présent document constitue le rapport d'audit de sécurité des systèmes d'information conduit auprès de ${audit.client || 'l\'entité auditée'}. Cet audit a été réalisé conformément au référentiel ${audit.referentiel?.nom || 'applicable'} dans le cadre d'une démarche d'évaluation et d'amélioration continue de la posture de sécurité.\n\nL'objectif est d'évaluer le niveau de conformité des mesures en place, d'identifier les écarts et risques associés, et de formuler des recommandations adaptées.`, y);
 
-    y = subTitle(doc, '1.2  Périmètre d\'audit', y);
+    y = subTitle(doc, `${num}.2  Périmètre d'audit`, y);
     y = bodyText(doc, audit.perimetre || 'Le périmètre n\'a pas été formellement défini.', y);
 
-    y = subTitle(doc, '1.3  Normes de référence', y);
+    y = subTitle(doc, `${num}.3  Normes de référence`, y);
     y = bodyText(doc, `Référentiel : ${audit.referentiel?.nom || '—'}${audit.referentiel?.type ? `  ·  Type : ${audit.referentiel.type}` : ''}`, y);
 
-    y = subTitle(doc, '1.4  Méthodologie', y);
+    y = subTitle(doc, `${num}.4  Méthodologie`, y);
     y = bodyText(doc, `L'audit a été conduit selon une approche structurée :\n— Collecte et analyse documentaire des politiques et procédures existantes\n— Entretiens avec les responsables et équipes techniques concernées\n— Évaluation des contrôles en place sur la base du référentiel\n— Identification des écarts et classification par niveau de criticité\n— Formulation de recommandations et plans d'actions correctifs`, y);
 
     if (audit.auditeurs?.length > 0) {
-        y = subTitle(doc, '1.5  Équipe d\'audit', y);
+        y = subTitle(doc, `${num}.5  Équipe d'audit`, y);
         autoTable(doc, {
             startY: y,
             head: [['Nom & Prénom', 'Contact']],
@@ -342,27 +320,26 @@ function renderIntroduction(doc, audit, logo) {
             alternateRowStyles: { fillColor: LIGHT },
             columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 90 } },
             margin: { left: M, right: M, top: 28 },
-            didDrawPage: () => drawHeader(doc, logo, '1. Introduction'),
+            didDrawPage: () => drawHeader(doc, logo, hdr),
         });
     }
 }
 
 // ─── RÉSUMÉ EXÉCUTIF ──────────────────────────────────────────────────────────
-async function renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo) {
-    drawHeader(doc, logo, '2. Résumé exécutif');
+async function renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num) {
+    const hdr = `${num}. Résumé exécutif`;
+    drawHeader(doc, logo, hdr);
     let y = 32;
-    y = sectionTitle(doc, 2, 'Résumé exécutif', y);
+    y = sectionTitle(doc, num, 'Résumé exécutif', y);
 
-    // Synthèse textuelle
     const ncMaj = stats.counts.nc_majeure;
     y = bodyText(doc, `L'audit « ${audit.nom} » a permis d'évaluer ${stats.total} mesure(s). Le taux de conformité global s'établit à ${stats.tauxConformite} %. ${ncMaj > 0 ? `${ncMaj} non-conformité(s) majeure(s) requièrent une attention immédiate.` : 'Aucune non-conformité majeure n\'a été identifiée.'} ${planActions.length} plan(s) d'action ont été définis.`, y);
 
-    // KPI cards
     const kpis = [
-        { val: stats.total,              label: 'Mesures évaluées',  bg: NAVY },
+        { val: stats.total,                label: 'Mesures évaluées',   bg: NAVY },
         { val: `${stats.tauxConformite}%`, label: 'Taux de conformité', bg: [22, 163, 74] },
-        { val: stats.counts.nc_majeure,  label: 'NC Majeures',       bg: [220, 38, 38] },
-        { val: planActions.length,       label: 'Plans d\'actions',  bg: RED },
+        { val: stats.counts.nc_majeure,    label: 'NC Majeures',        bg: [220, 38, 38] },
+        { val: planActions.length,         label: 'Plans d\'actions',   bg: RED },
     ];
     const kW = (CW - 9) / 4;
     kpis.forEach((k, i) => {
@@ -375,7 +352,6 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
     });
     y += 27;
 
-    // Graphiques
     const [donutPNG, barPNG] = await Promise.all([
         chartToPNG({
             type: 'doughnut',
@@ -404,7 +380,6 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
 
     const donutMM = 45, barH = 50, barW = CW - donutMM - 8;
     doc.addImage(donutPNG, 'PNG', M, y, donutMM, donutMM);
-    // Texte centre donut
     doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(22, 163, 74);
     doc.text(`${stats.tauxConformite}%`, M + donutMM / 2, y + donutMM / 2 + 2, { align: 'center' });
     doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
@@ -412,22 +387,20 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
     doc.addImage(barPNG, 'PNG', M + donutMM + 8, y, barW, barH);
     y += Math.max(donutMM, barH) + 8;
 
-    // Maturité moyenne
     doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
     doc.text(`Maturité moyenne : `, M, y);
     doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY);
     doc.text(`${stats.maturiteMoyenne} / 5`, M + 38, y);
     y += 9;
 
-    // Tableau par domaine
     const doms = sortedDomaines(referentiel);
     if (doms.length > 0) {
-        y = subTitle(doc, '2.1  Résultats par domaine', y);
+        y = subTitle(doc, `${num}.1  Résultats par domaine`, y);
         const domRows = doms.map(d => {
             const ids = new Set();
             for (const o of d.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
             const evs = evaluations.filter(e => ids.has(e.mesure_id));
-            const conf = evs.filter(e => e.conformite === 'conforme').length;
+            const conf  = evs.filter(e => e.conformite === 'conforme').length;
             const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
             const ncMin = evs.filter(e => e.conformite === 'nc_mineure').length;
             return [
@@ -458,16 +431,17 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
                     if (d.column.index === 3 && Number(d.cell.raw) > 0) d.cell.styles.textColor = [234, 88, 12];
                 }
             },
-            didDrawPage: () => drawHeader(doc, logo, '2. Résumé exécutif'),
+            didDrawPage: () => drawHeader(doc, logo, hdr),
         });
     }
 }
 
 // ─── TERMINOLOGIE ─────────────────────────────────────────────────────────────
-function renderTerminologie(doc, logo) {
-    drawHeader(doc, logo, '3. Terminologie');
+function renderTerminologie(doc, logo, num) {
+    const hdr = `${num}. Terminologie`;
+    drawHeader(doc, logo, hdr);
     let y = 32;
-    y = sectionTitle(doc, 3, 'Terminologie et définitions', y);
+    y = sectionTitle(doc, num, 'Terminologie et définitions', y);
     autoTable(doc, {
         startY: y,
         head: [['Terme', 'Définition']],
@@ -490,38 +464,39 @@ function renderTerminologie(doc, logo) {
         alternateRowStyles: { fillColor: LIGHT },
         columnStyles: { 0: { cellWidth: 46, fontStyle: 'bold', textColor: NAVY }, 1: { cellWidth: 124 } },
         margin: { left: M, right: M, top: 28 },
-        didDrawPage: () => drawHeader(doc, logo, '3. Terminologie'),
+        didDrawPage: () => drawHeader(doc, logo, hdr),
     });
 }
 
 // ─── PLAN D'AUDIT ─────────────────────────────────────────────────────────────
-function renderPlanAudit(doc, audit, referentiel, logo) {
-    drawHeader(doc, logo, '4. Plan d\'audit');
+function renderPlanAudit(doc, audit, referentiel, logo, num) {
+    const hdr = `${num}. Plan d'audit`;
+    drawHeader(doc, logo, hdr);
     let y = 32;
-    y = sectionTitle(doc, 4, 'Plan d\'audit', y);
+    y = sectionTitle(doc, num, "Plan d'audit", y);
 
-    y = subTitle(doc, '4.1  Informations générales', y);
+    y = subTitle(doc, `${num}.1  Informations générales`, y);
     autoTable(doc, {
         startY: y,
         body: [
-            ['Dénomination', audit.nom || '—'],
+            ['Dénomination',   audit.nom || '—'],
             ['Entité auditée', audit.client || '—'],
-            ['Référentiel', audit.referentiel?.nom || '—'],
-            ['Phase', PHASE[audit.phase] || audit.phase],
-            ['Date de début', audit.date_debut ? new Date(audit.date_debut).toLocaleDateString('fr-FR') : '—'],
-            ['Date de fin', audit.date_fin ? new Date(audit.date_fin).toLocaleDateString('fr-FR') : '—'],
-            ['Périmètre', audit.perimetre || '—'],
-            ['Auditeur(s)', audit.auditeurs?.map(a => `${a.prenom} ${a.nom}`).join(', ') || '—'],
+            ['Référentiel',    audit.referentiel?.nom || '—'],
+            ['Phase',          PHASE[audit.phase] || audit.phase],
+            ['Date de début',  audit.date_debut ? new Date(audit.date_debut).toLocaleDateString('fr-FR') : '—'],
+            ['Date de fin',    audit.date_fin   ? new Date(audit.date_fin).toLocaleDateString('fr-FR')   : '—'],
+            ['Périmètre',      audit.perimetre || '—'],
+            ['Auditeur(s)',    audit.auditeurs?.map(a => `${a.prenom} ${a.nom}`).join(', ') || '—'],
         ],
         styles: { fontSize: 9, cellPadding: 4, lineColor: BDR, lineWidth: 0.15 },
         columnStyles: { 0: { cellWidth: 50, fontStyle: 'bold', textColor: GRAY, fillColor: LIGHT }, 1: { cellWidth: 120 } },
         margin: { left: M, right: M },
-        didDrawPage: () => drawHeader(doc, logo, '4. Plan d\'audit'),
+        didDrawPage: () => drawHeader(doc, logo, hdr),
     });
     y = doc.lastAutoTable.finalY + 10;
 
     if (sortedDomaines(referentiel).length > 0) {
-        y = subTitle(doc, '4.2  Domaines et objectifs couverts', y);
+        y = subTitle(doc, `${num}.2  Domaines et objectifs couverts`, y);
         const rows = sortedDomaines(referentiel).flatMap(d => [
             [{ content: d.nom || d.code || '', colSpan: 2, styles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', fontSize: 8.5 } }],
             ...(d.objectifs || []).map(o => [
@@ -535,27 +510,25 @@ function renderPlanAudit(doc, audit, referentiel, logo) {
             styles: { fontSize: 8.5, cellPadding: 3.5, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
             columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 146 } },
             margin: { left: M, right: M, top: 28 },
-            didDrawPage: () => drawHeader(doc, logo, '4. Plan d\'audit'),
+            didDrawPage: () => drawHeader(doc, logo, hdr),
         });
     }
 }
 
 // ─── FAITS CONSTATÉS ──────────────────────────────────────────────────────────
-function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo) {
-    // Intro page
-    drawHeader(doc, logo, '5. Faits constatés');
+function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num) {
+    const hdr = `${num}. Faits constatés`;
+    drawHeader(doc, logo, hdr);
     let y = 32;
-    y = sectionTitle(doc, 5, 'Faits constatés', y);
+    y = sectionTitle(doc, num, 'Faits constatés', y);
     y = bodyText(doc, `Cette section présente le détail des évaluations réalisées pour chaque domaine du référentiel ${audit.referentiel?.nom || ''}. Pour chaque mesure sont consignés : le niveau de conformité, la maturité observée, les constats et les recommandations.`, y);
 
-    // Stats récapitulatives
     const totalNc = evaluations.filter(e => ['nc_majeure', 'nc_mineure', 'non_conforme'].includes(e.conformite)).length;
     const totalOk = evaluations.filter(e => e.conformite === 'conforme').length;
     doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
     doc.text(`Mesures évaluées : ${evaluations.length}  ·  Conformes : ${totalOk}  ·  Non conformités : ${totalNc}`, M, y);
     y += 10;
 
-    // Par domaine
     for (const domaine of sortedDomaines(referentiel)) {
         const ids = new Set();
         for (const o of domaine.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
@@ -563,20 +536,17 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
         if (evs.length === 0) continue;
 
         doc.addPage();
-        drawHeader(doc, logo, '5. Faits constatés');
+        drawHeader(doc, logo, hdr);
         y = 28;
 
-        // Bandeau domaine — sous-chapitre, barre rouge (distinct des titres de section navy)
-        const conf = evs.filter(e => e.conformite === 'conforme').length;
+        const conf  = evs.filter(e => e.conformite === 'conforme').length;
         const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
         const ncMin = evs.filter(e => e.conformite === 'nc_mineure').length;
 
-        // Fond blanc, juste une ligne rouge en bas et barre gauche rouge fine
         doc.setFillColor(...RED);
         doc.rect(M, y, 2, 12, 'F');
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY2);
         doc.text(domaine.nom || domaine.code || '', M + 6, y + 8.5);
-        // Stats inline à droite
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
         doc.text(
             `${evs.length} mesures  ·  Conformes : ${conf}  ·  NC Min. : ${ncMin}  ·  NC Maj. : ${ncMaj}`,
@@ -608,12 +578,8 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
             headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', fontSize: 8, cellPadding: 4 },
             alternateRowStyles: { fillColor: LIGHT },
             columnStyles: {
-                0: { cellWidth: 22 },
-                1: { cellWidth: 32 },
-                2: { cellWidth: 26 },
-                3: { cellWidth: 16, halign: 'center' },
-                4: { cellWidth: 39 },
-                5: { cellWidth: 39 },
+                0: { cellWidth: 22 }, 1: { cellWidth: 32 }, 2: { cellWidth: 26 },
+                3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 39 }, 5: { cellWidth: 39 },
             },
             margin: { left: M, right: M, top: 26, bottom: 16 },
             didParseCell: d => {
@@ -626,25 +592,24 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
                 }
             },
             didDrawPage: d => {
-                if (d.pageNumber > 1) {
-                    drawHeader(doc, logo, '5. Faits constatés');
-                }
+                if (d.pageNumber > 1) drawHeader(doc, logo, hdr);
             },
         });
     }
 }
 
 // ─── RECOMMANDATIONS ──────────────────────────────────────────────────────────
-function renderRecommandations(doc, planActions, mesureMap, logo) {
-    drawHeader(doc, logo, '6. Recommandations');
+function renderRecommandations(doc, planActions, mesureMap, logo, num) {
+    const hdr = `${num}. Recommandations`;
+    drawHeader(doc, logo, hdr);
     let y = 32;
-    y = sectionTitle(doc, 6, 'Recommandations et plans d\'actions', y);
+    y = sectionTitle(doc, num, "Recommandations et plans d'actions", y);
     y = bodyText(doc, `${planActions.length} plan(s) d'action ont été définis à l'issue de cet audit. Ils sont classés par priorité décroissante afin de guider l'entité dans la mise en œuvre des mesures correctives.`, y);
 
     const pCards = [
-        { label: 'Haute priorité', val: planActions.filter(p => p.priorite === 'haute').length,   color: [220, 38, 38] },
+        { label: 'Haute priorité',   val: planActions.filter(p => p.priorite === 'haute').length,   color: [220, 38, 38] },
         { label: 'Priorité moyenne', val: planActions.filter(p => p.priorite === 'moyenne').length, color: [234, 88, 12] },
-        { label: 'Basse priorité', val: planActions.filter(p => p.priorite === 'basse').length,   color: [22, 163, 74] },
+        { label: 'Basse priorité',   val: planActions.filter(p => p.priorite === 'basse').length,   color: [22, 163, 74] },
     ];
     const pcW = (CW - 8) / 3;
     pCards.forEach((pc, i) => {
@@ -689,7 +654,7 @@ function renderRecommandations(doc, planActions, mesureMap, logo) {
                 else if (d.cell.raw === 'Moyenne') d.cell.styles.textColor = [234, 88, 12];
             }
         },
-        didDrawPage: () => drawHeader(doc, logo, '6. Recommandations'),
+        didDrawPage: () => drawHeader(doc, logo, hdr),
     });
 }
 
@@ -699,7 +664,7 @@ function renderSoA(doc, soaEntries, mesureMap, logo) {
     let y = 32;
 
     doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
-    doc.text('Annexe A — Déclaration d\'Applicabilité (SoA)', M, y);
+    doc.text("Annexe A — Déclaration d'Applicabilité (SoA)", M, y);
     doc.setFillColor(...RED); doc.rect(M, y + 4, 20, 1.5, 'F');
     y += 14;
 
@@ -745,61 +710,91 @@ function renderSoA(doc, soaEntries, mesureMap, logo) {
 }
 
 // ─── EXPORT PRINCIPAL ─────────────────────────────────────────────────────────
-export async function exportAuditReportPDF({ audit, evaluations, planActions, soaEntries, referentiel, logoDataprotectUrl }) {
+export async function exportAuditReportPDF({ audit, evaluations, planActions, soaEntries, referentiel, logoDataprotectUrl, options = {} }) {
+    const {
+        introduction    = true,
+        resume          = true,
+        terminologie    = true,
+        planAudit       = true,
+        faitsConstates  = true,
+        recommandations = true,
+        soa             = true,
+    } = options;
+
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    const logo    = logoDataprotectUrl ? await loadLogo(logoDataprotectUrl) : { b64: null, ar: 4 };
-    const year    = new Date().getFullYear();
-    const today   = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const logo      = logoDataprotectUrl ? await loadLogo(logoDataprotectUrl) : { b64: null, ar: 4 };
+    const year      = new Date().getFullYear();
+    const today     = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
     const mesureMap = buildMesureMap(referentiel);
     const stats     = buildStats(evaluations);
 
-    // ── 1. Couverture (page 1)
+    // ── Page de garde (toujours incluse)
     renderCover(doc, audit, logo, today);
 
-    // ── 2. Sommaire placeholder (page 2)
+    // ── Sommaire placeholder (toujours inclus)
     doc.addPage();
     const TOC_PAGE = doc.internal.getNumberOfPages();
 
-    // ── 3. Introduction (page 3+)
-    doc.addPage();
-    const introPage = doc.internal.getNumberOfPages();
-    renderIntroduction(doc, audit, logo);
+    const tocSections = [];
+    let num = 0;
 
-    // ── 4. Résumé exécutif
-    doc.addPage();
-    const resumePage = doc.internal.getNumberOfPages();
-    await renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo);
-
-    // ── 5. Terminologie
-    doc.addPage();
-    const termsPage = doc.internal.getNumberOfPages();
-    renderTerminologie(doc, logo);
-
-    // ── 6. Plan d'audit
-    doc.addPage();
-    const planPage = doc.internal.getNumberOfPages();
-    renderPlanAudit(doc, audit, referentiel, logo);
-
-    // ── 7. Faits constatés
-    doc.addPage();
-    const factsPage = doc.internal.getNumberOfPages();
-    renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo);
-
-    // ── 8. Recommandations
-    doc.addPage();
-    const recoPage = doc.internal.getNumberOfPages();
-    renderRecommandations(doc, planActions, mesureMap, logo);
-
-    // ── Annexe SoA (optionnelle)
-    let soaPage = null;
-    if (soaEntries?.length > 0) {
+    if (introduction) {
         doc.addPage();
-        soaPage = doc.internal.getNumberOfPages();
-        renderSoA(doc, soaEntries, mesureMap, logo);
+        const page = doc.internal.getNumberOfPages();
+        num++;
+        renderIntroduction(doc, audit, logo, num);
+        tocSections.push({ title: `${num}. Introduction`, page });
     }
 
-    // ── Footers (toutes les pages)
+    if (resume) {
+        doc.addPage();
+        const page = doc.internal.getNumberOfPages();
+        num++;
+        await renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num);
+        tocSections.push({ title: `${num}. Résumé exécutif`, page });
+    }
+
+    if (terminologie) {
+        doc.addPage();
+        const page = doc.internal.getNumberOfPages();
+        num++;
+        renderTerminologie(doc, logo, num);
+        tocSections.push({ title: `${num}. Terminologie et définitions`, page });
+    }
+
+    if (planAudit) {
+        doc.addPage();
+        const page = doc.internal.getNumberOfPages();
+        num++;
+        renderPlanAudit(doc, audit, referentiel, logo, num);
+        tocSections.push({ title: `${num}. Plan d'audit`, page });
+    }
+
+    if (faitsConstates) {
+        doc.addPage();
+        const page = doc.internal.getNumberOfPages();
+        num++;
+        renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num);
+        tocSections.push({ title: `${num}. Faits constatés`, page });
+    }
+
+    if (recommandations) {
+        doc.addPage();
+        const page = doc.internal.getNumberOfPages();
+        num++;
+        renderRecommandations(doc, planActions, mesureMap, logo, num);
+        tocSections.push({ title: `${num}. Recommandations et plans d'actions`, page });
+    }
+
+    if (soa && soaEntries?.length > 0) {
+        doc.addPage();
+        const page = doc.internal.getNumberOfPages();
+        renderSoA(doc, soaEntries, mesureMap, logo);
+        tocSections.push({ title: "Annexe A — Déclaration d'Applicabilité", page });
+    }
+
+    // ── Footers sur toutes les pages (sauf couverture)
     const totalPages = doc.internal.getNumberOfPages();
     for (let p = 2; p <= totalPages; p++) {
         doc.setPage(p);
@@ -807,19 +802,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
     }
 
     // ── Sommaire (retour page 2, numéros connus)
-    console.log('[PDF] TOC...');
-    const sections = [
-        { title: '1. Introduction',                                    page: introPage },
-        { title: '2. Résumé exécutif',                                 page: resumePage },
-        { title: '3. Terminologie et définitions',                     page: termsPage },
-        { title: '4. Plan d\'audit',                                   page: planPage },
-        { title: '5. Faits constatés',                                 page: factsPage },
-        { title: '6. Recommandations et plans d\'actions',             page: recoPage },
-        ...(soaPage ? [{ title: 'Annexe A — Déclaration d\'Applicabilité', page: soaPage, sub: false }] : []),
-    ];
-    renderTOC(doc, logo, sections, TOC_PAGE);
+    renderTOC(doc, logo, tocSections, TOC_PAGE);
 
-    console.log('[PDF] saving...');
     doc.save(`rapport-audit-${(audit.nom || 'audit').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${year}.pdf`);
-    console.log('[PDF] done');
 }
