@@ -36,18 +36,43 @@ const CONF_LABELS_SHORT = ['Conforme','Partiel','NC Min.','NC Maj.','Non conform
 const CONF_COLORS       = ['#16a34a','#ca8a04','#ea580c','#dc2626','#991b1b','#9ca3af'];
 const MAT_COLORS        = ['#9ca3af','#f59e0b','#f97316','#3b82f6','#8b5cf6','#16a34a'];
 
+const ISO_CONF_KEYS   = ['conforme','nc_mineure','nc_majeure','partiel','na'];
+const ISO_CONF_SHORT  = ['Conforme','NC Mineure','NC Majeure','Partiel','N/A'];
+const ISO_CONF_COLORS = ['#16a34a','#ea580c','#dc2626','#ca8a04','#9ca3af'];
+
+const SOA_STATUT_LABELS = { implemente:'Implémenté', planifie:'Planifié', partiel:'Partiel', non_implemente:'Non implémenté' };
+
+function getReferentielType(referentiel) {
+    const type = (referentiel?.type || '').toUpperCase();
+    const nom  = (referentiel?.nom  || '').toLowerCase();
+    if (type === 'DNSSI' || nom.includes('dnssi') || nom.includes('directive nationale')) return 'dnssi';
+    return 'iso27001';
+}
+
 // ─── UTILITAIRES DONNÉES ──────────────────────────────────────────────────────
 function stripObjPrefix(text) {
     if (!text) return '';
     return text.replace(/^Objectif\s+\d+\s*:\s*/i, '').trim() || text;
 }
 
-function objRowHeight(text, numMesures, colWidthChars = 32) {
-    if (!text) return 80;
-    const charsPerLine = Math.floor(colWidthChars * 0.8);
-    const lines = Math.ceil(text.length / charsPerLine) + 2;
-    const neededTotal = lines * 14;
-    return Math.max(80, Math.ceil(neededTotal / Math.max(1, numMesures)));
+// Hauteur d'une ligne selon le texte le plus long parmi plusieurs cellules
+// Estimation conservative : 0.9 char/unit (Calibri 9pt, marges incluses)
+// 22 pts par ligne, minimum 60 pts pour toute cellule avec contenu
+// Chaque tranche de 60 caractères = une ligne supplémentaire, 28pt par ligne
+function calcRowHeight(text, colWidthChars, minH = 150) {
+    if (!text || !String(text).trim()) return minH;
+    const charsPerLine = Math.max(8, Math.floor(colWidthChars * 0.75));
+    const lines = String(text).split('\n').reduce(
+        (sum, seg) => sum + Math.max(1, Math.ceil(seg.length / charsPerLine)), 0
+    );
+    return Math.max(minH, Math.min(lines * 28 + 20, 800));
+}
+function measureRowHeight(ev, constatW, recommW, minH = 150) {
+    return Math.max(
+        calcRowHeight(ev?.commentaire,    constatW, minH),
+        calcRowHeight(ev?.recommandation, recommW,  minH),
+        minH
+    );
 }
 
 function sortDomaines(domaines) {
@@ -107,32 +132,32 @@ function applyCell(cell, { bg, fontColor, bold = false, size = 10, italic = fals
     cell.alignment = { horizontal: align, vertical: valign, wrapText: wrap };
 }
 
-function titleRow(ws, r, text, span, bg = C.navy, size = 13) {
-    ws.getRow(r).height = 34;
+function titleRow(ws, r, text, span, bg = C.navy, size = 16) {
+    ws.getRow(r).height = 56;
     const cell = ws.getCell(r, 1);
     cell.value = text;
     cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
     cell.font  = { name: FONT, bold: true, color: { argb: C.white }, size };
-    cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 2 };
     if (span > 1) ws.mergeCells(r, 1, r, span);
 }
 
 function sectionRow(ws, r, text, span) {
-    ws.getRow(r).height = 24;
+    ws.getRow(r).height = 40;
     const cell = ws.getCell(r, 1);
     cell.value = text;
     cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.red } };
-    cell.font  = { name: FONT, bold: true, color: { argb: C.white }, size: 10 };
-    cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    cell.font  = { name: FONT, bold: true, color: { argb: C.white }, size: 12 };
+    cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 2 };
     if (span > 1) ws.mergeCells(r, 1, r, span);
 }
 
-function headerRow(ws, r, labels, heights = 22) {
-    ws.getRow(r).height = heights;
+function headerRow(ws, r, labels) {
+    ws.getRow(r).height = 44;
     labels.forEach((lbl, i) => {
         const cell = ws.getCell(r, i + 1);
         cell.value = lbl;
-        applyCell(cell, { bg: C.navy, fontColor: C.white, bold: true, size: 10, align: 'center' });
+        applyCell(cell, { bg: C.navyMid, fontColor: C.white, bold: true, size: 11, align: 'center', valign: 'middle', wrap: true });
     });
 }
 
@@ -197,7 +222,7 @@ async function addSyntheseSheet(wb, audit, evaluations, planActions, imgs) {
 
     // ── KPIs
     sectionRow(ws, r++, '2. Indicateurs clés', 8);
-    headerRow(ws, r, ['Mesures évaluées','Taux conformité','NC Majeures','Maturité moy.','Plans d\'actions','','',''], 18);
+    headerRow(ws, r, ['Mesures évaluées','Taux conformité','NC Majeures','Maturité moy.','Plans d\'actions','','','']);
     r++;
     ws.getRow(r).height = 26;
     const kpiValues = [total, `${tauxPct} %`, counts.nc_majeure, matMoy, planActions.length];
@@ -211,7 +236,7 @@ async function addSyntheseSheet(wb, audit, evaluations, planActions, imgs) {
 
     // ── Synthèse conformité
     sectionRow(ws, r++, '3. Synthèse de conformité', 8);
-    headerRow(ws, r, ['Niveau de conformité', 'Nb mesures', '% du total'], 16); r++;
+    headerRow(ws, r, ['Niveau de conformité', 'Nb mesures', '% du total']); r++;
     for (const key of CONF_KEYS) {
         ws.getRow(r).height = 22;
         const v = counts[key];
@@ -290,8 +315,8 @@ function addEvaluationSheet(wb, referentiel, evaluations) {
         { width: 7  }, // Mat. (chiffre)
         { width: 16 }, // Libellé maturité
         { width: 22 }, // Conformité
-        { width: 36 }, // Constat
-        { width: 36 }, // Recommandation
+        { width: 55 }, // Constat / Justificatif
+        { width: 55 }, // Recommandation
     ];
 
     const evalMap = buildEvalMap(evaluations);
@@ -300,7 +325,7 @@ function addEvaluationSheet(wb, referentiel, evaluations) {
     let r = 1;
     titleRow(ws, r++, '2. Évaluation de la mise en œuvre des règles', 8);
     ws.addRow([]); r++;
-    headerRow(ws, r, ['Chapitre','Objectif','Règle','Mat.','Libellé maturité','Conformité','Constat / Justificatif','Recommandation'], 20);
+    headerRow(ws, r, ['Chapitre','Objectif','Règle','Mat.','Libellé maturité','Conformité','Constat / Justificatif','Recommandation']);
     r++;
 
     for (const domaine of domaines) {
@@ -314,16 +339,13 @@ function addEvaluationSheet(wb, referentiel, evaluations) {
             const mesures  = [...(objectif.mesures || [])].sort((a, b) =>
                 (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
             );
-            const objText = stripObjPrefix(objectif.description) || objectif.code || '';
-            const rowH = objRowHeight(objText, mesures.length, 32);
-
             for (const mesure of mesures) {
                 const ev  = evalMap[mesure.id];
                 const niv = ev?.niveau_maturite;
                 const ck  = ev?.conformite || 'na';
                 const cs  = confStyle(ck);
 
-                ws.getRow(r).height = rowH;
+                ws.getRow(r).height = measureRowHeight(ev, 55, 55);
 
                 // Col 1 : Chapitre (sera fusionnée)
                 const c1 = ws.getCell(r, 1);
@@ -419,7 +441,7 @@ async function addSyntheseMaturiteSheet(wb, evaluations, matBarImg, referentiel)
     let r = 1;
     titleRow(ws, r++, '3. Synthèse du niveau de maturité', 8);
     ws.addRow([]); r++;
-    headerRow(ws, r, ['État de maturité', 'Nombre de règles', '% des règles'], 16); r++;
+    headerRow(ws, r, ['État de maturité', 'Nombre de règles', '% des règles']); r++;
 
     const matBg = ['FFF3F4F6','FFFEF3C7','FFFED7AA','FFDBEAFE','FFEDE9FE','FFF0FDF4'];
     const matFg = [C.gray,'FFCA8A04','FFEA580C','FF2563EB','FF7C3AED',C.greenFont];
@@ -446,7 +468,7 @@ async function addSyntheseMaturiteSheet(wb, evaluations, matBarImg, referentiel)
     const domaines = sortDomaines(referentiel?.domaines);
     if (domaines.length > 0) {
         sectionRow(ws, r++, 'Distribution par domaine', 8);
-        headerRow(ws, r, ['Domaine', 'Aucun', 'Initial', 'Reproductible', 'Défini', 'Maîtrisé', 'Optimisé', 'N/A'], 18); r++;
+        headerRow(ws, r, ['Domaine', 'Aucun', 'Initial', 'Reproductible', 'Défini', 'Maîtrisé', 'Optimisé', 'N/A']); r++;
         for (const domaine of domaines) {
             const mats = [0,0,0,0,0,0]; let dNa = 0;
             const allMesures = (domaine.objectifs || []).flatMap(o => o.mesures || []);
@@ -493,7 +515,7 @@ async function addSyntheseConformiteSheet(wb, evaluations, confPieImg, referenti
     let r = 1;
     titleRow(ws, r++, '4. Synthèse du niveau de conformité à la DNSSI', 5);
     ws.addRow([]); r++;
-    headerRow(ws, r, ['Niveau de conformité', 'Nb règles', '%'], 16); r++;
+    headerRow(ws, r, ['Niveau de conformité', 'Nb règles', '%']); r++;
 
     for (const [k, v] of Object.entries(dnssi)) {
         ws.getRow(r).height = 24;
@@ -511,7 +533,7 @@ async function addSyntheseConformiteSheet(wb, evaluations, confPieImg, referenti
     const domaines = sortDomaines(referentiel?.domaines);
     if (domaines.length > 0) {
         sectionRow(ws, r++, 'Conformité par domaine', 5);
-        headerRow(ws, r, ['Domaine', 'Non conforme', 'Partielle', 'Totale', 'N/A'], 18); r++;
+        headerRow(ws, r, ['Domaine', 'Non conforme', 'Partielle', 'Totale', 'N/A']); r++;
         for (const domaine of domaines) {
             const dc = { 'Non conforme':0, 'Partielle':0, 'Totale':0, 'N/A':0 };
             const allMesures = (domaine.objectifs || []).flatMap(o => o.mesures || []);
@@ -545,11 +567,19 @@ async function addSyntheseConformiteSheet(wb, evaluations, confPieImg, referenti
 }
 
 // ─── ONGLET 6 : État d'avancement ─────────────────────────────────────────────
-function addEtatAvancementSheet(wb, referentiel, evaluations, planActions) {
+function addEtatAvancementSheet(wb, referentiel, evaluations, planActions, refType = 'dnssi') {
     const ws = wb.addWorksheet("État d'avancement");
     ws.columns = [
-        { width: 26 }, { width: 30 }, { width: 16 }, { width: 16 }, { width: 8 },
-        { width: 32 }, { width: 32 }, { width: 14 }, { width: 16 }, { width: 32 },
+        { width: 24 }, // Chapitre
+        { width: 28 }, // Objectif
+        { width: 14 }, // Règle
+        { width: 18 }, // Conformité
+        { width: 7  }, // Mat.
+        { width: 38 }, // Actions achevées
+        { width: 38 }, // Actions programmées
+        { width: 14 }, // Délai
+        { width: 16 }, // État
+        { width: 50 }, // Commentaires
     ];
 
     const evalMap = buildEvalMap(evaluations);
@@ -559,7 +589,7 @@ function addEtatAvancementSheet(wb, referentiel, evaluations, planActions) {
     let r = 1;
     titleRow(ws, r++, "5. État d'avancement de l'implémentation", 10);
     ws.addRow([]); r++;
-    headerRow(ws, r, ['Chapitre','Objectif','Règle','Conformité','Mat.','Actions achevées','Actions programmées','Délai','État','Commentaires'], 24);
+    headerRow(ws, r, ['Chapitre','Objectif','Règle','Conformité','Mat.','Actions achevées','Actions programmées','Délai','État','Commentaires']);
     r++;
 
     for (const domaine of domaines) {
@@ -573,9 +603,6 @@ function addEtatAvancementSheet(wb, referentiel, evaluations, planActions) {
             const mesures  = [...(objectif.mesures || [])].sort((a, b) =>
                 (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
             );
-            const objText2 = stripObjPrefix(objectif.description) || objectif.code || '';
-            const rowH2 = objRowHeight(objText2, mesures.length, 30);
-
             for (const mesure of mesures) {
                 const ev    = evalMap[mesure.id];
                 const plans = planMap[mesure.id] || [];
@@ -583,7 +610,15 @@ function addEtatAvancementSheet(wb, referentiel, evaluations, planActions) {
                 const ck    = ev?.conformite || 'na';
                 const cs    = confStyle(ck);
 
-                ws.getRow(r).height = rowH2;
+                const achevesText = plans.filter(p => p.statut === 'cloture').map(p => p.action_corrective || '').join('\n');
+                const programText = plans.filter(p => p.statut !== 'cloture').map(p => p.action_corrective || '').join('\n');
+                const commentText = plans.map(p => p.description_nc || '').filter(Boolean).join('\n');
+                ws.getRow(r).height = Math.max(
+                    calcRowHeight(achevesText, 38),
+                    calcRowHeight(programText, 38),
+                    calcRowHeight(commentText, 50),
+                    150
+                );
 
                 const c1 = ws.getCell(r, 1);
                 if (r === domStart) c1.value = domaine.nom || domaine.code || '';
@@ -596,7 +631,7 @@ function addEtatAvancementSheet(wb, referentiel, evaluations, planActions) {
                 ws.getCell(r, 3).value = mesure.code || `M${mesure.id}`;
                 applyCell(ws.getCell(r, 3), { bg: C.white, fontColor: C.navy, bold: true, size: 9, align: 'center' });
 
-                ws.getCell(r, 4).value = CONF_DNSSI[ck] || 'N/A';
+                ws.getCell(r, 4).value = refType === 'dnssi' ? (CONF_DNSSI[ck] || 'N/A') : (CONF_LABELS[ck] || 'N/A');
                 applyCell(ws.getCell(r, 4), { ...cs, bold: true, size: 9, align: 'center' });
 
                 ws.getCell(r, 5).value = (niv != null && niv >= 0) ? niv : '';
@@ -622,6 +657,253 @@ function addEtatAvancementSheet(wb, referentiel, evaluations, planActions) {
     }
 }
 
+// ─── ONGLET 3 ISO : Évaluation ISO 27001 ──────────────────────────────────────
+function addEvaluationSheetISO(wb, referentiel, evaluations) {
+    const ws = wb.addWorksheet('Évaluation ISO 27001');
+    ws.columns = [
+        { width: 26 }, // Domaine
+        { width: 32 }, // Objectif
+        { width: 13 }, // Contrôle
+        { width: 20 }, // Conformité
+        { width: 55 }, // Constat / Justificatif
+        { width: 55 }, // Recommandation
+    ];
+
+    const evalMap = buildEvalMap(evaluations);
+    const domaines = sortDomaines(referentiel?.domaines);
+
+    let r = 1;
+    titleRow(ws, r++, '2. Évaluation des contrôles ISO/IEC 27001:2022', 6);
+    ws.addRow([]); r++;
+    headerRow(ws, r, ['Domaine','Objectif','Contrôle','Conformité','Constat / Justificatif','Recommandation']);
+    r++;
+
+    for (const domaine of domaines) {
+        const domStart = r;
+        const objectifs = [...(domaine.objectifs || [])].sort((a, b) =>
+            (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
+        );
+        for (const objectif of objectifs) {
+            const objStart = r;
+            const mesures  = [...(objectif.mesures || [])].sort((a, b) =>
+                (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
+            );
+            for (const mesure of mesures) {
+                const ev = evalMap[mesure.id];
+                const ck = ev?.conformite || 'na';
+                const cs = confStyle(ck);
+                ws.getRow(r).height = measureRowHeight(ev, 55, 55);
+
+                const c1 = ws.getCell(r, 1);
+                if (r === domStart) {
+                    c1.value = domaine.nom || domaine.code || '';
+                    applyCell(c1, { bg: C.navy, fontColor: C.white, bold: true, size: 9, align: 'center', valign: 'middle' });
+                } else {
+                    applyCell(c1, { bg: C.navy, fontColor: C.white, size: 9 });
+                }
+
+                const c2 = ws.getCell(r, 2);
+                if (r === objStart) {
+                    c2.value = stripObjPrefix(objectif.description) || objectif.code || '';
+                    applyCell(c2, { bg: C.light, fontColor: C.navyMid, bold: false, size: 9, valign: 'middle' });
+                } else {
+                    applyCell(c2, { bg: C.light, fontColor: C.navyMid, size: 9 });
+                }
+
+                ws.getCell(r, 3).value = mesure.code || `M${mesure.id}`;
+                applyCell(ws.getCell(r, 3), { bg: C.white, fontColor: C.navy, bold: true, size: 9, align: 'center' });
+
+                ws.getCell(r, 4).value = CONF_LABELS[ck] || ck;
+                applyCell(ws.getCell(r, 4), { ...cs, bold: true, size: 9, align: 'center' });
+
+                ws.getCell(r, 5).value = ev?.commentaire || '';
+                applyCell(ws.getCell(r, 5), { bg: C.white, size: 9 });
+
+                ws.getCell(r, 6).value = ev?.recommandation || '';
+                applyCell(ws.getCell(r, 6), { bg: C.white, size: 9 });
+
+                ws.getRow(r).commit(); r++;
+            }
+
+            if (r > objStart + 1) ws.mergeCells(objStart, 2, r - 1, 2);
+            ws.getCell(objStart, 2).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+        }
+
+        if (r > domStart + 1) ws.mergeCells(domStart, 1, r - 1, 1);
+        ws.getCell(domStart, 1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        ws.getRow(r - 1).eachCell({ includeEmpty: true }, (_, ci) => {
+            ws.getCell(r - 1, ci).border = { ...bdr(), bottom: thick() };
+        });
+    }
+}
+
+// ─── ONGLET 4 ISO : Synthèse conformité ISO ───────────────────────────────────
+async function addSyntheseConformiteSheetISO(wb, evaluations, confPieImg, referentiel) {
+    const ws = wb.addWorksheet('Synthèse conformité ISO');
+    ws.columns = [{ width: 40 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 }];
+
+    const isoCounts = Object.fromEntries(ISO_CONF_KEYS.map(k => [k, 0]));
+    for (const ev of evaluations) {
+        const c = ev.conformite || 'na';
+        if (c in isoCounts) isoCounts[c]++;
+    }
+    const total = evaluations.length || 1;
+
+    let r = 1;
+    titleRow(ws, r++, '4. Synthèse du niveau de conformité ISO/IEC 27001:2022', 5);
+    ws.addRow([]); r++;
+    headerRow(ws, r, ['Niveau de conformité', 'Nb contrôles', '%']); r++;
+
+    for (const key of ISO_CONF_KEYS) {
+        const v  = isoCounts[key];
+        const cs = confStyle(key);
+        ws.getRow(r).height = 24;
+        [CONF_LABELS[key] || key, v, `${Math.round(v / total * 100)} %`].forEach((val, ci) => {
+            const cell = ws.getCell(r, ci + 1);
+            cell.value = val;
+            applyCell(cell, { ...cs, bold: ci === 0, size: 10, align: ci > 0 ? 'center' : 'left' });
+        });
+        ws.getRow(r).commit(); r++;
+    }
+    ws.addRow([]); r++;
+
+    // Conformité par domaine
+    const evalMap = buildEvalMap(evaluations);
+    const domaines = sortDomaines(referentiel?.domaines);
+    if (domaines.length > 0) {
+        sectionRow(ws, r++, 'Conformité par domaine', 5);
+        headerRow(ws, r, ['Domaine', 'Conforme', 'NC Min.', 'NC Maj.', 'N/A']); r++;
+        for (const domaine of domaines) {
+            const dc = { conforme:0, nc_mineure:0, nc_majeure:0, na:0 };
+            const allMesures = (domaine.objectifs || []).flatMap(o => o.mesures || []);
+            for (const m of allMesures) {
+                const ev = evalMap[m.id];
+                const c = ev?.conformite || 'na';
+                if (c in dc) dc[c]++; else dc.na++;
+            }
+            ws.getRow(r).height = 22;
+            [domaine.nom || domaine.code, dc.conforme, dc.nc_mineure, dc.nc_majeure, dc.na].forEach((v, ci) => {
+                const cell = ws.getCell(r, ci + 1);
+                cell.value = v;
+                const style = ci === 0 ? { bg: C.light, fontColor: C.navyMid, bold: true, size: 9, align: 'left' }
+                    : ci === 1 ? { bg: C.greenLight,  fontColor: C.greenFont,  size: 9, align: 'center', bold: false }
+                    : ci === 2 ? { bg: C.orangeLight, fontColor: C.orangeFont, size: 9, align: 'center', bold: false }
+                    : ci === 3 ? { bg: C.redLight,    fontColor: C.redFont,    size: 9, align: 'center', bold: false }
+                    :            { bg: C.light,        fontColor: C.gray,       size: 9, align: 'center', bold: false };
+                applyCell(cell, style);
+            });
+            ws.getRow(r).commit(); r++;
+        }
+        ws.addRow([]); r++;
+    }
+
+    if (confPieImg) {
+        sectionRow(ws, r++, 'Répartition de la conformité', 5);
+        const id = wb.addImage({ base64: confPieImg, extension: 'png' });
+        ws.addImage(id, { tl: { col: 0, row: r - 1 }, ext: { width: 500, height: 433 } });
+        for (let i = 0; i < 24; i++) { ws.addRow([]); r++; }
+    }
+}
+
+// ─── ONGLET 5 ISO : SoA ────────────────────────────────────────────────────────
+function addSoASheet(wb, referentiel, soaEntries) {
+    const ws = wb.addWorksheet('Déclaration applicabilité');
+    ws.columns = [
+        { width: 26 }, // Domaine
+        { width: 13 }, // Contrôle
+        { width: 55 }, // Intitulé du contrôle
+        { width: 12 }, // Applicable
+        { width: 22 }, // Statut implémentation
+        { width: 45 }, // Justification exclusion
+        { width: 32 }, // Raisons inclusion
+        { width: 22 }, // Référence document
+    ];
+
+    const soaMap = {};
+    for (const s of soaEntries || []) soaMap[s.mesure_id] = s;
+
+    const domaines = sortDomaines(referentiel?.domaines);
+
+    let r = 1;
+    titleRow(ws, r++, '5. Déclaration d\'Applicabilité (SoA) — Annexe A ISO/IEC 27001:2022', 8);
+    ws.addRow([]); r++;
+    headerRow(ws, r, ['Domaine','Contrôle','Intitulé du contrôle','Applicable','Statut implémentation','Justification d\'exclusion','Raisons d\'inclusion','Référence document']);
+    r++;
+
+    for (const domaine of domaines) {
+        const domStart = r;
+        const objectifs = [...(domaine.objectifs || [])].sort((a, b) =>
+            (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
+        );
+
+        for (const objectif of objectifs) {
+            const mesures = [...(objectif.mesures || [])].sort((a, b) =>
+                (a.code || '').localeCompare(b.code || '', undefined, { numeric: true })
+            );
+            for (const mesure of mesures) {
+                const soa = soaMap[mesure.id];
+                const applicable = soa ? soa.applicable : true;
+                const statutLabel = soa ? (SOA_STATUT_LABELS[soa.statut_implementation] || '—') : '—';
+                const statutBg = { 'Implémenté':C.greenLight, 'Planifié':C.orangeLight, 'Partiel':C.orangeLight, 'Non implémenté':C.redLight };
+                const statutFg = { 'Implémenté':C.greenFont,  'Planifié':C.orangeFont,  'Partiel':C.orangeFont,  'Non implémenté':C.redFont };
+
+                ws.getRow(r).height = Math.max(
+                    calcRowHeight(mesure.description || '', 55),
+                    calcRowHeight(soa?.justification_exclusion || '', 45),
+                    calcRowHeight(Array.isArray(soa?.raisons_inclusion) ? soa.raisons_inclusion.join(', ') : '', 32),
+                    150
+                );
+
+                const c1 = ws.getCell(r, 1);
+                if (r === domStart) {
+                    c1.value = domaine.nom || domaine.code || '';
+                    applyCell(c1, { bg: C.navy, fontColor: C.white, bold: true, size: 9, align: 'center' });
+                } else {
+                    applyCell(c1, { bg: C.navy, fontColor: C.white, size: 9 });
+                }
+
+                ws.getCell(r, 2).value = mesure.code || `M${mesure.id}`;
+                applyCell(ws.getCell(r, 2), { bg: C.white, fontColor: C.navy, bold: true, size: 9, align: 'center' });
+
+                ws.getCell(r, 3).value = mesure.description || mesure.code || '';
+                applyCell(ws.getCell(r, 3), { bg: C.white, fontColor: C.navy, size: 9 });
+
+                ws.getCell(r, 4).value = applicable ? 'Oui' : 'Non';
+                applyCell(ws.getCell(r, 4), {
+                    bg: applicable ? C.greenLight : C.redLight,
+                    fontColor: applicable ? C.greenFont : C.redFont,
+                    bold: true, size: 9, align: 'center'
+                });
+
+                ws.getCell(r, 5).value = applicable ? statutLabel : '—';
+                applyCell(ws.getCell(r, 5), {
+                    bg: applicable ? (statutBg[statutLabel] || C.light) : C.light,
+                    fontColor: applicable ? (statutFg[statutLabel] || C.gray) : C.gray,
+                    size: 9, align: 'center'
+                });
+
+                ws.getCell(r, 6).value = !applicable ? (soa?.justification_exclusion || '—') : '';
+                applyCell(ws.getCell(r, 6), { bg: C.white, fontColor: C.gray, size: 9 });
+
+                const raisons = soa?.raisons_inclusion;
+                ws.getCell(r, 7).value = Array.isArray(raisons) ? raisons.join(', ') : (raisons || '');
+                applyCell(ws.getCell(r, 7), { bg: C.white, fontColor: C.navy, size: 9 });
+
+                ws.getCell(r, 8).value = soa?.reference_document || '';
+                applyCell(ws.getCell(r, 8), { bg: C.white, fontColor: C.navy, size: 9 });
+
+                ws.getRow(r).commit(); r++;
+            }
+        }
+
+        if (r > domStart + 1) ws.mergeCells(domStart, 1, r - 1, 1);
+        ws.getCell(domStart, 1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        ws.getRow(r - 1).eachCell({ includeEmpty: true }, (_, ci) => {
+            ws.getCell(r - 1, ci).border = { ...bdr(), bottom: thick() };
+        });
+    }
+}
+
 // ─── EXPORT PRINCIPAL ─────────────────────────────────────────────────────────
 export async function exportAuditReportExcel({ audit, evaluations, planActions, soaEntries, referentiel }) {
     // Calcul des données pour les graphiques
@@ -636,19 +918,29 @@ export async function exportAuditReportExcel({ audit, evaluations, planActions, 
     const tickFont   = { size: 16, family: 'Calibri' };
     const chartBase  = { responsive: false, animation: false, layout: { padding: 16 } };
 
-    const [donut, bar, matBar, confPie] = await Promise.all([
-        // Donut conformité — canvas 900×900
-        chartToPNG({ type:'doughnut', data:{ labels:CONF_LABELS_SHORT, datasets:[{ data:CONF_KEYS.map(k=>cCounts[k]), backgroundColor:CONF_COLORS, borderWidth:3 }] }, options:{ ...chartBase, cutout:'65%', plugins:{ legend:{ position:'right', labels:{ font:legendFont, padding:16, boxWidth:18 } }, tooltip:{enabled:false} } } }, 900, 900),
+    const refType = getReferentielType(referentiel);
 
-        // Bar conformité horizontal — canvas 1100×700
-        chartToPNG({ type:'bar', data:{ labels:CONF_LABELS_SHORT, datasets:[{ data:CONF_KEYS.map(k=>cCounts[k]), backgroundColor:CONF_COLORS, borderRadius:6, borderSkipped:false }] }, options:{ ...chartBase, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{beginAtZero:true,grid:{color:'#f3f4f6'},ticks:{font:tickFont}}, y:{grid:{display:false},ticks:{font:{...tickFont,weight:'600'}}} } } }, 1100, 700),
+    // Graphiques communs
+    const confLabelsChart = refType === 'iso27001' ? ISO_CONF_SHORT  : CONF_LABELS_SHORT;
+    const confKeysChart   = refType === 'iso27001' ? ISO_CONF_KEYS   : CONF_KEYS;
+    const confColorsChart = refType === 'iso27001' ? ISO_CONF_COLORS : CONF_COLORS;
 
-        // Bar maturité — canvas 1100×660
-        chartToPNG({ type:'bar', data:{ labels:MAT_SHORT, datasets:[{ data:matCounts, backgroundColor:MAT_COLORS, borderRadius:6, borderSkipped:false }] }, options:{ ...chartBase, plugins:{ legend:{display:false} }, scales:{ y:{beginAtZero:true,grid:{color:'#f3f4f6'},ticks:{font:tickFont}}, x:{grid:{display:false},ticks:{font:tickFont}} } } }, 1100, 660),
+    const chartPromises = [
+        // Donut conformité
+        chartToPNG({ type:'doughnut', data:{ labels:confLabelsChart, datasets:[{ data:confKeysChart.map(k=>cCounts[k]||0), backgroundColor:confColorsChart, borderWidth:3 }] }, options:{ ...chartBase, cutout:'65%', plugins:{ legend:{ position:'right', labels:{ font:legendFont, padding:16, boxWidth:18 } }, tooltip:{enabled:false} } } }, 900, 900),
+        // Bar conformité horizontal
+        chartToPNG({ type:'bar', data:{ labels:confLabelsChart, datasets:[{ data:confKeysChart.map(k=>cCounts[k]||0), backgroundColor:confColorsChart, borderRadius:6, borderSkipped:false }] }, options:{ ...chartBase, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{beginAtZero:true,grid:{color:'#f3f4f6'},ticks:{font:tickFont}}, y:{grid:{display:false},ticks:{font:{...tickFont,weight:'600'}}} } } }, 1100, 700),
+        // Bar maturité (DNSSI) ou null (ISO)
+        refType === 'dnssi'
+            ? chartToPNG({ type:'bar', data:{ labels:MAT_SHORT, datasets:[{ data:matCounts, backgroundColor:MAT_COLORS, borderRadius:6, borderSkipped:false }] }, options:{ ...chartBase, plugins:{ legend:{display:false} }, scales:{ y:{beginAtZero:true,grid:{color:'#f3f4f6'},ticks:{font:tickFont}}, x:{grid:{display:false},ticks:{font:tickFont}} } } }, 1100, 660)
+            : Promise.resolve(null),
+        // Pie conformité
+        refType === 'dnssi'
+            ? chartToPNG({ type:'pie', data:{ labels:Object.keys(dnssiCounts), datasets:[{ data:Object.values(dnssiCounts), backgroundColor:['#dc2626','#f97316','#16a34a','#9ca3af'], borderWidth:3 }] }, options:{ ...chartBase, plugins:{ legend:{ position:'right', labels:{ font:legendFont, padding:18, boxWidth:18 } }, tooltip:{enabled:false} } } }, 900, 780)
+            : chartToPNG({ type:'pie', data:{ labels:ISO_CONF_SHORT, datasets:[{ data:ISO_CONF_KEYS.map(k=>cCounts[k]||0), backgroundColor:ISO_CONF_COLORS, borderWidth:3 }] }, options:{ ...chartBase, plugins:{ legend:{ position:'right', labels:{ font:legendFont, padding:18, boxWidth:18 } }, tooltip:{enabled:false} } } }, 900, 780),
+    ];
 
-        // Pie conformité DNSSI — canvas 900×780
-        chartToPNG({ type:'pie', data:{ labels:Object.keys(dnssiCounts), datasets:[{ data:Object.values(dnssiCounts), backgroundColor:['#dc2626','#f97316','#16a34a','#9ca3af'], borderWidth:3 }] }, options:{ ...chartBase, plugins:{ legend:{ position:'right', labels:{ font:legendFont, padding:18, boxWidth:18 } }, tooltip:{enabled:false} } } }, 900, 780),
-    ]);
+    const [donut, bar, matBar, confPie] = await Promise.all(chartPromises);
 
     const wb    = new ExcelJS.Workbook();
     wb.creator  = 'DataProtect';
@@ -656,10 +948,18 @@ export async function exportAuditReportExcel({ audit, evaluations, planActions, 
 
     await addSyntheseSheet(wb, audit, evaluations, planActions, { donut, bar });
     addIdentificationSheet(wb, audit);
-    addEvaluationSheet(wb, referentiel, evaluations);
-    await addSyntheseMaturiteSheet(wb, evaluations, matBar, referentiel);
-    await addSyntheseConformiteSheet(wb, evaluations, confPie, referentiel);
-    addEtatAvancementSheet(wb, referentiel, evaluations, planActions);
+
+    if (refType === 'dnssi') {
+        addEvaluationSheet(wb, referentiel, evaluations);
+        await addSyntheseMaturiteSheet(wb, evaluations, matBar, referentiel);
+        await addSyntheseConformiteSheet(wb, evaluations, confPie, referentiel);
+        addEtatAvancementSheet(wb, referentiel, evaluations, planActions, 'dnssi');
+    } else {
+        addEvaluationSheetISO(wb, referentiel, evaluations);
+        await addSyntheseConformiteSheetISO(wb, evaluations, confPie, referentiel);
+        addSoASheet(wb, referentiel, soaEntries);
+        addEtatAvancementSheet(wb, referentiel, evaluations, planActions, 'iso27001');
+    }
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob   = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
