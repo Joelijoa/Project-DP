@@ -45,8 +45,8 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
     useEffect(() => {
         if (!contextMenu) return;
         const close = () => setContextMenu(null);
-        window.addEventListener('click', close);
-        return () => window.removeEventListener('click', close);
+        const timer = setTimeout(() => window.addEventListener('click', close), 100);
+        return () => { clearTimeout(timer); window.removeEventListener('click', close); };
     }, [contextMenu]);
 
     const getAutoValue = (key) => {
