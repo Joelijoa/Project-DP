@@ -8,11 +8,15 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
     const [newLabel, setNewLabel] = useState('');
     const [newValeur, setNewValeur] = useState('');
     const [newUnite, setNewUnite] = useState('');
+    // contextMenu: { type: 'predefined'|'custom', key?, id?, x, y }
     const [contextMenu, setContextMenu] = useState(null);
-    const [editItem, setEditItem] = useState(null);
+    const [editItem, setEditItem] = useState(null); // { type, id?, key?, label, unite }
 
     const set = (k, v) => setIndicateurs(prev => ({ ...prev, [k]: v }));
     const customList = indicateurs.custom || [];
+    const hiddenKeys = indicateurs.hidden || [];
+    const overrides = indicateurs.overrides || {};
+    const visibleDef = INDICATEURS_DEF.filter(d => !hiddenKeys.includes(d.key));
 
     const setCustomField = (id, field, value) =>
         setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === id ? { ...c, [field]: value } : c) }));
@@ -30,16 +34,28 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
         setContextMenu(null);
     };
 
+    const hidePredefined = (key) => {
+        setIndicateurs(prev => ({ ...prev, hidden: [...(prev.hidden || []), key] }));
+        setContextMenu(null);
+    };
+
     const saveEdit = () => {
         if (!editItem) return;
-        setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === editItem.id ? { ...editItem } : c) }));
+        if (editItem.type === 'custom') {
+            setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === editItem.id ? { ...c, label: editItem.label, unite: editItem.unite } : c) }));
+        } else {
+            setIndicateurs(prev => ({ ...prev, overrides: { ...(prev.overrides || {}), [editItem.key]: editItem.label } }));
+        }
         setEditItem(null);
     };
 
-    const handleContextMenu = (e, c) => {
+    const openContextMenu = (e, payload) => {
         if (readOnly) return;
         e.preventDefault();
-        setContextMenu({ id: c.id, x: e.clientX, y: e.clientY });
+        e.stopPropagation();
+        const x = Math.min(e.clientX, window.innerWidth - 170);
+        const y = Math.min(e.clientY, window.innerHeight - 90);
+        setContextMenu({ ...payload, x, y });
     };
 
     useEffect(() => {
@@ -83,7 +99,7 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                                 Ajouter un indicateur
                             </button>
                         )}
-                        {!readOnly && customList.length > 0 && (
+                        {!readOnly && (
                             <span className="flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
                                 <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zm-7.518-.267A8.25 8.25 0 1120.25 10.5M8.288 14.212A5.25 5.25 0 1117.25 10.5" />
@@ -124,15 +140,20 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                     </div>
                 )}
 
-                {/* Liste complète des indicateurs */}
+                {/* Liste complète */}
                 <div className="space-y-0">
-                    {/* Prédéfinis */}
-                    {INDICATEURS_DEF.map(({ key, label, unit, auto }) => {
+                    {/* Prédéfinis visibles */}
+                    {visibleDef.map(({ key, label, unit, auto }) => {
                         const autoVal = auto ? getAutoValue(key) : null;
+                        const displayLabel = overrides[key] || label;
                         return (
-                            <div key={key} className="flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0">
+                            <div
+                                key={key}
+                                onContextMenu={!auto ? e => openContextMenu(e, { type: 'predefined', key }) : undefined}
+                                className={`flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0 ${!auto && !readOnly ? 'cursor-context-menu' : ''}`}
+                            >
                                 <div className="flex-1">
-                                    <p className="text-sm text-gray-700">{label}</p>
+                                    <p className="text-sm text-gray-700 select-none">{displayLabel}</p>
                                     {auto && <p className="text-xs text-gray-400 mt-0.5">Calculé automatiquement depuis la synthèse</p>}
                                 </div>
                                 {auto ? (
@@ -145,44 +166,45 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                                             type="number"
                                             value={indicateurs[key] || ''}
                                             onChange={e => !readOnly && set(key, e.target.value)}
+                                            onContextMenu={!readOnly ? e => openContextMenu(e, { type: 'predefined', key }) : undefined}
                                             readOnly={readOnly}
                                             placeholder="—"
                                             className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 text-right read-only:bg-gray-50 read-only:text-gray-600"
                                             style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                         />
-                                        {unit && <span className="text-xs text-gray-400 flex-shrink-0">{unit}</span>}
+                                        {unit && <span className="text-xs text-gray-400 flex-shrink-0 select-none">{unit}</span>}
                                     </div>
                                 )}
                             </div>
                         );
                     })}
 
-                    {/* Personnalisés — même style, en bas */}
+                    {/* Personnalisés */}
                     {customList.map(c => (
                         <div
                             key={c.id}
-                            onContextMenu={e => handleContextMenu(e, c)}
+                            onContextMenu={e => openContextMenu(e, { type: 'custom', id: c.id })}
                             className={`flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0 ${!readOnly ? 'cursor-context-menu' : ''}`}
                         >
                             <div className="flex-1">
-                                <p className="text-sm text-gray-700">{c.label}</p>
+                                <p className="text-sm text-gray-700 select-none">{c.label}</p>
                             </div>
                             <div className="flex items-center gap-2 w-48">
                                 <input
                                     type="text"
                                     value={c.valeur}
                                     onChange={e => !readOnly && setCustomField(c.id, 'valeur', e.target.value)}
+                                    onContextMenu={e => openContextMenu(e, { type: 'custom', id: c.id })}
                                     readOnly={readOnly}
                                     placeholder="—"
                                     className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 text-right read-only:bg-gray-50 read-only:text-gray-600"
                                     style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                 />
-                                {c.unite && <span className="text-xs text-gray-400 flex-shrink-0">{c.unite}</span>}
+                                {c.unite && <span className="text-xs text-gray-400 flex-shrink-0 select-none">{c.unite}</span>}
                             </div>
                         </div>
                     ))}
                 </div>
-
 
                 {/* Bouton sauvegarde */}
                 {!readOnly && (
@@ -205,7 +227,16 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                     onClick={e => e.stopPropagation()}
                 >
                     <button
-                        onClick={() => { const item = customList.find(c => c.id === contextMenu.id); setEditItem({ ...item }); setContextMenu(null); }}
+                        onClick={() => {
+                            if (contextMenu.type === 'custom') {
+                                const item = customList.find(c => c.id === contextMenu.id);
+                                setEditItem({ type: 'custom', id: item.id, label: item.label, unite: item.unite });
+                            } else {
+                                const def = INDICATEURS_DEF.find(d => d.key === contextMenu.key);
+                                setEditItem({ type: 'predefined', key: contextMenu.key, label: overrides[contextMenu.key] || def?.label || '', unite: '' });
+                            }
+                            setContextMenu(null);
+                        }}
                         className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
                     >
                         <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -214,7 +245,7 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                         Modifier
                     </button>
                     <button
-                        onClick={() => deleteCustom(contextMenu.id)}
+                        onClick={() => contextMenu.type === 'custom' ? deleteCustom(contextMenu.id) : hidePredefined(contextMenu.key)}
                         className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -226,7 +257,7 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                 document.body
             )}
 
-            {/* Modal modification (nom + unité seulement) */}
+            {/* Modal modification (custom seulement — nom + unité) */}
             {editItem && createPortal(
                 <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/30"
                     onClick={() => setEditItem(null)}>
@@ -241,14 +272,16 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                                     className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2"
                                     style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} autoFocus />
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-500 mb-1 block">Unité</label>
-                                <input type="text" value={editItem.unite}
-                                    onChange={e => setEditItem(prev => ({ ...prev, unite: e.target.value }))}
-                                    placeholder="ex : %, /an, ..."
-                                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2"
-                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                            </div>
+                            {editItem.type === 'custom' && (
+                                <div>
+                                    <label className="text-xs text-gray-500 mb-1 block">Unité</label>
+                                    <input type="text" value={editItem.unite}
+                                        onChange={e => setEditItem(prev => ({ ...prev, unite: e.target.value }))}
+                                        placeholder="ex : %, /an, ..."
+                                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2"
+                                        style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                                </div>
+                            )}
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <button onClick={() => setEditItem(null)}

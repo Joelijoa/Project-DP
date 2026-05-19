@@ -13,6 +13,9 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
 
     const set = (k, v) => setIndicateurs(prev => ({ ...prev, [k]: v }));
     const customList = indicateurs.custom || [];
+    const hiddenKeys = indicateurs.hidden || [];
+    const overrides = indicateurs.overrides || {};
+    const visibleDef = ISO_INDICATEURS_DEF.filter(d => !hiddenKeys.includes(d.key));
 
     const allMesures = referentiel?.domaines?.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []) ?? [];
     const applicable = allMesures.filter(m => soaMap[m.id]?.applicable === true);
@@ -44,16 +47,28 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
         setContextMenu(null);
     };
 
+    const hidePredefined = (key) => {
+        setIndicateurs(prev => ({ ...prev, hidden: [...(prev.hidden || []), key] }));
+        setContextMenu(null);
+    };
+
     const saveEdit = () => {
         if (!editItem) return;
-        setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === editItem.id ? { ...editItem } : c) }));
+        if (editItem.type === 'custom') {
+            setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === editItem.id ? { ...c, label: editItem.label, unite: editItem.unite } : c) }));
+        } else {
+            setIndicateurs(prev => ({ ...prev, overrides: { ...(prev.overrides || {}), [editItem.key]: editItem.label } }));
+        }
         setEditItem(null);
     };
 
-    const handleContextMenu = (e, c) => {
+    const openContextMenu = (e, payload) => {
         if (readOnly) return;
         e.preventDefault();
-        setContextMenu({ id: c.id, x: e.clientX, y: e.clientY });
+        e.stopPropagation();
+        const x = Math.min(e.clientX, window.innerWidth - 170);
+        const y = Math.min(e.clientY, window.innerHeight - 90);
+        setContextMenu({ ...payload, x, y });
     };
 
     useEffect(() => {
@@ -85,7 +100,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                                 Ajouter un indicateur
                             </button>
                         )}
-                        {!readOnly && customList.length > 0 && (
+                        {!readOnly && (
                             <span className="flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
                                 <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zm-7.518-.267A8.25 8.25 0 1120.25 10.5M8.288 14.212A5.25 5.25 0 1117.25 10.5" />
@@ -128,13 +143,18 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
 
                 {/* Liste complète */}
                 <div className="space-y-0">
-                    {/* Prédéfinis */}
-                    {ISO_INDICATEURS_DEF.map(({ key, label, unit, auto }) => {
+                    {/* Prédéfinis visibles */}
+                    {visibleDef.map(({ key, label, unit, auto }) => {
                         const autoVal = auto ? getAutoValue(key) : null;
+                        const displayLabel = overrides[key] || label;
                         return (
-                            <div key={key} className="flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0">
+                            <div
+                                key={key}
+                                onContextMenu={!auto ? e => openContextMenu(e, { type: 'predefined', key }) : undefined}
+                                className={`flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0 ${!auto && !readOnly ? 'cursor-context-menu' : ''}`}
+                            >
                                 <div className="flex-1">
-                                    <p className="text-sm text-gray-700">{label}</p>
+                                    <p className="text-sm text-gray-700 select-none">{displayLabel}</p>
                                     {auto && <p className="text-xs text-gray-400 mt-0.5">Calculé automatiquement</p>}
                                 </div>
                                 {auto ? (
@@ -147,44 +167,45 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                                             type="number"
                                             value={indicateurs[key] || ''}
                                             onChange={e => !readOnly && set(key, e.target.value)}
+                                            onContextMenu={!readOnly ? e => openContextMenu(e, { type: 'predefined', key }) : undefined}
                                             readOnly={readOnly}
                                             placeholder="—"
                                             className={`w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 text-right ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
                                             style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                         />
-                                        {unit && <span className="text-xs text-gray-400 flex-shrink-0">{unit}</span>}
+                                        {unit && <span className="text-xs text-gray-400 flex-shrink-0 select-none">{unit}</span>}
                                     </div>
                                 )}
                             </div>
                         );
                     })}
 
-                    {/* Personnalisés — même style, en bas */}
+                    {/* Personnalisés */}
                     {customList.map(c => (
                         <div
                             key={c.id}
-                            onContextMenu={e => handleContextMenu(e, c)}
+                            onContextMenu={e => openContextMenu(e, { type: 'custom', id: c.id })}
                             className={`flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0 ${!readOnly ? 'cursor-context-menu' : ''}`}
                         >
                             <div className="flex-1">
-                                <p className="text-sm text-gray-700">{c.label}</p>
+                                <p className="text-sm text-gray-700 select-none">{c.label}</p>
                             </div>
                             <div className="flex items-center gap-2 w-48">
                                 <input
                                     type="text"
                                     value={c.valeur}
                                     onChange={e => !readOnly && setCustomField(c.id, 'valeur', e.target.value)}
+                                    onContextMenu={e => openContextMenu(e, { type: 'custom', id: c.id })}
                                     readOnly={readOnly}
                                     placeholder="—"
                                     className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 text-right read-only:bg-gray-50 read-only:text-gray-600"
                                     style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                 />
-                                {c.unite && <span className="text-xs text-gray-400 flex-shrink-0">{c.unite}</span>}
+                                {c.unite && <span className="text-xs text-gray-400 flex-shrink-0 select-none">{c.unite}</span>}
                             </div>
                         </div>
                     ))}
                 </div>
-
 
                 {/* Bouton sauvegarde */}
                 {!readOnly && (
@@ -207,7 +228,16 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                     onClick={e => e.stopPropagation()}
                 >
                     <button
-                        onClick={() => { const item = customList.find(c => c.id === contextMenu.id); setEditItem({ ...item }); setContextMenu(null); }}
+                        onClick={() => {
+                            if (contextMenu.type === 'custom') {
+                                const item = customList.find(c => c.id === contextMenu.id);
+                                setEditItem({ type: 'custom', id: item.id, label: item.label, unite: item.unite });
+                            } else {
+                                const def = ISO_INDICATEURS_DEF.find(d => d.key === contextMenu.key);
+                                setEditItem({ type: 'predefined', key: contextMenu.key, label: overrides[contextMenu.key] || def?.label || '', unite: '' });
+                            }
+                            setContextMenu(null);
+                        }}
                         className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
                     >
                         <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -216,7 +246,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                         Modifier
                     </button>
                     <button
-                        onClick={() => deleteCustom(contextMenu.id)}
+                        onClick={() => contextMenu.type === 'custom' ? deleteCustom(contextMenu.id) : hidePredefined(contextMenu.key)}
                         className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -228,7 +258,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                 document.body
             )}
 
-            {/* Modal modification (nom + unité seulement) */}
+            {/* Modal modification (custom — nom + unité) */}
             {editItem && createPortal(
                 <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/30"
                     onClick={() => setEditItem(null)}>
@@ -243,14 +273,16 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                                     className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2"
                                     style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} autoFocus />
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-500 mb-1 block">Unité</label>
-                                <input type="text" value={editItem.unite}
-                                    onChange={e => setEditItem(prev => ({ ...prev, unite: e.target.value }))}
-                                    placeholder="ex : %, /an, ..."
-                                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2"
-                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                            </div>
+                            {editItem.type === 'custom' && (
+                                <div>
+                                    <label className="text-xs text-gray-500 mb-1 block">Unité</label>
+                                    <input type="text" value={editItem.unite}
+                                        onChange={e => setEditItem(prev => ({ ...prev, unite: e.target.value }))}
+                                        placeholder="ex : %, /an, ..."
+                                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2"
+                                        style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
+                                </div>
+                            )}
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <button onClick={() => setEditItem(null)}
