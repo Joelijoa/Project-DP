@@ -140,26 +140,26 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                                                 ))}
                                                             </div>
                                                         </div>
-                                                        {/* Constat + recommandation + preuve si évalué */}
+                                                        {/* Preuve + constat + recommandation si évalué */}
                                                         {niveau !== null && (
-                                                            <div className="mt-2 ml-24 grid grid-cols-3 gap-3">
-                                                                <textarea value={ev.commentaire || ''}
-                                                                    onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
-                                                                    readOnly={readOnly}
-                                                                    rows={2}
-                                                                    placeholder={readOnly ? '—' : 'Constat...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
-                                                                <textarea value={ev.recommandation || ''}
-                                                                    onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
-                                                                    readOnly={readOnly}
-                                                                    rows={2}
-                                                                    placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
+                                                            <div className="mt-2 ml-24 grid gap-3" style={{ gridTemplateColumns: '180px 1fr 1fr' }}>
                                                                 <input type="text" value={ev.preuve || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
                                                                     readOnly={readOnly}
                                                                     placeholder={readOnly ? '—' : 'Références / preuves...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 self-start" />
+                                                                <textarea value={ev.commentaire || ''}
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    rows={4}
+                                                                    placeholder={readOnly ? '—' : 'Constat...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-y" />
+                                                                <textarea value={ev.recommandation || ''}
+                                                                    onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
+                                                                    readOnly={readOnly}
+                                                                    rows={4}
+                                                                    placeholder={readOnly ? '—' : 'Recommandation...'}
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-y" />
                                                             </div>
                                                         )}
                                                     </div>

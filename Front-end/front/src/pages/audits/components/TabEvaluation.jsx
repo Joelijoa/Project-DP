@@ -139,9 +139,9 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                             <th className="text-left px-5 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Règle</th>
                                                             <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Niveau maturité</th>
                                                             <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Conformité</th>
-                                                            <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Constat</th>
-                                                            <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Recommandation</th>
-                                                            <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Preuves / Références</th>
+                                                            <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-36">Preuves / Références</th>
+                                                            <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Constat</th>
+                                                            <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Recommandation</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -179,14 +179,27 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                     <td className="px-3 py-2">
                                                                         <ConformiteBadge conformite={conformite} />
                                                                     </td>
+                                                                    <td className="px-3 py-2 w-36">
+                                                                        <input
+                                                                            type="text"
+                                                                            value={ev.preuve || ''}
+                                                                            onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
+                                                                            readOnly={readOnly}
+                                                                            placeholder={readOnly ? '—' : isNA ? 'Justifier la N/A...' : 'Références...'}
+                                                                            className={`w-full text-xs border rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-default ${isNA && !readOnly
+                                                                                ? 'border-orange-200 bg-orange-50 read-only:bg-gray-50'
+                                                                                : 'border-gray-200 read-only:bg-gray-50 read-only:text-gray-600'
+                                                                                }`}
+                                                                        />
+                                                                    </td>
                                                                     <td className="px-3 py-2">
                                                                         <textarea
                                                                             value={ev.commentaire || ''}
                                                                             onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
                                                                             readOnly={readOnly}
-                                                                            rows={2}
+                                                                            rows={4}
                                                                             placeholder={readOnly ? '—' : 'Constat...'}
-                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
+                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-y"
                                                                         />
                                                                     </td>
                                                                     <td className="px-3 py-2">
@@ -194,22 +207,9 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                             value={ev.recommandation || ''}
                                                                             onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
                                                                             readOnly={readOnly}
-                                                                            rows={2}
+                                                                            rows={4}
                                                                             placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="px-3 py-2">
-                                                                        <input
-                                                                            type="text"
-                                                                            value={ev.preuve || ''}
-                                                                            onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
-                                                                            readOnly={readOnly}
-                                                                            placeholder={readOnly ? '—' : isNA ? 'Justifier la non-applicabilité...' : 'Références / preuves...'}
-                                                                            className={`w-full text-xs border rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-default ${isNA && !readOnly
-                                                                                ? 'border-orange-200 bg-orange-50 read-only:bg-gray-50'
-                                                                                : 'border-gray-200 read-only:bg-gray-50 read-only:text-gray-600'
-                                                                                }`}
+                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-y"
                                                                         />
                                                                     </td>
                                                                 </tr>
