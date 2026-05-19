@@ -8,8 +8,8 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
     const [newLabel, setNewLabel] = useState('');
     const [newValeur, setNewValeur] = useState('');
     const [newUnite, setNewUnite] = useState('');
-    const [contextMenu, setContextMenu] = useState(null); // { id, x, y }
-    const [editItem, setEditItem] = useState(null);       // { id, label, valeur, unite }
+    const [contextMenu, setContextMenu] = useState(null);
+    const [editItem, setEditItem] = useState(null);
 
     const set = (k, v) => setIndicateurs(prev => ({ ...prev, [k]: v }));
     const customList = indicateurs.custom || [];
@@ -27,6 +27,9 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
         if (key === 'iso_taux_impl') return allMesures.length > 0 ? `${Math.round(implCount / allMesures.length * 100)}%` : '—';
         return '—';
     };
+
+    const setCustomField = (id, field, value) =>
+        setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === id ? { ...c, [field]: value } : c) }));
 
     const addCustom = () => {
         if (!newLabel.trim()) return;
@@ -64,97 +67,72 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
         <div className="space-y-4">
             <TabInfo text="Indicateurs de performance du Système de Management de la Sécurité de l'Information (SMSI) selon ISO 27001:2022. Les indicateurs marqués « Auto » sont calculés depuis l'évaluation et la SoA." />
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
-                <div>
-                    <h2 className="text-sm font-semibold text-gray-800 mb-1">Indicateurs SMSI</h2>
-                    <p className="text-xs text-gray-400">Indicateurs de pilotage de la sécurité de l'information</p>
-                </div>
-
-                {/* ── Indicateurs personnalisés ── */}
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-700">Indicateurs personnalisés</p>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{customList.length}</span>
-                        </div>
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h2 className="text-sm font-semibold text-gray-800 mb-1">Indicateurs SMSI</h2>
+                        <p className="text-xs text-gray-400">Indicateurs de pilotage de la sécurité de l'information</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5">
                         {!readOnly && (
                             <button
                                 onClick={() => { setShowAddForm(v => !v); setNewLabel(''); setNewValeur(''); setNewUnite(''); }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white transition"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white transition flex-shrink-0"
                                 style={{ backgroundColor: 'var(--brand-red)' }}
                             >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                                 </svg>
-                                Ajouter
+                                Ajouter un indicateur
                             </button>
                         )}
+                        {!readOnly && customList.length > 0 && (
+                            <span className="flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+                                <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zm-7.518-.267A8.25 8.25 0 1120.25 10.5M8.288 14.212A5.25 5.25 0 1117.25 10.5" />
+                                </svg>
+                                Clic droit sur un indicateur pour modifier ou supprimer
+                            </span>
+                        )}
                     </div>
-
-                    {/* Formulaire d'ajout */}
-                    {showAddForm && !readOnly && (
-                        <div className="flex items-center gap-2 p-3 rounded-xl border border-dashed border-gray-300 bg-blue-50/40">
-                            <input type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)}
-                                placeholder="Libellé de l'indicateur" autoFocus
-                                className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2"
-                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
-                                onKeyDown={e => e.key === 'Enter' && addCustom()} />
-                            <input type="text" value={newValeur} onChange={e => setNewValeur(e.target.value)}
-                                placeholder="Valeur"
-                                className="w-24 text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-white text-right focus:outline-none focus:ring-2"
-                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
-                                onKeyDown={e => e.key === 'Enter' && addCustom()} />
-                            <input type="text" value={newUnite} onChange={e => setNewUnite(e.target.value)}
-                                placeholder="Unité"
-                                className="w-20 text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2"
-                                style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
-                                onKeyDown={e => e.key === 'Enter' && addCustom()} />
-                            <button onClick={addCustom} disabled={!newLabel.trim()}
-                                className="px-3 py-1.5 rounded-xl text-xs font-medium text-white disabled:opacity-40"
-                                style={{ backgroundColor: 'var(--brand-red)' }}>
-                                Confirmer
-                            </button>
-                            <button onClick={() => setShowAddForm(false)}
-                                className="px-3 py-1.5 rounded-xl text-xs font-medium text-gray-500 bg-gray-100 hover:bg-gray-200">
-                                Annuler
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Liste */}
-                    {customList.length > 0 ? (
-                        <div className="space-y-0">
-                            {!readOnly && <p className="text-[10px] text-gray-400 italic px-1 mb-1">Clic droit sur un indicateur pour le modifier ou supprimer</p>}
-                            {customList.map(c => (
-                                <div
-                                    key={c.id}
-                                    onContextMenu={e => handleContextMenu(e, c)}
-                                    className={`flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0 ${!readOnly ? 'cursor-context-menu select-none hover:bg-gray-50/60 rounded-xl px-2 -mx-2' : ''}`}
-                                >
-                                    <div className="flex-1">
-                                        <p className="text-sm text-gray-700">{c.label}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        {c.valeur ? (
-                                            <span className="text-sm font-semibold text-gray-800">{c.valeur}</span>
-                                        ) : (
-                                            <span className="text-sm text-gray-400">—</span>
-                                        )}
-                                        {c.unite && <span className="text-xs text-gray-400">{c.unite}</span>}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        !showAddForm && <p className="text-xs text-gray-400 italic px-1">Aucun indicateur personnalisé.{!readOnly && ' Cliquez sur « Ajouter » pour en créer.'}</p>
-                    )}
                 </div>
 
-                {/* ── Indicateurs prédéfinis ── */}
-                <div className="space-y-3">
+                {/* Formulaire d'ajout */}
+                {showAddForm && !readOnly && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl border border-dashed border-gray-300 bg-blue-50/40">
+                        <input type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                            placeholder="Libellé de l'indicateur" autoFocus
+                            className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2"
+                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                            onKeyDown={e => e.key === 'Enter' && addCustom()} />
+                        <input type="text" value={newValeur} onChange={e => setNewValeur(e.target.value)}
+                            placeholder="Valeur"
+                            className="w-24 text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-white text-right focus:outline-none focus:ring-2"
+                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                            onKeyDown={e => e.key === 'Enter' && addCustom()} />
+                        <input type="text" value={newUnite} onChange={e => setNewUnite(e.target.value)}
+                            placeholder="Unité"
+                            className="w-20 text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2"
+                            style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                            onKeyDown={e => e.key === 'Enter' && addCustom()} />
+                        <button onClick={addCustom} disabled={!newLabel.trim()}
+                            className="px-3 py-1.5 rounded-xl text-xs font-medium text-white disabled:opacity-40"
+                            style={{ backgroundColor: 'var(--brand-red)' }}>
+                            Confirmer
+                        </button>
+                        <button onClick={() => setShowAddForm(false)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-medium text-gray-500 bg-gray-100 hover:bg-gray-200">
+                            Annuler
+                        </button>
+                    </div>
+                )}
+
+                {/* Liste complète */}
+                <div className="space-y-0">
+                    {/* Prédéfinis */}
                     {ISO_INDICATEURS_DEF.map(({ key, label, unit, auto }) => {
                         const autoVal = auto ? getAutoValue(key) : null;
                         return (
-                            <div key={key} className="flex items-center gap-4 py-2 border-b border-gray-50 last:border-0">
+                            <div key={key} className="flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0">
                                 <div className="flex-1">
                                     <p className="text-sm text-gray-700">{label}</p>
                                     {auto && <p className="text-xs text-gray-400 mt-0.5">Calculé automatiquement</p>}
@@ -180,7 +158,33 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                             </div>
                         );
                     })}
+
+                    {/* Personnalisés — même style, en bas */}
+                    {customList.map(c => (
+                        <div
+                            key={c.id}
+                            onContextMenu={e => handleContextMenu(e, c)}
+                            className={`flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0 ${!readOnly ? 'cursor-context-menu' : ''}`}
+                        >
+                            <div className="flex-1">
+                                <p className="text-sm text-gray-700">{c.label}</p>
+                            </div>
+                            <div className="flex items-center gap-2 w-48">
+                                <input
+                                    type="text"
+                                    value={c.valeur}
+                                    onChange={e => !readOnly && setCustomField(c.id, 'valeur', e.target.value)}
+                                    readOnly={readOnly}
+                                    placeholder="—"
+                                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 text-right read-only:bg-gray-50 read-only:text-gray-600"
+                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
+                                />
+                                {c.unite && <span className="text-xs text-gray-400 flex-shrink-0">{c.unite}</span>}
+                            </div>
+                        </div>
+                    ))}
                 </div>
+
 
                 {/* Bouton sauvegarde */}
                 {!readOnly && (
@@ -195,11 +199,11 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                 )}
             </div>
 
-            {/* ── Menu contextuel ── */}
+            {/* Menu contextuel */}
             {contextMenu && createPortal(
                 <div
                     style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x, zIndex: 9999 }}
-                    className="bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[140px]"
+                    className="bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[150px]"
                     onClick={e => e.stopPropagation()}
                 >
                     <button
@@ -224,7 +228,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                 document.body
             )}
 
-            {/* ── Modal modification ── */}
+            {/* Modal modification (nom + unité seulement) */}
             {editItem && createPortal(
                 <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/30"
                     onClick={() => setEditItem(null)}>
@@ -233,27 +237,19 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                         <h3 className="text-sm font-semibold text-gray-800">Modifier l'indicateur</h3>
                         <div className="space-y-3">
                             <div>
-                                <label className="text-xs text-gray-500 mb-1 block">Libellé</label>
+                                <label className="text-xs text-gray-500 mb-1 block">Nom de l'indicateur</label>
                                 <input type="text" value={editItem.label}
                                     onChange={e => setEditItem(prev => ({ ...prev, label: e.target.value }))}
                                     className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2"
                                     style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} autoFocus />
                             </div>
-                            <div className="flex gap-3">
-                                <div className="flex-1">
-                                    <label className="text-xs text-gray-500 mb-1 block">Valeur</label>
-                                    <input type="text" value={editItem.valeur}
-                                        onChange={e => setEditItem(prev => ({ ...prev, valeur: e.target.value }))}
-                                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 text-right"
-                                        style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                                </div>
-                                <div className="w-28">
-                                    <label className="text-xs text-gray-500 mb-1 block">Unité</label>
-                                    <input type="text" value={editItem.unite}
-                                        onChange={e => setEditItem(prev => ({ ...prev, unite: e.target.value }))}
-                                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2"
-                                        style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
-                                </div>
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1 block">Unité</label>
+                                <input type="text" value={editItem.unite}
+                                    onChange={e => setEditItem(prev => ({ ...prev, unite: e.target.value }))}
+                                    placeholder="ex : %, /an, ..."
+                                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2"
+                                    style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
