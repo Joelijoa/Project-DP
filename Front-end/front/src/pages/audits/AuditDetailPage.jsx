@@ -490,8 +490,8 @@ const AuditDetailPage = () => {
         return referentiel.domaines.map(domaine => {
             const mesures = domaine.objectifs.flatMap(o => o.mesures);
             const total = mesures.length;
-            const evaluated = mesures.filter(m => localEvals[m.id] !== undefined);
-            const scoredEvals = evaluated.filter(m => localEvals[m.id]?.niveau_maturite !== -1);
+            const evaluated = mesures.filter(m => { const n = localEvals[m.id]?.niveau_maturite; return n !== null && n !== undefined; });
+            const scoredEvals = evaluated.filter(m => localEvals[m.id]?.niveau_maturite !== -1 && localEvals[m.id]?.niveau_maturite !== -2);
             const scores = scoredEvals.map(m => localEvals[m.id]?.niveau_maturite);
             const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 

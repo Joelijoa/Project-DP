@@ -9,7 +9,7 @@ export const PHASES_DEF = [
 ];
 
 export const NIVEAUX = [
-    { value: null, label: 'N/A', color: 'text-gray-400' },
+    { value: -2, label: 'N/A', color: 'text-gray-400' },
     { value: 0, label: 'Aucun', color: 'text-red-600' },
     { value: 1, label: 'Initial', color: 'text-orange-500' },
     { value: 2, label: 'Reproductible', color: 'text-yellow-500' },

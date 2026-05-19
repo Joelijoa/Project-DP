@@ -27,8 +27,8 @@ export const sortReferentiel = (ref) => {
 };
 
 export const calcConformite = (niveau) => {
-    if (niveau === null || niveau === undefined) return 'na';
-    if (niveau === -1) return 'na'; // domaine non applicable
+    if (niveau === null || niveau === undefined) return 'na'; // pas encore évalué
+    if (niveau === -1 || niveau === -2) return 'na';          // domaine / mesure non applicable
     if (niveau <= 1) return 'non_conforme';
     if (niveau <= 3) return 'partiel';
     return 'conforme';

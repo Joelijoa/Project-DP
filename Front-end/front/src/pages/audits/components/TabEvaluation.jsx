@@ -47,7 +47,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
             <div className="flex flex-wrap gap-2 px-1">
                 {NIVEAUX.map(n => (
                     <span key={String(n.value)} className={`text-xs font-medium ${n.color}`}>
-                        {n.value === null ? 'N/A' : `${n.value} = ${n.label}`}
+                        {n.value === -2 ? 'N/A' : `${n.value} = ${n.label}`}
                     </span>
                 ))}
             </div>
@@ -55,7 +55,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
             {/* Domaines */}
             {referentiel.domaines?.map(domaine => {
                 const mesures = domaine.objectifs?.flatMap(o => o.mesures) || [];
-                const evCount = mesures.filter(m => localEvals[m.id] !== undefined).length;
+                const evCount = mesures.filter(m => { const n = localEvals[m.id]?.niveau_maturite; return n !== null && n !== undefined; }).length;
                 const isDomainNA = mesures.length > 0 && mesures.every(m => localEvals[m.id]?.niveau_maturite === -1);
                 const hasStartedEval = mesures.some(m => { const n = localEvals[m.id]?.niveau_maturite; return n !== null && n !== undefined && n !== -1; });
                 const isOpen = openDomaines[domaine.id];
@@ -149,7 +149,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                             const ev = localEvals[mesure.id] || {};
                                                             const niveau = ev.niveau_maturite ?? null;
                                                             const conformite = calcConformite(niveau);
-                                                            const isNA = niveau === null;
+                                                            const isNA = niveau === -2;
 
                                                             return (
                                                                 <tr key={mesure.id} className="border-b border-gray-50 hover:bg-gray-50/40 transition-colors">
@@ -158,14 +158,15 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                     </td>
                                                                     <td className="px-3 py-2">
                                                                         <AppSelect
-                                                                            value={niveau === null ? 'na' : String(niveau)}
+                                                                            value={niveau === null || niveau === undefined ? '' : niveau === -2 ? 'na' : String(niveau)}
                                                                             onChange={v => {
                                                                                 if (readOnly) return;
-                                                                                setEval(mesure.id, 'niveau_maturite', v === 'na' ? null : parseInt(v));
+                                                                                setEval(mesure.id, 'niveau_maturite', v === '' ? null : v === 'na' ? -2 : parseInt(v));
                                                                             }}
                                                                             disabled={readOnly}
                                                                             size="sm"
                                                                             options={[
+                                                                                { value: '', label: '— Sélectionner —' },
                                                                                 { value: 'na', label: 'N/A' },
                                                                                 { value: '0', label: '0 — Aucun' },
                                                                                 { value: '1', label: '1 — Initial' },
