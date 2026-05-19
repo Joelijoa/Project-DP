@@ -20,7 +20,7 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
     return (
         <div className="space-y-4">
             <TabInfo text="Les indicateurs de la SSI énumérés dans ce document sont donnés à titre indicatif. Ils peuvent être complétés par l'entité ou l'IIV. Ces indicateurs permettent aux responsables des entités et des IIV de définir les axes de progrès et de s'inscrire dans un processus d'amélioration continue." />
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h2 className="text-sm font-semibold text-gray-800 mb-1">6. Indicateurs de la SSI</h2>
                 <p className="text-xs text-gray-400 mb-5">Liste non exhaustive d'indicateurs de performance de la sécurité des SI</p>
 
@@ -34,7 +34,7 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                                     {auto && <p className="text-xs text-gray-400 mt-0.5">Calculé automatiquement depuis la synthèse</p>}
                                 </div>
                                 {auto ? (
-                                    <div className="w-40 px-3 py-2 text-sm font-semibold text-center rounded-lg" style={{ backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' }}>
+                                    <div className="w-40 px-3 py-2 text-sm font-semibold text-center rounded-xl" style={{ backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' }}>
                                         {autoVal}
                                     </div>
                                 ) : (
@@ -45,7 +45,7 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                                             onChange={e => !readOnly && set(key, e.target.value)}
                                             readOnly={readOnly}
                                             placeholder="—"
-                                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 text-right read-only:bg-gray-50 read-only:text-gray-600"
+                                            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 text-right read-only:bg-gray-50 read-only:text-gray-600"
                                         />
                                         {unit && <span className="text-xs text-gray-400 flex-shrink-0">{unit}</span>}
                                     </div>
@@ -69,7 +69,7 @@ const TabIndicateurs = ({ indicateurs, setIndicateurs, synthese, onSave, saving,
                         <button
                             onClick={onSave}
                             disabled={saving}
-                            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg transition disabled:opacity-60"
+                            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl transition disabled:opacity-60"
                             style={{ backgroundColor: 'var(--brand-red)' }}
                         >
                             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}

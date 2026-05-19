@@ -1,7 +1,7 @@
 import { TabInfo } from './AuditBadges';
 
 const SyntheseTable = ({ rows, caption }) => (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h2 className="text-sm font-semibold text-gray-800 mb-5">{caption}</h2>
         <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -93,7 +93,7 @@ const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
                     { label: 'NC mineures', value: totMin, color: '#ea580c' },
                     { label: 'NC majeures', value: totMaj, color: '#dc2626' },
                 ].map((k, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4" style={k.accent ? { borderTopWidth: '3px', borderTopColor: k.color } : {}}>
+                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4" style={k.accent ? { borderTopWidth: '3px', borderTopColor: k.color } : {}}>
                         <p className="text-xs font-medium text-gray-500">{k.label}</p>
                         <p className="text-2xl font-bold mt-1" style={{ color: k.color }}>{k.value}</p>
                     </div>
@@ -105,7 +105,7 @@ const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
                 <SyntheseTable rows={smsiRows} caption="Exigences SMSI — Corps principal §4-10 (toutes applicables)" />
             )}
             {smsiRows.length === 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                     <p className="text-sm font-semibold text-gray-700 mb-2">Exigences SMSI — Corps principal §4-10</p>
                     <p className="text-xs text-gray-400">Non disponible — lancez le seed ISO 27001:2022 pour ajouter les exigences §4-10.</p>
                 </div>
@@ -115,7 +115,7 @@ const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
             {hasAnySoA ? (
                 <SyntheseTable rows={annexeRows.filter(t => t.total > 0)} caption="Annexe A — Contrôles applicables (SoA)" />
             ) : (
-                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                     <p className="text-sm font-semibold text-gray-700 mb-2">Annexe A — Contrôles</p>
                     <p className="text-xs text-gray-400">Complétez la Déclaration d'Applicabilité pour voir la synthèse Annexe A.</p>
                 </div>

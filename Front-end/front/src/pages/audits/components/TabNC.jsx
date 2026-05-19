@@ -21,7 +21,7 @@ const TabNC = ({ referentiel, soaMap, localEvals }) => {
         return (
             <div className="space-y-4">
                 <TabInfo text="Ce registre liste tous les contrôles ISO 27001 applicables évalués comme NC mineure ou NC majeure. Il sert de base pour définir les actions correctives dans le Plan d'actions." />
-                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
                     <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
                         <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -47,7 +47,7 @@ const TabNC = ({ referentiel, soaMap, localEvals }) => {
             <TabInfo text="Ce registre liste tous les contrôles ISO 27001 applicables évalués comme NC mineure ou NC majeure. Utilisez le Plan d'actions pour définir les actions correctives associées." />
 
             {/* Compteur */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
                         <span className="text-lg font-bold text-red-600">{ncList.length}</span>
@@ -69,7 +69,7 @@ const TabNC = ({ referentiel, soaMap, localEvals }) => {
 
             {/* Liste par thème */}
             {Object.values(byTheme).map(({ theme, items }) => (
-                <div key={theme.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div key={theme.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 border-b border-gray-100">
                         <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>{theme.code}</span>
                         <span className="text-sm font-semibold text-gray-700">{theme.nom}</span>

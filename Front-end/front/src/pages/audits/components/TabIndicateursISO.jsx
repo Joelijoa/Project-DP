@@ -21,7 +21,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
     return (
         <div className="space-y-4">
             <TabInfo text="Indicateurs de performance du Système de Management de la Sécurité de l'Information (SMSI) selon ISO 27001:2022. Les indicateurs marqués « Auto » sont calculés depuis l'évaluation et la SoA." />
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h2 className="text-sm font-semibold text-gray-800 mb-1">Indicateurs SMSI</h2>
                 <p className="text-xs text-gray-400 mb-5">Indicateurs de pilotage de la sécurité de l'information</p>
 
@@ -35,7 +35,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                                     {auto && <p className="text-xs text-gray-400 mt-0.5">Calculé automatiquement</p>}
                                 </div>
                                 {auto ? (
-                                    <div className="w-40 px-3 py-2 text-sm font-semibold text-center rounded-lg" style={{ backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' }}>
+                                    <div className="w-40 px-3 py-2 text-sm font-semibold text-center rounded-xl" style={{ backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' }}>
                                         {autoVal}
                                     </div>
                                 ) : (
@@ -46,7 +46,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                                             onChange={e => !readOnly && set(key, e.target.value)}
                                             readOnly={readOnly}
                                             placeholder="—"
-                                            className={`w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 text-right ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
+                                            className={`w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 text-right ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
                                             style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                         />
                                         {unit && <span className="text-xs text-gray-400 flex-shrink-0">{unit}</span>}
@@ -62,7 +62,7 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                         <button
                             onClick={onSave}
                             disabled={saving}
-                            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60"
+                            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-60"
                             style={{ backgroundColor: 'var(--brand-red)' }}
                         >
                             {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}

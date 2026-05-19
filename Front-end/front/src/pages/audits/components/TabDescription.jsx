@@ -35,9 +35,9 @@ const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, t
     return (
         <div className="space-y-5">
             {/* Description statique */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <div className="flex items-center gap-2 mb-4">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-red-light)' }}>
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-red-light)' }}>
                         <svg className="w-4 h-4" style={{ color: 'var(--brand-red)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                         </svg>
@@ -63,7 +63,7 @@ const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, t
                 {!isISO && (
                     <div className="mt-4 grid grid-cols-3 sm:grid-cols-6 gap-3">
                         {NIVEAUX.filter(n => n.value !== null).map(n => (
-                            <div key={n.value} className="text-center p-3 rounded-lg bg-gray-50 border border-gray-100">
+                            <div key={n.value} className="text-center p-3 rounded-xl bg-gray-50 border border-gray-100">
                                 <p className={`text-2xl font-bold ${n.color}`}>{n.value}</p>
                                 <p className="text-xs text-gray-600 mt-1 font-medium">{n.label}</p>
                             </div>
@@ -80,7 +80,7 @@ const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, t
                     { label: 'Taux de conformité', value: `${tauxGlobal}%`, sub: 'global pondéré', accent: true },
                     { label: 'Statut', value: STATUT_CONFIG[audit.statut]?.label ?? '—', sub: audit.perimetre || 'Aucun périmètre défini' },
                 ].map((s, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4" style={s.accent ? { borderTopWidth: '3px', borderTopColor: 'var(--brand-red)' } : {}}>
+                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4" style={s.accent ? { borderTopWidth: '3px', borderTopColor: 'var(--brand-red)' } : {}}>
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</p>
                         <p className="text-2xl font-bold mt-1" style={s.accent ? { color: 'var(--brand-red)' } : { color: '#111827' }}>{s.value}</p>
                         <p className="text-xs text-gray-400 mt-0.5 truncate">{s.sub}</p>
@@ -89,13 +89,13 @@ const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, t
             </div>
 
             {/* Informations de l'audit — vue ou édition */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-gray-800">Informations de l'audit</h3>
                     {!editing && !readOnly && (
                         <button
                             onClick={() => setEditing(true)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-xl transition"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
@@ -119,7 +119,7 @@ const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, t
                                         type="text"
                                         value={form[key]}
                                         onChange={e => setF(key, e.target.value)}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
                                         style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                     />
                                 </div>
@@ -134,18 +134,18 @@ const TabDescription = ({ audit, identification, totalMesures, totalEvaluated, t
                                         type="date"
                                         value={form[key]}
                                         onChange={e => setF(key, e.target.value)}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
                                         style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                     />
                                 </div>
                             ))}
                         </div>
                         <div className="flex gap-2 justify-end">
-                            <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+                            <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">
                                 Annuler
                             </button>
                             <button onClick={handleSave} disabled={saving}
-                                className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60"
+                                className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-60"
                                 style={{ backgroundColor: 'var(--brand-red)' }}>
                                 {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                 Enregistrer

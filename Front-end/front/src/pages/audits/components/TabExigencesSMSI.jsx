@@ -40,7 +40,7 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                     { label: 'NC mineures', value: ncMineure, color: '#ea580c' },
                     { label: 'NC majeures', value: ncMajeure, color: '#dc2626' },
                 ].map((kpi, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
                         <p className="text-3xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
                         {kpi.sub && <p className="text-xs text-gray-400">{kpi.sub}</p>}
@@ -57,7 +57,7 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                 ).length;
 
                 return (
-                    <div key={section.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div key={section.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <button onClick={() => toggleSection(section.id)}
                             className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition">
                             <div className="flex items-center gap-3">
@@ -84,7 +84,7 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                                                 const ev = localEvals[mesure.id] || {};
                                                 const niveau = ev.niveau_maturite ?? null;
                                                 return (
-                                                    <div key={mesure.id} className="rounded-lg border border-gray-100 bg-gray-50/40 p-3">
+                                                    <div key={mesure.id} className="rounded-xl border border-gray-100 bg-gray-50/40 p-3">
                                                         <div className="flex items-start gap-3">
                                                             <span className="font-mono text-[11px] text-gray-400 flex-shrink-0 w-16 pt-0.5">{mesure.code}</span>
                                                             <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description}</p>
@@ -112,18 +112,18 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                                                                     readOnly={readOnly}
                                                                     rows={2}
                                                                     placeholder={readOnly ? '—' : 'Constat...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
                                                                 <textarea value={ev.recommandation || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
                                                                     readOnly={readOnly}
                                                                     rows={2}
                                                                     placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-none" />
                                                                 <input type="text" value={ev.preuve || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
                                                                     readOnly={readOnly}
                                                                     placeholder={readOnly ? '—' : 'Références / preuves...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600" />
                                                             </div>
                                                         )}
                                                     </div>

@@ -1,54 +1,94 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
-/**
- * AppSelect — remplacement custom du <select> natif.
- * Props:
- *   value      : valeur courante
- *   onChange   : callback(newValue)
- *   options    : [{ value, label }]
- *   placeholder: texte si aucune valeur (défaut: 'Sélectionner…')
- *   className  : classes additionnelles sur le trigger
- */
-const AppSelect = ({ value, onChange, options = [], placeholder = 'Sélectionner…', className = '', disabled = false, align = 'left' }) => {
+const AppSelect = ({
+    value,
+    onChange,
+    options = [],
+    placeholder = 'Sélectionner…',
+    className = '',
+    disabled = false,
+    align = 'left',
+    size = 'default',
+}) => {
     const [open, setOpen] = useState(false);
-    const ref = useRef(null);
+    const [pos, setPos] = useState({});
+    const triggerRef = useRef(null);
+    const dropdownRef = useRef(null);
 
     const selected = options.find(o => String(o.value) === String(value));
+    const isCompact = size === 'sm';
 
+    // Fermer si clic hors trigger + dropdown
     useEffect(() => {
         const handler = (e) => {
-            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+            if (
+                triggerRef.current && !triggerRef.current.contains(e.target) &&
+                dropdownRef.current && !dropdownRef.current.contains(e.target)
+            ) {
+                setOpen(false);
+            }
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
+
+    // Recalculer la position du dropdown quand il s'ouvre
+    const handleToggle = () => {
+        if (disabled) return;
+        if (!open && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setPos({
+                top: rect.bottom + window.scrollY + 4,
+                left: align === 'right' ? 'auto' : rect.left + window.scrollX,
+                right: align === 'right' ? window.innerWidth - rect.right + window.scrollX : 'auto',
+                minWidth: rect.width,
+            });
+        }
+        setOpen(o => !o);
+    };
 
     const handleSelect = (val) => {
         onChange(val);
         setOpen(false);
     };
 
+    const triggerPadding = isCompact ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm';
+    const chevronSize = isCompact ? 'w-3 h-3' : 'w-4 h-4';
+
     return (
-        <div ref={ref} className={`relative ${className}`}>
+        <div className={`relative ${className}`}>
             <button
+                ref={triggerRef}
                 type="button"
                 disabled={disabled}
-                onClick={() => !disabled && setOpen(o => !o)}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm border rounded-xl bg-white text-left focus:outline-none focus:ring-2 focus:border-transparent transition ${
+                onClick={handleToggle}
+                className={`w-full flex items-center justify-between gap-2 ${triggerPadding} border rounded-xl bg-white text-left focus:outline-none focus:ring-2 focus:border-transparent transition ${
                     open ? 'border-gray-300 ring-2' : 'border-gray-200'
                 } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-gray-300'}`}
                 style={{ '--tw-ring-color': 'var(--brand-red)', color: selected ? '#111827' : '#9ca3af' }}
             >
                 <span className="truncate">{selected ? selected.label : placeholder}</span>
                 <svg
-                    className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+                    className={`${chevronSize} text-gray-400 flex-shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                 </svg>
             </button>
 
-            {open && (
-                <div className={`absolute z-50 mt-1 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden py-1 min-w-full w-max max-w-sm ${align === 'right' ? 'right-0' : 'left-0'}`}>
+            {open && createPortal(
+                <div
+                    ref={dropdownRef}
+                    style={{
+                        position: 'absolute',
+                        top: pos.top,
+                        left: pos.left,
+                        right: pos.right,
+                        minWidth: pos.minWidth,
+                        zIndex: 9999,
+                    }}
+                    className="bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden py-1 max-w-xs"
+                >
                     {options.map(opt => {
                         const isActive = String(opt.value) === String(value);
                         return (
@@ -57,9 +97,7 @@ const AppSelect = ({ value, onChange, options = [], placeholder = 'Sélectionner
                                 type="button"
                                 onClick={() => handleSelect(opt.value)}
                                 className={`w-full text-left px-3 py-2 text-sm transition flex items-center justify-between gap-3 ${
-                                    isActive
-                                        ? 'text-gray-900 font-medium'
-                                        : 'text-gray-600 hover:bg-gray-50'
+                                    isActive ? 'text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50'
                                 }`}
                             >
                                 <span>{opt.label}</span>
@@ -72,7 +110,8 @@ const AppSelect = ({ value, onChange, options = [], placeholder = 'Sélectionner
                             </button>
                         );
                     })}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

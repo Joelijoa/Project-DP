@@ -3,7 +3,7 @@ import { TabInfo } from './AuditBadges';
 const TabSyntheseMaturite = ({ synthese }) => (
     <div className="space-y-4">
         <TabInfo text="Cette feuille a pour but de donner une synthèse du niveau de maturité selon les valeurs renseignées par l'entité ou de l'IIV. Elle permet de visualiser l'état de mise en œuvre des règles de la DNSSI par niveau de maturité et d'identifier les axes d'amélioration prioritaires." />
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h2 className="text-sm font-semibold text-gray-800 mb-5">3. Synthèse du niveau de maturité par domaine</h2>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">

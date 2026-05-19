@@ -11,14 +11,14 @@ const TabSyntheseConformite = ({ synthese, totalConforme, totalPartiel, totalNC,
                 { label: 'Non conforme', value: totalNC, color: '#dc2626', bg: '#fef2f2' },
                 { label: 'Taux global', value: `${tauxGlobal}%`, color: 'var(--brand-red)', bg: 'var(--brand-red-light)', accent: true },
             ].map((k, i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-200 p-4" style={k.accent ? { borderTopWidth: '3px', borderTopColor: k.color } : {}}>
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4" style={k.accent ? { borderTopWidth: '3px', borderTopColor: k.color } : {}}>
                     <p className="text-xs font-medium text-gray-500">{k.label}</p>
                     <p className="text-2xl font-bold mt-1" style={{ color: k.color }}>{k.value}</p>
                 </div>
             ))}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h2 className="text-sm font-semibold text-gray-800 mb-5">4. Synthèse du niveau de conformité par domaine</h2>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">

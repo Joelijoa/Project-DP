@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { RAISONS_INCLUSION, STATUT_IMPL_CONFIG } from './auditConstants';
 import { stripObjectifPrefix } from './auditHelpers';
 import { TabInfo } from './AuditBadges';
+import AppSelect from '../../../components/common/AppSelect';
 
 const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave, readOnly }) => {
     const [openThemes, setOpenThemes] = useState({});
@@ -42,7 +43,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                     { label: 'Non applicables', value: nonApplicable, color: '#dc2626' },
                     { label: 'À décider', value: undecided, color: '#d97706' },
                 ].map((kpi, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
                         <p className="text-3xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
                     </div>
@@ -57,7 +58,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                 const themeTotal = themeMesures.length;
 
                 return (
-                    <div key={theme.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div key={theme.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <button
                             onClick={() => toggleTheme(theme.id)}
                             className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition"
@@ -164,17 +165,13 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                                                                     {/* Statut implémentation */}
                                                                     <div>
                                                                         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Statut d'implémentation</p>
-                                                                        <select
+                                                                        <AppSelect
                                                                             value={entry.statut_implementation ?? ''}
-                                                                            onChange={e => setSoaEntry(mesure.id, 'statut_implementation', e.target.value || null)}
+                                                                            onChange={v => setSoaEntry(mesure.id, 'statut_implementation', v || null)}
                                                                             disabled={readOnly}
-                                                                            className={`w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-500 cursor-default' : 'bg-white'}`}
-                                                                        >
-                                                                            <option value="">— Sélectionner —</option>
-                                                                            {Object.entries(STATUT_IMPL_CONFIG).map(([k, v]) => (
-                                                                                <option key={k} value={k}>{v.label}</option>
-                                                                            ))}
-                                                                        </select>
+                                                                            placeholder="— Sélectionner —"
+                                                                            options={Object.entries(STATUT_IMPL_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))}
+                                                                        />
                                                                     </div>
 
                                                                     {/* Référence documentaire */}
@@ -186,7 +183,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                                                                             onChange={e => setSoaEntry(mesure.id, 'reference_document', e.target.value || null)}
                                                                             readOnly={readOnly}
                                                                             placeholder="Ex : POL-SEC-001"
-                                                                            className={`w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
+                                                                            className={`w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -203,7 +200,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                                                                     readOnly={readOnly}
                                                                     placeholder="Expliquer pourquoi ce contrôle n'est pas applicable..."
                                                                     rows={2}
-                                                                    className={`w-full text-xs border border-orange-200 rounded-md px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1 resize-none ${readOnly ? 'text-gray-600 cursor-default' : ''}`}
+                                                                    className={`w-full text-xs border border-orange-200 rounded-xl px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1 resize-none ${readOnly ? 'text-gray-600 cursor-default' : ''}`}
                                                                 />
                                                             </div>
                                                         )}

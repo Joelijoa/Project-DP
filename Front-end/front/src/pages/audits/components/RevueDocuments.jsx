@@ -151,7 +151,7 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
                                         {/* Actions — une seule rangée */}
                                         <div className="flex items-center gap-1 flex-shrink-0">
                                             <button onClick={() => handleConsulter(doc)} title={examined_ ? 'Revoir' : 'Consulter'}
-                                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${examined_ ? 'text-gray-500 hover:bg-gray-50 border border-gray-200' : 'text-white hover:opacity-90'}`}
+                                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition ${examined_ ? 'text-gray-500 hover:bg-gray-50 border border-gray-200' : 'text-white hover:opacity-90'}`}
                                                 style={examined_ ? {} : { backgroundColor: 'var(--brand-red)' }}>
                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                 {examined_ ? 'Revoir' : 'Consulter'}
@@ -160,11 +160,11 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
                                             {!isClient && (
                                                 <>
                                                     <button onClick={() => handleValider(doc)} disabled={saving || doc.statut === 'valide'}
-                                                        title="Valider" className="p-1.5 rounded-lg text-green-600 hover:bg-green-50 disabled:opacity-30 transition">
+                                                        title="Valider" className="p-1.5 rounded-xl text-green-600 hover:bg-green-50 disabled:opacity-30 transition">
                                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                                                     </button>
                                                     <button onClick={() => setRefuseId(isRefusing ? null : doc.id)} disabled={saving || doc.statut === 'refuse'}
-                                                        title="Refuser" className={`p-1.5 rounded-lg transition disabled:opacity-30 ${isRefusing ? 'bg-red-50 text-red-600' : 'text-red-400 hover:bg-red-50 hover:text-red-600'}`}>
+                                                        title="Refuser" className={`p-1.5 rounded-xl transition disabled:opacity-30 ${isRefusing ? 'bg-red-50 text-red-600' : 'text-red-400 hover:bg-red-50 hover:text-red-600'}`}>
                                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                                     </button>
                                                 </>
@@ -172,14 +172,14 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
 
                                             {isClient && doc.statut === 'refuse' && onReplace && (
                                                 <button onClick={() => { setReplacingId(doc.id); replaceRef.current?.click(); }}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition">
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition">
                                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                                                     Corriger
                                                 </button>
                                             )}
 
                                             <button onClick={() => onDownload(doc.id, doc.nom_original)} title="Télécharger"
-                                                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition">
+                                                className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition">
                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                             </button>
                                         </div>
@@ -188,7 +188,7 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
                                     {/* Constat refus — expansion inline */}
                                     {doc.statut === 'refuse' && doc.constat && (
                                         <div className="px-4 pb-3" style={{ borderLeft: '3px solid #dc2626' }}>
-                                            <div className="ml-7 px-3 py-2 rounded-lg bg-red-50 border border-red-100">
+                                            <div className="ml-7 px-3 py-2 rounded-xl bg-red-50 border border-red-100">
                                                 <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Constat · </span>
                                                 <span className="text-xs text-red-700">{doc.constat}</span>
                                             </div>
@@ -203,15 +203,15 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
                                                     value={constatMap[doc.id] || ''}
                                                     onChange={e => setConstatMap(m => ({ ...m, [doc.id]: e.target.value }))}
                                                     placeholder="Décrivez les modifications à apporter…"
-                                                    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
+                                                    className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
                                                 />
                                                 <div className="flex gap-2">
                                                     <button onClick={() => handleRefuser(doc)} disabled={saving || !(constatMap[doc.id] || '').trim()}
-                                                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition">
+                                                        className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition">
                                                         Confirmer le refus
                                                     </button>
                                                     <button onClick={() => setRefuseId(null)}
-                                                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs hover:bg-gray-50 transition">
+                                                        className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 text-xs hover:bg-gray-50 transition">
                                                         Annuler
                                                     </button>
                                                 </div>
@@ -286,28 +286,28 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
                                             </div>
                                             <div className="flex items-center gap-1 flex-shrink-0">
                                                 <button onClick={() => handleConsulter(doc)} title={examined_ ? 'Revoir' : 'Consulter'}
-                                                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${examined_ ? 'text-gray-500 hover:bg-gray-50 border border-gray-200' : 'text-white hover:opacity-90'}`}
+                                                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition ${examined_ ? 'text-gray-500 hover:bg-gray-50 border border-gray-200' : 'text-white hover:opacity-90'}`}
                                                     style={examined_ ? {} : { backgroundColor: 'var(--brand-red)' }}>
                                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                     {examined_ ? 'Revoir' : 'Consulter'}
                                                 </button>
                                                 <button onClick={() => handleValider(doc)} disabled={saving || doc.statut === 'valide'}
-                                                    title="Valider" className="p-1.5 rounded-lg text-green-600 hover:bg-green-50 disabled:opacity-30 transition">
+                                                    title="Valider" className="p-1.5 rounded-xl text-green-600 hover:bg-green-50 disabled:opacity-30 transition">
                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                                                 </button>
                                                 <button onClick={() => setRefuseId(isRefusing ? null : doc.id)} disabled={saving || doc.statut === 'refuse'}
-                                                    title="Demander une modification" className={`p-1.5 rounded-lg transition disabled:opacity-30 ${isRefusing ? 'bg-red-50 text-red-600' : 'text-red-400 hover:bg-red-50 hover:text-red-600'}`}>
+                                                    title="Demander une modification" className={`p-1.5 rounded-xl transition disabled:opacity-30 ${isRefusing ? 'bg-red-50 text-red-600' : 'text-red-400 hover:bg-red-50 hover:text-red-600'}`}>
                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                                 </button>
                                                 <button onClick={() => onDownload(doc.id, doc.nom_original)} title="Télécharger"
-                                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition">
+                                                    className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition">
                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                                 </button>
                                             </div>
                                         </div>
                                         {doc.statut === 'refuse' && doc.constat && (
                                             <div className="px-4 pb-3" style={{ borderLeft: '3px solid #dc2626' }}>
-                                                <div className="ml-7 px-3 py-2 rounded-lg bg-red-50 border border-red-100">
+                                                <div className="ml-7 px-3 py-2 rounded-xl bg-red-50 border border-red-100">
                                                     <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Constat · </span>
                                                     <span className="text-xs text-red-700">{doc.constat}</span>
                                                 </div>
@@ -320,15 +320,15 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
                                                         value={constatMap[doc.id] || ''}
                                                         onChange={e => setConstatMap(m => ({ ...m, [doc.id]: e.target.value }))}
                                                         placeholder="Précisez les modifications demandées…"
-                                                        className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
+                                                        className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
                                                     />
                                                     <div className="flex gap-2">
                                                         <button onClick={() => handleRefuser(doc)} disabled={saving || !(constatMap[doc.id] || '').trim()}
-                                                            className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition">
+                                                            className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition">
                                                             Confirmer
                                                         </button>
                                                         <button onClick={() => setRefuseId(null)}
-                                                            className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs hover:bg-gray-50 transition">
+                                                            className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 text-xs hover:bg-gray-50 transition">
                                                             Annuler
                                                         </button>
                                                     </div>
@@ -374,24 +374,24 @@ const RevueDocuments = ({ documents, isClient, onDownload, onFetchBlob, onUpdate
                                             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
                                             {doc.statut === 'refuse' && onReplace && (
                                                 <button onClick={() => { setReplacingId(doc.id); replaceRef.current?.click(); }}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition">
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition">
                                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                                                     Corriger
                                                 </button>
                                             )}
                                             <button onClick={() => handleConsulter(doc)} title="Visualiser"
-                                                className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition">
+                                                className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-xl transition">
                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                             </button>
                                             <button onClick={() => onDownload(doc.id, doc.nom_original)} title="Télécharger"
-                                                className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition">
+                                                className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-xl transition">
                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                             </button>
                                         </div>
                                     </div>
                                     {doc.statut === 'refuse' && doc.constat && (
                                         <div className="px-5 pb-3" style={{ borderLeft: '3px solid #dc2626' }}>
-                                            <div className="ml-7 px-3 py-2 rounded-lg bg-red-50 border border-red-100">
+                                            <div className="ml-7 px-3 py-2 rounded-xl bg-red-50 border border-red-100">
                                                 <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Constat client · </span>
                                                 <span className="text-xs text-red-700">{doc.constat}</span>
                                             </div>

@@ -128,7 +128,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
         return d > 0 ? `${d}j` : null;
     };
 
-    const inputCls = "w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 bg-white";
+    const inputCls = "w-full px-2 py-1.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-400 bg-white";
     const inputStyle = { color: '#111827' };
 
     const SH = ({ children }) => (
@@ -182,13 +182,13 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
     if (!editing) {
         return (
             <>
-                <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
                     <div className="flex items-center justify-between">
                         <h2 className="text-sm font-semibold text-gray-800">Planning de l'audit</h2>
                         <div className="flex items-center gap-2">
                             {hasData && (
                                 <button onClick={handleExport} disabled={exporting}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed">
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-xl transition disabled:opacity-60 disabled:cursor-not-allowed">
                                     {exporting
                                         ? <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
                                         : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
@@ -197,7 +197,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                 </button>
                             )}
                             {!readOnly && (
-                                <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition">
+                                <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-xl transition">
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
                                     Modifier
                                 </button>
@@ -231,7 +231,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
 
                             <div>
                                 <SH>Calendrier prévisionnel</SH>
-                                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                <div className="overflow-x-auto rounded-2xl border border-gray-100">
                                     <table className="w-full text-xs border-collapse">
                                         <thead>
                                             <tr className="bg-gray-50 border-b border-gray-200">
@@ -275,7 +275,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                             const { jour, date: dateStr } = fmtDateSession(s.date);
                                             const nb = (s.entretiens || []).length;
                                             return (
-                                                <div key={si} className="rounded-xl border border-gray-200 overflow-hidden">
+                                                <div key={si} className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                                                     {/* En-tête journée */}
                                                     <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200">
                                                         <div className="w-0.5 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--brand-red)' }} />
@@ -307,7 +307,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                                                         : <span className="text-sm text-gray-400 italic">—</span>}
                                                                 </div>
                                                                 <div className="px-4 py-3 align-top">
-                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-medium text-gray-700 whitespace-nowrap">
+                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gray-100 text-xs font-medium text-gray-700 whitespace-nowrap">
                                                                         <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                                                         {plageAff}
                                                                     </span>
@@ -522,7 +522,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
 
     /* ── Mode édition ── */
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-800">Planning de l'audit</h2>
                 {hasData && <button onClick={() => { setEditing(false); setExpandedRow(null); }} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>}
@@ -532,7 +532,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                 <SH>Objectifs de l'audit</SH>
                 <textarea rows={3} value={planning.objectifs || ''} onChange={e => setP('objectifs', e.target.value)}
                     placeholder="Décrire les objectifs de l'audit…"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
                     style={{ color: '#111827' }} />
             </div>
 
@@ -540,7 +540,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                 <SH>Méthodes d'audit</SH>
                 <textarea rows={2} value={planning.methodes || ''} onChange={e => setP('methodes', e.target.value)}
                     placeholder="Entretiens, revue documentaire, tests techniques, observations terrain…"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
                     style={{ color: '#111827' }} />
             </div>
 
@@ -548,13 +548,13 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                 <SH>Documents attendus du client</SH>
                 <textarea rows={2} value={planning.documents_attendus || ''} onChange={e => setP('documents_attendus', e.target.value)}
                     placeholder="Politique de sécurité, procédures internes, schémas réseau…"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-400 resize-none"
                     style={{ color: '#111827' }} />
             </div>
 
             <div>
                 <SH>Calendrier prévisionnel</SH>
-                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                <div className="rounded-2xl border border-gray-100 overflow-hidden">
                     {/* En-tête tableau */}
                     <div className="grid bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 px-3 py-2" style={{ gridTemplateColumns: '28px 1fr 32px' }}>
                         <span className="text-center">N°</span>
@@ -613,7 +613,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                             <input type="date" value={e.date_fin}
                                                 min={e.date_debut || undefined}
                                                 onChange={ev => setEtape(i, 'date_fin', ev.target.value)}
-                                                className={`w-full px-2 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400 bg-white ${
+                                                className={`w-full px-2 py-1.5 text-xs border rounded-xl focus:outline-none focus:ring-1 focus:ring-red-400 bg-white ${
                                                     e.date_fin && e.date_debut && e.date_fin < e.date_debut ? 'border-red-300' : 'border-gray-200'
                                                 }`}
                                                 style={inputStyle} />
@@ -675,7 +675,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                         {sessions.map((s, si) => {
                             const { jour, date: dateStr } = fmtDateSession(s.date);
                             return (
-                                <div key={si} className="rounded-xl border border-gray-200 overflow-hidden">
+                                <div key={si} className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                                     {/* En-tête journée */}
                                     <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200">
                                         <div className="w-0.5 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--brand-red)' }} />
@@ -689,11 +689,11 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                             type="date"
                                             value={s.date}
                                             onChange={ev => setSession(si, 'date', ev.target.value)}
-                                            className="px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-400"
+                                            className="px-2 py-1 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-400"
                                             style={{ color: '#111827' }}
                                         />
                                         <button onClick={() => removeSession(si)}
-                                            className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition px-2 py-1 rounded-lg hover:bg-red-50">
+                                            className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition px-2 py-1 rounded-xl hover:bg-red-50">
                                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                                             Supprimer
                                         </button>
@@ -717,7 +717,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                                             value={name}
                                                             onChange={ev => setInterlocuteur(si, ei, ii, ev.target.value)}
                                                             placeholder="Ex : RSSI, DSI, DRH…"
-                                                            className="flex-1 min-w-0 px-2.5 py-1.5 text-sm border border-transparent rounded-lg hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white transition"
+                                                            className="flex-1 min-w-0 px-2.5 py-1.5 text-sm border border-transparent rounded-xl hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white transition"
                                                             style={{ color: '#111827' }}
                                                         />
                                                         {getInterlocuteurs(e).length > 1 && (
@@ -741,7 +741,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                                         type="time"
                                                         value={e.plage_debut || ''}
                                                         onChange={ev => setEntretien(si, ei, 'plage_debut', ev.target.value)}
-                                                        className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-transparent rounded-lg hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white transition"
+                                                        className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-transparent rounded-xl hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white transition"
                                                         style={{ color: '#111827' }}
                                                     />
                                                     <span className="text-gray-300 text-xs">—</span>
@@ -749,7 +749,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                                         type="time"
                                                         value={e.plage_fin || ''}
                                                         onChange={ev => setEntretien(si, ei, 'plage_fin', ev.target.value)}
-                                                        className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-transparent rounded-lg hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white transition"
+                                                        className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-transparent rounded-xl hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white transition"
                                                         style={{ color: '#111827' }}
                                                     />
                                                 </div>
@@ -760,7 +760,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                                     value={e.exigences || ''}
                                                     onChange={ev => setEntretien(si, ei, 'exigences', ev.target.value)}
                                                     placeholder={'Une exigence par ligne :\nA.5.1 — Politiques de sécurité\nA.6.1 — Organisation interne'}
-                                                    className="w-full px-2.5 py-1.5 text-xs border border-transparent rounded-lg hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white resize-none transition"
+                                                    className="w-full px-2.5 py-1.5 text-xs border border-transparent rounded-xl hover:border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-400 bg-transparent focus:bg-white resize-none transition"
                                                     style={{ color: '#111827' }}
                                                 />
                                             </div>
@@ -789,7 +789,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                         })}
 
                         <button onClick={addSession}
-                            className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                            className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             Ajouter une journée
                         </button>
@@ -799,7 +799,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
 
             <div className="flex justify-end pt-1">
                 <button onClick={handleSave} disabled={saving}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition hover:opacity-90"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition hover:opacity-90"
                     style={{ backgroundColor: 'var(--brand-red)' }}>
                     {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                     {saving ? 'Enregistrement…' : 'Enregistrer le planning'}

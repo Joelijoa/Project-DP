@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PRIORITE_CONFIG, STATUT_PLAN_CONFIG, PLAN_VALIDATION_CONFIG } from './auditConstants';
 import { TabInfo } from './AuditBadges';
+import AppSelect from '../../../components/common/AppSelect';
 
 const emptyPlanForm = { mesure_id: '', description_nc: '', action_corrective: '', responsable: '', delai: '', priorite: 'moyenne', statut: 'a_faire', kpi: '' };
 
@@ -172,7 +173,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                             <button
                                 onClick={() => setShowGenConfirm(v => !v)}
                                 disabled={generating}
-                                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100 transition disabled:opacity-60"
+                                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl border border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100 transition disabled:opacity-60"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
@@ -181,7 +182,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                             </button>
                         )}
                         <button onClick={() => { resetForm(); setShowForm(true); setShowGenConfirm(false); }}
-                            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-lg transition"
+                            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-xl transition"
                             style={{ backgroundColor: 'var(--brand-red)' }}>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -208,7 +209,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                             </p>
                         </div>
                     </div>
-                    <div className="max-h-40 overflow-y-auto space-y-1.5 border border-orange-200 rounded-lg bg-white p-2">
+                    <div className="max-h-40 overflow-y-auto space-y-1.5 border border-orange-200 rounded-xl bg-white p-2">
                         {toGenerate.map(m => {
                             const ev = localEvals[m.id];
                             const isMAJ = ev?.niveau_maturite === 0;
@@ -225,13 +226,13 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                     </div>
                     <div className="flex gap-2">
                         <button onClick={handleGenerate} disabled={generating}
-                            className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white rounded-lg disabled:opacity-60 transition"
+                            className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white rounded-xl disabled:opacity-60 transition"
                             style={{ backgroundColor: '#d97706' }}>
                             {generating && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                             Confirmer la génération
                         </button>
                         <button onClick={() => setShowGenConfirm(false)}
-                            className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                            className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
                             Annuler
                         </button>
                     </div>
@@ -249,7 +250,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                 {editingId ? "Modifier l'action corrective" : 'Nouvelle action corrective'}
                             </h3>
                             <button onClick={() => { setShowForm(false); resetForm(); }}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+                                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -264,7 +265,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                         Mesure / Contrôle *
                                     </label>
                                     <select value={form.mesure_id} onChange={e => setF('mesure_id', e.target.value)}
-                                        className={`w-full mt-1 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 border ${errors.mesure_id ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}>
+                                        className={`w-full mt-1 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-1 border ${errors.mesure_id ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}>
                                         <option value="">— Sélectionner une mesure —</option>
                                         {allMesures.map(m => (
                                             <option key={m.id} value={m.id}>
@@ -280,7 +281,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Description de la non-conformité</label>
                                 <textarea value={form.description_nc} onChange={e => setF('description_nc', e.target.value)}
                                     rows={2} placeholder="Décrivez la non-conformité observée..."
-                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1" />
+                                    className="w-full mt-1 text-sm border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-1" />
                             </div>
 
                             <div>
@@ -289,7 +290,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                 </label>
                                 <textarea value={form.action_corrective} onChange={e => setF('action_corrective', e.target.value)}
                                     rows={2} placeholder="Décrivez l'action à mettre en place..."
-                                    className={`w-full mt-1 text-sm rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 border ${errors.action_corrective ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`} />
+                                    className={`w-full mt-1 text-sm rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-1 border ${errors.action_corrective ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`} />
                                 {errors.action_corrective && <p className="mt-1 text-xs text-red-500">Ce champ est requis.</p>}
                             </div>
 
@@ -300,7 +301,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                     </label>
                                     <input type="text" value={form.responsable} onChange={e => setF('responsable', e.target.value)}
                                         placeholder="Nom..."
-                                        className={`w-full mt-1 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 border ${errors.responsable ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`} />
+                                        className={`w-full mt-1 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-1 border ${errors.responsable ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`} />
                                     {errors.responsable && <p className="mt-1 text-xs text-red-500">Requis.</p>}
                                 </div>
                                 <div>
@@ -308,29 +309,37 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                         Délai *
                                     </label>
                                     <input type="date" value={form.delai} onChange={e => setF('delai', e.target.value)}
-                                        className={`w-full mt-1 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 border ${errors.delai ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`} />
+                                        className={`w-full mt-1 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-1 border ${errors.delai ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`} />
                                     {errors.delai && <p className="mt-1 text-xs text-red-500">Requis.</p>}
                                 </div>
                                 <div>
                                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Priorité</label>
-                                    <select value={form.priorite} onChange={e => setF('priorite', e.target.value)}
-                                        className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1">
-                                        <option value="basse">Basse</option>
-                                        <option value="moyenne">Moyenne</option>
-                                        <option value="haute">Haute</option>
-                                    </select>
+                                    <AppSelect
+                                        value={form.priorite}
+                                        onChange={v => setF('priorite', v)}
+                                        options={[
+                                            { value: 'basse', label: 'Basse' },
+                                            { value: 'moyenne', label: 'Moyenne' },
+                                            { value: 'haute', label: 'Haute' },
+                                        ]}
+                                        className="mt-1"
+                                    />
                                 </div>
                             </div>
 
                             {editingId && (
                                 <div>
                                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut</label>
-                                    <select value={form.statut} onChange={e => setF('statut', e.target.value)}
-                                        className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1">
-                                        <option value="a_faire">À faire</option>
-                                        <option value="en_cours">En cours</option>
-                                        <option value="cloture">Clôturé</option>
-                                    </select>
+                                    <AppSelect
+                                        value={form.statut}
+                                        onChange={v => setF('statut', v)}
+                                        options={[
+                                            { value: 'a_faire', label: 'À faire' },
+                                            { value: 'en_cours', label: 'En cours' },
+                                            { value: 'cloture', label: 'Clôturé' },
+                                        ]}
+                                        className="mt-1"
+                                    />
                                 </div>
                             )}
 
@@ -338,19 +347,19 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">KPI de suivi (optionnel)</label>
                                 <input type="text" value={form.kpi} onChange={e => setF('kpi', e.target.value)}
                                     placeholder="Ex : Taux de couverture antivirus"
-                                    className="w-full mt-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1" />
+                                    className="w-full mt-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1" />
                             </div>
 
                             {/* Footer */}
                             <div className="flex gap-2 pt-2 border-t border-gray-100">
                                 <button type="submit" disabled={submitting}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-60"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-60"
                                     style={{ backgroundColor: 'var(--brand-red)' }}>
                                     {submitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                     {editingId ? 'Enregistrer' : "Créer l'action"}
                                 </button>
                                 <button type="button" onClick={() => { setShowForm(false); resetForm(); }}
-                                    className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+                                    className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">
                                     Annuler
                                 </button>
                             </div>
@@ -361,7 +370,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
 
             {/* Tableau */}
             {planActions.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
                         <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -371,11 +380,11 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                     <p className="text-xs text-gray-400 mt-1">Ajoutez des actions pour traiter les non-conformités identifiées</p>
                 </div>
             ) : filteredPlans.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
                     <p className="text-sm text-gray-500">Aucune action avec cette priorité</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <table className="w-full text-xs">
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-100">
@@ -497,7 +506,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${st.bg} ${st.text}`}>{st.label}</span>
                                 </div>
                                 <button onClick={() => setViewingPlan(null)}
-                                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+                                    className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
@@ -507,12 +516,12 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                 {viewingPlan.description_nc && (
                                     <div>
                                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Description de la non-conformité</p>
-                                        <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{viewingPlan.description_nc}</p>
+                                        <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2">{viewingPlan.description_nc}</p>
                                     </div>
                                 )}
                                 <div>
                                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Action corrective</p>
-                                    <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{viewingPlan.action_corrective || '—'}</p>
+                                    <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2">{viewingPlan.action_corrective || '—'}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>

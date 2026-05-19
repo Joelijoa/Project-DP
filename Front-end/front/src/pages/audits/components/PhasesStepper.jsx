@@ -6,7 +6,7 @@ const PhasesStepper = ({ phase, statut, canChange, onPrev, onNext, nextConfig, c
     const idx = allDone ? PHASES_DEF.length : (currentIdx < 0 ? 0 : currentIdx);
     const showRight = (canChange && !allDone && idx > 0) || nextConfig;
     return (
-        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-white rounded-lg border border-gray-100">
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex items-center gap-1 flex-1 min-w-0">
                 {PHASES_DEF.map((p, i) => {
                     const done = i < idx;
@@ -35,7 +35,7 @@ const PhasesStepper = ({ phase, statut, canChange, onPrev, onNext, nextConfig, c
                     {nextConfig && (
                         <button onClick={onNext} disabled={nextConfig.disabled}
                             title={nextConfig.title || ''}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
                             style={{ backgroundColor: 'var(--brand-red)' }}>
                             {changing ? 'En cours…' : nextConfig.label}
                             {!changing && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}

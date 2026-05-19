@@ -600,118 +600,141 @@ const AuditDetailPage = () => {
     }
 
     return (
-        <div className="-mx-6 -mt-6">
-            {/* ── Bloc sticky : en-tête + bannières + onglets ── */}
-            <div className="sticky z-20 bg-gray-50 px-6 pt-6 pb-3 shadow-sm" style={{ top: '-1.5rem' }}>
-                {/* En-tête */}
-                <div className="flex items-start justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                        <Link to="/audits" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                            </svg>
-                        </Link>
-                        <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h1 className="text-xl font-semibold text-gray-900">{audit.nom}</h1>
-                                <StatutBadge statut={audit.statut} />
-                                {validationCfg && (
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${validationCfg.bg} ${validationCfg.text} ${validationCfg.border}`}>
-                                        {validationCfg.label}
-                                    </span>
-                                )}
-                            </div>
-                            <p className="text-sm text-gray-500 mt-0.5">{audit.client} — {audit.referentiel?.nom}</p>
+        <div className="space-y-5">
+
+            {/* ── En-tête ── */}
+            <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                    <Link to="/audits" className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition flex-shrink-0">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                        </svg>
+                    </Link>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h1 className="text-xl font-bold text-gray-900">{audit.nom}</h1>
+                            <StatutBadge statut={audit.statut} />
+                            {validationCfg && (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${validationCfg.bg} ${validationCfg.text} ${validationCfg.border}`}>
+                                    {validationCfg.label}
+                                </span>
+                            )}
                         </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {(audit.phase === 'realisation' || audit.phase === 'termine') && (
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-500">{totalEvaluated}/{totalMesures} mesures évaluées</span>
-                                <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full transition-all" style={{ width: `${totalMesures > 0 ? (totalEvaluated / totalMesures) * 100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
-                                </div>
-                            </div>
-                        )}
-                        {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && !isJunior && !isClient && (
-                            <button
-                                onClick={() => setShowClotureModal(true)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90"
-                                style={{ backgroundColor: '#16a34a' }}
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
-                                Clôturer l'audit
-                            </button>
-                        )}
-                        {audit.statut === 'termine' && !isJunior && !isClient && (
-                            <button
-                                onClick={handleRouvrirAudit}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg border border-gray-200 hover:bg-gray-200 transition"
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                                </svg>
-                                Rouvrir l'audit
-                            </button>
-                        )}
-                        {canSoumettreAudit && !isClient && (
-                            <button onClick={handleSoumettreAudit} disabled={validating}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
-                                style={{ backgroundColor: '#d97706' }}>
-                                {validating ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-                                }
-                                Soumettre pour validation
-                            </button>
-                        )}
-                        {canValiderRejeter && !isClient && (
-                            <>
-                                <button onClick={handleValiderAudit} disabled={validating}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
-                                    style={{ backgroundColor: '#16a34a' }}>
-                                    {validating ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                    }
-                                    Valider
-                                </button>
-                                <button onClick={() => setShowRejeterAudit(true)} disabled={validating}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition hover:opacity-90 disabled:opacity-60"
-                                    style={{ backgroundColor: '#cc0000' }}>
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                    Rejeter
-                                </button>
-                            </>
-                        )}
+                        <p className="text-sm text-gray-400 mt-0.5">{audit.client} — {audit.referentiel?.nom}</p>
                     </div>
                 </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {audit.statut !== 'termine' && audit.statut !== 'archive' && auditComplete && !isJunior && !isClient && (
+                        <button
+                            onClick={() => setShowClotureModal(true)}
+                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-xl transition hover:opacity-90"
+                            style={{ backgroundColor: '#16a34a' }}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                            Clôturer l'audit
+                        </button>
+                    )}
+                    {audit.statut === 'termine' && !isJunior && !isClient && (
+                        <button
+                            onClick={handleRouvrirAudit}
+                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            Rouvrir l'audit
+                        </button>
+                    )}
+                    {canSoumettreAudit && !isClient && (
+                        <button onClick={handleSoumettreAudit} disabled={validating}
+                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-xl transition hover:opacity-90 disabled:opacity-60"
+                            style={{ backgroundColor: '#d97706' }}>
+                            {validating
+                                ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                            }
+                            Soumettre pour validation
+                        </button>
+                    )}
+                    {canValiderRejeter && !isClient && (
+                        <>
+                            <button onClick={handleValiderAudit} disabled={validating}
+                                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-xl transition hover:opacity-90 disabled:opacity-60"
+                                style={{ backgroundColor: '#16a34a' }}>
+                                {validating
+                                    ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                }
+                                Valider
+                            </button>
+                            <button onClick={() => setShowRejeterAudit(true)} disabled={validating}
+                                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-xl transition hover:opacity-90 disabled:opacity-60"
+                                style={{ backgroundColor: '#cc0000' }}>
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                Rejeter
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
 
-                {/* Bannière rejet */}
-                {audit.statut_validation === 'rejete' && audit.commentaire_rejet && (
-                    <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3">
-                        <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                        <div>
-                            <p className="text-xs font-semibold text-red-700">Audit rejeté — corrections requises</p>
-                            <p className="text-xs text-red-600 mt-0.5">{audit.commentaire_rejet}</p>
+            {/* ── KPI — réalisation / terminé ── */}
+            {(audit.phase === 'realisation' || audit.phase === 'termine') && (
+                <div className="grid grid-cols-4 gap-3">
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+                        <p className="text-xs font-medium text-gray-400 mb-1">Mesures évaluées</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                            {totalEvaluated}<span className="text-sm font-normal text-gray-400 ml-1">/ {totalMesures}</span>
+                        </p>
+                        <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${totalMesures > 0 ? (totalEvaluated / totalMesures) * 100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
                         </div>
                     </div>
-                )}
-
-                {/* Bannière lecture seule client */}
-                {isClient && audit.phase === 'realisation' && (
-                    <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200">
-                        <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <p className="text-sm text-blue-700">
-                            <strong>Mode lecture seule</strong> — Vous consultez les résultats de l'audit de votre entité.
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+                        <p className="text-xs font-medium text-gray-400 mb-1">Taux de conformité</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                            {tauxGlobal}<span className="text-sm font-normal text-gray-400 ml-0.5">%</span>
                         </p>
                     </div>
-                )}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+                        <p className="text-xs font-medium text-gray-400 mb-1">Non-conformités</p>
+                        <p className="text-2xl font-bold text-gray-900">{totalNC}</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+                        <p className="text-xs font-medium text-gray-400 mb-1">Plans d'actions</p>
+                        <p className="text-2xl font-bold text-gray-900">{planActions.length}</p>
+                    </div>
+                </div>
+            )}
 
-                {/* Stepper phases */}
+            {/* ── Bannière rejet ── */}
+            {audit.statut_validation === 'rejete' && audit.commentaire_rejet && (
+                <div className="px-4 py-3 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-3">
+                    <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                    <div>
+                        <p className="text-xs font-semibold text-red-700">Audit rejeté — corrections requises</p>
+                        <p className="text-xs text-red-600 mt-0.5">{audit.commentaire_rejet}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Bannière lecture seule client ── */}
+            {isClient && audit.phase === 'realisation' && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-blue-50 border border-blue-200">
+                    <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="text-sm text-blue-700">
+                        <strong>Mode lecture seule</strong> — Vous consultez les résultats de l'audit de votre entité.
+                    </p>
+                </div>
+            )}
+
+            {/* ── Stepper + onglets (sticky) ── */}
+            <div className="sticky z-20 bg-white -mx-6 px-6 pt-3 pb-0 border-y border-gray-100 shadow-sm" style={{ top: '-1.5rem' }}>
                 <PhasesStepper
                     phase={audit.phase || 'cadrage'}
                     statut={audit.statut}
@@ -721,26 +744,23 @@ const AuditDetailPage = () => {
                     nextConfig={nextConfig}
                     changing={changingPhase}
                 />
-
-                {/* Onglets — uniquement en réalisation/terminé */}
                 {(audit.phase === 'realisation' || audit.phase === 'termine') && (
                     <TabNav activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} tabStatus={tabStatus} />
                 )}
-            </div>{/* fin sticky */}
+            </div>
 
-            <div className="px-6 pt-4 pb-6">
+            {/* ── Contenu principal ── */}
+            <div>
 
                 {/* Phase cadrage */}
                 {audit.phase === 'cadrage' && (
                     <div className="space-y-5">
                         {isSeniorOrAdmin && (
-                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
                                 <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
                                 <div>
                                     <p className="text-sm font-semibold text-gray-700">Phase de cadrage</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        Complétez les informations de cadrage et le planning avant de passer à la phase suivante.
-                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">Complétez les informations de cadrage et le planning avant de passer à la phase suivante.</p>
                                 </div>
                             </div>
                         )}
@@ -767,9 +787,9 @@ const AuditDetailPage = () => {
 
                 {/* Phase prérequis */}
                 {audit.phase === 'prerequis' && (
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                         {isClient ? (
-                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-orange-50 border border-orange-200">
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-orange-50 border border-orange-200">
                                 <svg className="w-5 h-5 text-orange-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                                 <div>
                                     <p className="text-sm font-semibold text-orange-900">Action requise — Dépôt des documents</p>
@@ -777,7 +797,7 @@ const AuditDetailPage = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
                                 <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 <div>
                                     <p className="text-sm font-semibold text-gray-700">Prérequis — collecte des documents</p>
@@ -803,8 +823,8 @@ const AuditDetailPage = () => {
 
                 {/* Phase revue documentaire */}
                 {audit.phase === 'revue_documentaire' && (
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">
+                    <div className="space-y-5">
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
                             <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             <div>
                                 <p className="text-sm font-semibold text-gray-700">
@@ -828,12 +848,12 @@ const AuditDetailPage = () => {
                     </div>
                 )}
 
-                {/* Soumission rapport au client — phase terminé, senior/admin uniquement */}
+                {/* Soumission rapport client — phase terminé, senior/admin */}
                 {audit.phase === 'termine' && isSeniorOrAdmin && (() => {
                     const vr = audit.validation_rapport;
                     const statut = vr?.statut;
                     return (
-                        <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-gray-200">
+                        <div className="mb-5 flex items-center gap-3 px-4 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
                             <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                             </svg>
@@ -854,7 +874,7 @@ const AuditDetailPage = () => {
                                     <button
                                         onClick={() => handleValidationClient('rapport', 'soumettre')}
                                         disabled={validatingClient}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-50 transition hover:opacity-90"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white rounded-xl disabled:opacity-50 transition hover:opacity-90"
                                         style={{ backgroundColor: 'var(--brand-red)' }}
                                     >
                                         {validatingClient ? 'Envoi…' : 'Soumettre au client'}
@@ -864,7 +884,7 @@ const AuditDetailPage = () => {
                                     <button
                                         onClick={() => handleValidationClient('rapport', 'soumettre')}
                                         disabled={validatingClient}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-50 transition"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 bg-white rounded-xl hover:bg-gray-50 disabled:opacity-50 transition"
                                     >
                                         {validatingClient ? 'Envoi…' : 'Resoumettre au client'}
                                     </button>
@@ -873,7 +893,7 @@ const AuditDetailPage = () => {
                                     <button
                                         onClick={() => handleValidationClient('rapport', 'annuler')}
                                         disabled={validatingClient}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 border border-gray-200 rounded-lg hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-50 transition"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 border border-gray-200 rounded-xl hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-50 transition"
                                     >
                                         Annuler
                                     </button>
@@ -883,9 +903,8 @@ const AuditDetailPage = () => {
                     );
                 })()}
 
-                {/* Onglets — phases réalisation et terminé uniquement */}
+                {/* Onglets — phases réalisation et terminé */}
                 {(audit.phase === 'realisation' || audit.phase === 'termine') && (<>
-                    {/* Communs DNSSI + ISO */}
                     {activeTab === 'description' && (
                         <TabDescription
                             audit={audit}
@@ -909,8 +928,6 @@ const AuditDetailPage = () => {
                             readOnly={isClient || isTermine}
                         />
                     )}
-
-                    {/* Onglets DNSSI */}
                     {!isISO && activeTab === 'evaluation' && (
                         <TabEvaluation
                             referentiel={referentiel}
@@ -949,8 +966,6 @@ const AuditDetailPage = () => {
                             readOnly={isClient || isTermine}
                         />
                     )}
-
-                    {/* Onglets ISO 27001 */}
                     {isISO && activeTab === 'exigences_smsi' && (
                         <TabExigencesSMSI
                             referentiel={referentiel}
@@ -1003,8 +1018,6 @@ const AuditDetailPage = () => {
                             readOnly={isClient || isTermine}
                         />
                     )}
-
-                    {/* Plan d'actions — commun DNSSI + ISO */}
                     {activeTab === 'plans_actions' && canSeeGraphs && (
                         <TabPlanActions
                             referentiel={referentiel}
@@ -1013,7 +1026,6 @@ const AuditDetailPage = () => {
                             soaMap={soaMap}
                             isISO={isISO}
                             user={user}
-                            auditId={id}
                             onAdd={handleCreatePlanAction}
                             onBulkAdd={handleBulkCreatePlanAction}
                             onUpdate={handleUpdatePlanAction}
@@ -1026,32 +1038,33 @@ const AuditDetailPage = () => {
                     )}
                 </>)}
 
-                {/* Modales */}
-                <ConfirmModal
-                    isOpen={showClotureModal}
-                    title="Clôturer l'audit"
-                    message={`Êtes-vous sûr de vouloir clôturer l'audit "${audit.nom}" ? Cette action indique que l'audit est terminé. Vous pourrez encore consulter les données mais l'audit sera marqué comme terminé.`}
-                    confirmLabel={cloturing ? 'Clôture en cours…' : 'Confirmer la clôture'}
-                    cancelLabel="Annuler"
-                    danger={false}
-                    onConfirm={handleClotureAudit}
-                    onCancel={() => setShowClotureModal(false)}
+            </div>
+
+            {/* ── Modales ── */}
+            <ConfirmModal
+                isOpen={showClotureModal}
+                title="Clôturer l'audit"
+                message={`Êtes-vous sûr de vouloir clôturer l'audit "${audit.nom}" ? Cette action indique que l'audit est terminé. Vous pourrez encore consulter les données mais l'audit sera marqué comme terminé.`}
+                confirmLabel={cloturing ? 'Clôture en cours…' : 'Confirmer la clôture'}
+                cancelLabel="Annuler"
+                danger={false}
+                onConfirm={handleClotureAudit}
+                onCancel={() => setShowClotureModal(false)}
+            />
+            {showRejeterAudit && (
+                <RejeterModal
+                    title="Rejeter l'audit"
+                    onConfirm={handleRejeterAudit}
+                    onCancel={() => setShowRejeterAudit(false)}
                 />
-                {showRejeterAudit && (
-                    <RejeterModal
-                        title="Rejeter l'audit"
-                        onConfirm={handleRejeterAudit}
-                        onCancel={() => setShowRejeterAudit(false)}
-                    />
-                )}
-                {rejetingPlanId && (
-                    <RejeterModal
-                        title="Rejeter le plan d'action"
-                        onConfirm={(commentaire) => handleRejeterPlan(rejetingPlanId, commentaire)}
-                        onCancel={() => setRejetingPlanId(null)}
-                    />
-                )}
-            </div>{/* fin contenu */}
+            )}
+            {rejetingPlanId && (
+                <RejeterModal
+                    title="Rejeter le plan d'action"
+                    onConfirm={(commentaire) => handleRejeterPlan(rejetingPlanId, commentaire)}
+                    onCancel={() => setRejetingPlanId(null)}
+                />
+            )}
         </div>
     );
 };

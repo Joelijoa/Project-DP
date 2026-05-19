@@ -1,6 +1,7 @@
 import { NIVEAUX } from './auditConstants';
 import { stripNumericPrefix, stripObjectifPrefix, calcConformite } from './auditHelpers';
 import { TabInfo, ConformiteBadge } from './AuditBadges';
+import AppSelect from '../../../components/common/AppSelect';
 
 const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpenDomaines, isDirty, saving, onSave, readOnly }) => {
     if (!referentiel) return <div className="text-gray-400 text-sm">Chargement du référentiel...</div>;
@@ -11,7 +12,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
         <div className="space-y-3">
             <TabInfo text="L'objectif de cette feuille est d'évaluer le niveau de maturité atteint pour chacune des mesures de sécurité édictées par la DNSSI et ainsi en déduire le niveau de conformité. L'auteur de l'évaluation est invité à évaluer la mise en œuvre de chacune des règles selon l'échelle de maturité définie." />
             {/* Barre de sauvegarde */}
-            <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-5 py-3">
+            <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3">
                 <p className="text-sm text-gray-600">
                     <strong>2. Évaluation de la mise en œuvre des règles de la DNSSI</strong>
                     {isDirty && !readOnly && <span className="ml-2 text-xs text-orange-500">— modifications non sauvegardées</span>}
@@ -20,7 +21,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                     <button
                         onClick={onSave}
                         disabled={saving || !isDirty}
-                        className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white rounded-lg transition disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white rounded-xl transition disabled:opacity-50"
                         style={{ backgroundColor: 'var(--brand-red)' }}
                     >
                         {saving ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
@@ -47,7 +48,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                 const isOpen = openDomaines[domaine.id];
 
                 return (
-                    <div key={domaine.id} className={`bg-white rounded-xl border overflow-hidden ${isDomainNA ? 'border-gray-300 opacity-70' : 'border-gray-200'}`}>
+                    <div key={domaine.id} className={`bg-white rounded-2xl overflow-hidden shadow-sm ${isDomainNA ? 'border border-gray-200 opacity-70' : 'border border-gray-100'}`}>
                         {/* En-tête domaine */}
                         <button
                             onClick={() => toggleDomaine(domaine.id)}
@@ -68,7 +69,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                             const newValue = isDomainNA ? null : -1;
                                             mesures.forEach(m => setEval(m.id, 'niveau_maturite', newValue));
                                         }}
-                                        className={`text-xs px-2.5 py-1 rounded-md font-medium transition border ${isDomainNA
+                                        className={`text-xs px-2.5 py-1 rounded-xl font-medium transition border ${isDomainNA
                                             ? 'bg-gray-100 border-gray-300 text-gray-500 hover:bg-gray-200'
                                             : 'border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
                                             }`}
@@ -152,25 +153,24 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                         </div>
                                                                     </td>
                                                                     <td className="px-3 py-2">
-                                                                        <select
+                                                                        <AppSelect
                                                                             value={niveau === null ? 'na' : String(niveau)}
-                                                                            onChange={e => {
+                                                                            onChange={v => {
                                                                                 if (readOnly) return;
-                                                                                const v = e.target.value === 'na' ? null : parseInt(e.target.value);
-                                                                                setEval(mesure.id, 'niveau_maturite', v);
+                                                                                setEval(mesure.id, 'niveau_maturite', v === 'na' ? null : parseInt(v));
                                                                             }}
                                                                             disabled={readOnly}
-                                                                            className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-default"
-                                                                            style={{ '--tw-ring-color': 'var(--brand-red)' }}
-                                                                        >
-                                                                            <option value="na">N/A</option>
-                                                                            <option value="0">0 — Aucun</option>
-                                                                            <option value="1">1 — Initial</option>
-                                                                            <option value="2">2 — Reproductible</option>
-                                                                            <option value="3">3 — Défini</option>
-                                                                            <option value="4">4 — Maitrisé</option>
-                                                                            <option value="5">5 — Optimisé</option>
-                                                                        </select>
+                                                                            size="sm"
+                                                                            options={[
+                                                                                { value: 'na', label: 'N/A' },
+                                                                                { value: '0', label: '0 — Aucun' },
+                                                                                { value: '1', label: '1 — Initial' },
+                                                                                { value: '2', label: '2 — Reproductible' },
+                                                                                { value: '3', label: '3 — Défini' },
+                                                                                { value: '4', label: '4 — Maitrisé' },
+                                                                                { value: '5', label: '5 — Optimisé' },
+                                                                            ]}
+                                                                        />
                                                                     </td>
                                                                     <td className="px-3 py-2">
                                                                         <ConformiteBadge conformite={conformite} />
@@ -182,7 +182,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                             readOnly={readOnly}
                                                                             rows={2}
                                                                             placeholder={readOnly ? '—' : 'Constat...'}
-                                                                            className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
+                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
                                                                         />
                                                                     </td>
                                                                     <td className="px-3 py-2">
@@ -192,7 +192,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                             readOnly={readOnly}
                                                                             rows={2}
                                                                             placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                            className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
+                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-none"
                                                                         />
                                                                     </td>
                                                                     <td className="px-3 py-2">
@@ -202,7 +202,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                             onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
                                                                             readOnly={readOnly}
                                                                             placeholder={readOnly ? '—' : isNA ? 'Justifier la non-applicabilité...' : 'Références / preuves...'}
-                                                                            className={`w-full text-xs border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-default ${isNA && !readOnly
+                                                                            className={`w-full text-xs border rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-default ${isNA && !readOnly
                                                                                 ? 'border-orange-200 bg-orange-50 read-only:bg-gray-50'
                                                                                 : 'border-gray-200 read-only:bg-gray-50 read-only:text-gray-600'
                                                                                 }`}

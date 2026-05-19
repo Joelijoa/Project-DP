@@ -25,18 +25,18 @@ const TabCadrageComplet = ({ audit, referentiel, identification, setIdentificati
         <div className={span ? 'col-span-2' : ''}>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
             <input type={type} value={identification[fieldKey] || ''} onChange={e => set(fieldKey, e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
                 style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
         </div>
     );
 
     if (!editing) {
         return (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
                 <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-gray-800">Cadrage de l'audit</h2>
                     {!readOnly && (
-                        <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition">
+                        <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-xl transition">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
                             Modifier
                         </button>
@@ -111,7 +111,7 @@ const TabCadrageComplet = ({ audit, referentiel, identification, setIdentificati
     }
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-800">Cadrage de l'audit</h2>
                 {hasData && <button onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:text-gray-700 underline">Annuler</button>}
@@ -134,7 +134,7 @@ const TabCadrageComplet = ({ audit, referentiel, identification, setIdentificati
                 <div className="grid grid-cols-3 gap-3">
                     {TYPE_AUDIT_OPTIONS.map(opt => (
                         <button key={opt.value} type="button" onClick={() => set('type_audit', opt.value)}
-                            className={`px-4 py-3 rounded-lg border text-sm font-medium transition text-left ${identification.type_audit === opt.value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'}`}>
+                            className={`px-4 py-3 rounded-xl border text-sm font-medium transition text-left ${identification.type_audit === opt.value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'}`}>
                             {opt.label}
                         </button>
                     ))}
@@ -154,7 +154,7 @@ const TabCadrageComplet = ({ audit, referentiel, identification, setIdentificati
                             <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
                             <textarea rows={2} value={identification[key] || ''} onChange={e => set(key, e.target.value)}
                                 placeholder={placeholder}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 resize-none"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 resize-none"
                                 style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
                         </div>
                     ))}
@@ -202,11 +202,11 @@ const TabCadrageComplet = ({ audit, referentiel, identification, setIdentificati
                             </label>
                             {isDate ? (
                                 <DateInput value={identification[key] || ''} onChange={v => set(key, v)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
                                     style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
                             ) : (
                                 <input type="text" value={identification[key] || ''} onChange={e => set(key, e.target.value)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
                                     style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }} />
                             )}
                         </div>
@@ -216,7 +216,7 @@ const TabCadrageComplet = ({ audit, referentiel, identification, setIdentificati
 
             <div className="flex justify-end pt-1">
                 <button onClick={handleSave} disabled={saving}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition hover:opacity-90"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition hover:opacity-90"
                     style={{ backgroundColor: 'var(--brand-red)' }}>
                     {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                     {saving ? 'Enregistrement…' : 'Enregistrer'}

@@ -8,7 +8,7 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
     return (
         <div className="space-y-4">
             <TabInfo text="Cette feuille a pour but de renseigner les actions déjà entreprises ainsi que les actions qui seront implémentées pour la mise en conformité de l'entité ou de l'IIV avec la DNSSI. Cet aperçu sur l'état d'avancement tient en compte les mesures à court terme et les mesures atteignables à moyen terme." />
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h2 className="text-sm font-semibold text-gray-800 mb-2">5. État d'avancement</h2>
                 <p className="text-xs text-gray-400 mb-5">Vue détaillée de l'avancement par domaine et par règle</p>
 
@@ -32,7 +32,7 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
                 </div>
 
                 {/* Tableau détail — 1 objectif → N règles */}
-                <div className="overflow-x-auto border border-gray-100 rounded-lg">
+                <div className="overflow-x-auto border border-gray-100 rounded-xl">
                     <table className="w-full text-xs border-collapse">
                         <thead>
                             <tr className="bg-gray-50/80">

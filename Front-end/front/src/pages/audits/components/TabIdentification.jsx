@@ -30,13 +30,13 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
         return (
             <div className="space-y-5">
                 <TabInfo text={infoText} />
-                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                     <div className="flex items-center justify-between mb-5">
                         <h2 className="text-sm font-semibold text-gray-800">{sectionTitle}</h2>
                         {!readOnly && (
                             <button
                                 onClick={() => setEditing(true)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-xl transition"
                             >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
@@ -84,7 +84,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
     return (
         <div className="space-y-5">
             <TabInfo text={infoText} />
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-5">
                     <h2 className="text-sm font-semibold text-gray-800">{sectionTitle}</h2>
                     {!isEmpty && (
@@ -109,7 +109,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                                     type="text"
                                     value={identification[key] || ''}
                                     onChange={e => set(key, e.target.value)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
                                     style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                 />
                             </div>
@@ -133,7 +133,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                                     type={type}
                                     value={identification[key] || ''}
                                     onChange={e => set(key, e.target.value)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
                                     style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                 />
                             </div>
@@ -160,7 +160,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                                     <DateInput
                                         value={identification[key] || ''}
                                         onChange={v => set(key, v)}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
                                         style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                     />
                                 ) : (
@@ -168,7 +168,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                                         type="text"
                                         value={identification[key] || ''}
                                         onChange={e => set(key, e.target.value)}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
                                         style={{ color: '#111827', '--tw-ring-color': 'var(--brand-red)' }}
                                     />
                                 )}
@@ -181,7 +181,7 @@ const TabIdentification = ({ identification, setIdentification, onSave, saving, 
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-lg transition disabled:opacity-60"
+                        className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl transition disabled:opacity-60"
                         style={{ backgroundColor: 'var(--brand-red)' }}
                     >
                         {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
