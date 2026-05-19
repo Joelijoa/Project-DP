@@ -3,6 +3,7 @@ import { NIVEAUX } from './auditConstants';
 import { stripNumericPrefix, stripObjectifPrefix, calcConformite } from './auditHelpers';
 import { TabInfo, ConformiteBadge } from './AuditBadges';
 import AppSelect from '../../../components/common/AppSelect';
+import AppTooltip from '../../../components/common/AppTooltip';
 
 const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpenDomaines, isDirty, saving, onSave, readOnly }) => {
     if (!referentiel) return <div className="text-gray-400 text-sm">Chargement du référentiel...</div>;
@@ -153,16 +154,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                             return (
                                                                 <tr key={mesure.id} className="border-b border-gray-50 hover:bg-gray-50/40 transition-colors">
                                                                     <td className="px-5 py-2">
-                                                                        <div className="relative group inline-flex items-center gap-1">
-                                                                            <span className="font-mono text-gray-500 cursor-help underline decoration-dotted decoration-gray-400">
-                                                                                {mesure.code}
-                                                                            </span>
-                                                                            <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
-                                                                                <p className="font-semibold text-gray-100 mb-1.5">{mesure.code?.trim()}</p>
-                                                                                {mesure.description && <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>}
-                                                                                <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
-                                                                            </div>
-                                                                        </div>
+                                                                        <AppTooltip code={mesure.code} description={mesure.description} />
                                                                     </td>
                                                                     <td className="px-3 py-2">
                                                                         <AppSelect

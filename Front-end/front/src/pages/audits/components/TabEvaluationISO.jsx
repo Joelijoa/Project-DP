@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ISO_CONF_STATES } from './auditConstants';
 import { stripObjectifPrefix } from './auditHelpers';
 import { TabInfo, TabPlaceholder } from './AuditBadges';
+import AppTooltip from '../../../components/common/AppTooltip';
 
 const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, saving, onSave, readOnly }) => {
     const [openThemes, setOpenThemes] = useState({});
@@ -116,15 +117,8 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                                     <div key={mesure.id} className="px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors">
                                                         <div className="flex items-start gap-4">
                                                             {/* Code + tooltip */}
-                                                            <div className="relative group flex-shrink-0 w-20">
-                                                                <span className="font-mono text-xs text-gray-600 cursor-help underline decoration-dotted decoration-gray-400">
-                                                                    {mesure.code?.trim()}
-                                                                </span>
-                                                                <div className="absolute z-50 left-0 bottom-full mb-2 w-80 p-3 bg-gray-900 text-white rounded-lg shadow-2xl hidden group-hover:block pointer-events-none">
-                                                                    <p className="font-semibold text-gray-100 mb-1.5 text-xs">{mesure.code?.trim()}</p>
-                                                                    {mesure.description && <p className="text-gray-300 leading-relaxed text-[11px]">{mesure.description}</p>}
-                                                                    <div className="absolute left-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
-                                                                </div>
+                                                            <div className="flex-shrink-0 w-20">
+                                                                <AppTooltip code={mesure.code?.trim()} description={mesure.description} />
                                                             </div>
                                                             {/* Description de la règle */}
                                                             <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description || objDesc}</p>
