@@ -6,7 +6,6 @@ import { getReferentielById } from '../../services/endpoints/referentielService'
 import { exportAuditReportPDF } from '../../utils/exportReportPDF';
 import { exportAuditReportExcel } from '../../utils/exportReportExcel';
 import logoDataprotect from '../../assets/images/logoDataprotect.png';
-import AppSelect from '../../components/common/AppSelect';
 import ReportConfigModal from './components/ReportConfigModal';
 
 const STATUT_LABELS = {
@@ -16,27 +15,11 @@ const STATUT_LABELS = {
     archive: 'Archivé',
 };
 
-const PHASE_LABELS = {
-    cadrage: 'Cadrage',
-    prerequis: 'Prérequis',
-    revue_documentaire: 'Revue documentaire',
-    realisation: 'Réalisation',
-    termine: 'Terminé',
-};
-
 const STATUT_BADGE = {
     brouillon: 'bg-gray-100 text-gray-600',
     en_cours: 'bg-blue-50 text-blue-700',
     termine: 'bg-green-50 text-green-700',
     archive: 'bg-amber-50 text-amber-700',
-};
-
-const PHASE_BADGE = {
-    cadrage: 'bg-purple-50 text-purple-700',
-    prerequis: 'bg-cyan-50 text-cyan-700',
-    revue_documentaire: 'bg-indigo-50 text-indigo-700',
-    realisation: 'bg-orange-50 text-orange-700',
-    termine: 'bg-green-50 text-green-700',
 };
 
 function IconDownload() {
@@ -70,7 +53,6 @@ export default function RapportsPage() {
     const [audits, setAudits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [filterPhase, setFilterPhase] = useState('');
     const [exporting, setExporting] = useState({});
     const [configModal, setConfigModal] = useState({ open: false, audit: null });
 
@@ -84,7 +66,6 @@ export default function RapportsPage() {
     const filtered = audits.filter(a => {
         const q = search.toLowerCase();
         if (q && !a.nom.toLowerCase().includes(q) && !a.client.toLowerCase().includes(q)) return false;
-        if (filterPhase && a.phase !== filterPhase) return false;
         return true;
     });
 
@@ -127,8 +108,8 @@ export default function RapportsPage() {
         handleExport(audit, 'pdf', options);
     }, [configModal.audit, handleExport]);
 
-    const resetFilters = () => { setSearch(''); setFilterPhase(''); };
-    const hasFilters = search || filterPhase;
+    const resetFilters = () => { setSearch(''); };
+    const hasFilters = search;
 
     return (
         <div>
@@ -154,16 +135,6 @@ export default function RapportsPage() {
                             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300"
                         />
                     </div>
-
-                    <AppSelect
-                        value={filterPhase}
-                        onChange={v => setFilterPhase(v)}
-                        options={[
-                            { value: '', label: 'Toutes les phases' },
-                            ...Object.entries(PHASE_LABELS).map(([v, l]) => ({ value: v, label: l }))
-                        ]}
-                        className="min-w-[160px]"
-                    />
 
                     {hasFilters && (
                         <button
@@ -201,7 +172,6 @@ export default function RapportsPage() {
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Audit</th>
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Client</th>
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Référentiel</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Phase</th>
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
                                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Télécharger</th>
                             </tr>
@@ -221,11 +191,6 @@ export default function RapportsPage() {
                                         </td>
                                         <td className="px-4 py-3.5 text-gray-600">{audit.client}</td>
                                         <td className="px-4 py-3.5 text-gray-500 text-xs">{audit.referentiel?.nom || '—'}</td>
-                                        <td className="px-4 py-3.5">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PHASE_BADGE[audit.phase] || 'bg-gray-100 text-gray-600'}`}>
-                                                {PHASE_LABELS[audit.phase] || audit.phase}
-                                            </span>
-                                        </td>
                                         <td className="px-4 py-3.5">
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUT_BADGE[audit.statut] || 'bg-gray-100 text-gray-600'}`}>
                                                 {STATUT_LABELS[audit.statut] || audit.statut}

@@ -6,8 +6,7 @@ import {
     getSoA, saveSoA,
     soumettreAudit, validerAudit, rejeterAudit, changerPhase,
     getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut,
-    soumettreValidationPlanning, repondreValidationPlanning, annulerValidationPlanning,
-    soumettreValidationRapport, repondreValidationRapport, annulerValidationRapport,
+    soumettreValidationRapport, annulerValidationRapport,
 } from '../../services/endpoints/auditService';
 import {
     getPlanActions, createPlanAction, updatePlanAction, deletePlanAction,
@@ -27,7 +26,6 @@ import { StatutBadge } from './components/AuditBadges';
 import RejeterModal from './components/RejeterModal';
 import TabNav from './components/TabNav';
 import PlanningAuditCard from './components/PlanningAuditCard';
-import ValidationClientCard from './components/ValidationClientCard';
 import DepotDocuments from './components/DepotDocuments';
 import RevueDocuments from './components/RevueDocuments';
 import TabDescription from './components/TabDescription';
@@ -220,26 +218,15 @@ const AuditDetailPage = () => {
         }
     };
 
-    // ── Validation client ─────────────────────────────────────────────────────
-    const handleValidationClient = async (type, action, commentaire) => {
+    // ── Soumission rapport au client (senior/admin) ───────────────────────────
+    const handleValidationClient = async (_type, action) => {
         setValidatingClient(true);
         try {
-            let res;
-            if (action === 'annuler') {
-                res = await (type === 'planning' ? annulerValidationPlanning(id) : annulerValidationRapport(id));
-            } else if (action === 'soumettre') {
-                res = await (type === 'planning' ? soumettreValidationPlanning(id) : soumettreValidationRapport(id));
-            } else {
-                res = await (type === 'planning' ? repondreValidationPlanning(id, action, commentaire) : repondreValidationRapport(id, action, commentaire));
-            }
+            const res = action === 'annuler'
+                ? await annulerValidationRapport(id)
+                : await soumettreValidationRapport(id);
             setAudit(prev => ({ ...prev, ...res.data.audit }));
-            const msgs = {
-                soumettre: 'Soumis au client pour validation.',
-                valider: 'Validation enregistrée.',
-                demander_modification: 'Demande de modification envoyée.',
-                annuler: 'Validation annulée.',
-            };
-            toast.success(msgs[action] || 'Mis à jour.');
+            toast.success(action === 'annuler' ? 'Validation annulée.' : 'Rapport soumis au client pour validation.');
         } catch (err) {
             toast.error(err?.response?.data?.message || 'Erreur.');
         } finally {
@@ -600,11 +587,10 @@ const AuditDetailPage = () => {
     let nextConfig = null;
     if (isSeniorOrAdmin && audit.statut !== 'termine') {
         if (audit.phase === 'cadrage') {
-            const planOk = audit.validation_planning?.statut === 'valide';
             nextConfig = {
                 label: 'Passer aux Prérequis',
-                disabled: changingPhase || !planOk,
-                title: !planOk ? 'Le planning doit être validé par le client avant de continuer' : '',
+                disabled: changingPhase,
+                title: '',
             };
         } else if (audit.phase === 'prerequis') {
             nextConfig = { label: 'Passer à la Revue doc', disabled: changingPhase, title: '' };
@@ -753,9 +739,7 @@ const AuditDetailPage = () => {
                                 <div>
                                     <p className="text-sm font-semibold text-gray-700">Phase de cadrage</p>
                                     <p className="text-xs text-gray-500 mt-0.5">
-                                        {audit.validation_planning?.statut === 'valide'
-                                            ? 'Planning validé par le client — utilisez le bouton ci-dessus pour passer à la phase suivante.'
-                                            : 'Soumettez le planning au client et attendez sa validation. Le bouton de passage de phase sera activé une fois le planning validé.'}
+                                        Complétez les informations de cadrage et le planning avant de passer à la phase suivante.
                                     </p>
                                 </div>
                             </div>
@@ -777,15 +761,6 @@ const AuditDetailPage = () => {
                             onSave={() => handleSaveInfo('identification', identification)}
                             saving={savingInfo}
                             readOnly={isClient}
-                        />
-                        <ValidationClientCard
-                            type="planning"
-                            validation={audit.validation_planning}
-                            isSeniorOrAdmin={isSeniorOrAdmin}
-                            isClient={isClient}
-                            planningData={identification.planning}
-                            onAction={handleValidationClient}
-                            loading={validatingClient}
                         />
                     </div>
                 )}
@@ -853,19 +828,60 @@ const AuditDetailPage = () => {
                     </div>
                 )}
 
-                {/* Validation rapport final — phase terminé */}
-                {audit.phase === 'termine' && (
-                    <div className="mb-4">
-                        <ValidationClientCard
-                            type="rapport"
-                            validation={audit.validation_rapport}
-                            isSeniorOrAdmin={isSeniorOrAdmin}
-                            isClient={isClient}
-                            onAction={handleValidationClient}
-                            loading={validatingClient}
-                        />
-                    </div>
-                )}
+                {/* Soumission rapport au client — phase terminé, senior/admin uniquement */}
+                {audit.phase === 'termine' && isSeniorOrAdmin && (() => {
+                    const vr = audit.validation_rapport;
+                    const statut = vr?.statut;
+                    return (
+                        <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-gray-200">
+                            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                            </svg>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-gray-600">Rapport final — validation client</p>
+                                {!vr && <p className="text-xs text-gray-400 mt-0.5">Non encore soumis au client</p>}
+                                {statut === 'en_attente' && <p className="text-xs text-orange-600 mt-0.5">En attente de validation · {vr.date ? new Date(vr.date).toLocaleDateString('fr-FR') : ''}</p>}
+                                {statut === 'valide' && <p className="text-xs text-green-600 mt-0.5 font-medium">Validé par le client ✓</p>}
+                                {statut === 'modification_demandee' && (
+                                    <div>
+                                        <p className="text-xs text-red-600 mt-0.5">Modification demandée</p>
+                                        {vr.commentaire && <p className="text-xs text-red-500 italic mt-0.5">"{vr.commentaire}"</p>}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                {!vr && (
+                                    <button
+                                        onClick={() => handleValidationClient('rapport', 'soumettre')}
+                                        disabled={validatingClient}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-50 transition hover:opacity-90"
+                                        style={{ backgroundColor: 'var(--brand-red)' }}
+                                    >
+                                        {validatingClient ? 'Envoi…' : 'Soumettre au client'}
+                                    </button>
+                                )}
+                                {statut === 'modification_demandee' && (
+                                    <button
+                                        onClick={() => handleValidationClient('rapport', 'soumettre')}
+                                        disabled={validatingClient}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-50 transition"
+                                    >
+                                        {validatingClient ? 'Envoi…' : 'Resoumettre au client'}
+                                    </button>
+                                )}
+                                {statut && statut !== 'valide' && (
+                                    <button
+                                        onClick={() => handleValidationClient('rapport', 'annuler')}
+                                        disabled={validatingClient}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 border border-gray-200 rounded-lg hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-50 transition"
+                                    >
+                                        Annuler
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* Onglets — phases réalisation et terminé uniquement */}
                 {(audit.phase === 'realisation' || audit.phase === 'termine') && (<>

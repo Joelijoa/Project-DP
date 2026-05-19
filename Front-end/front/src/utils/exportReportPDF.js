@@ -205,10 +205,10 @@ function renderCover(doc, audit, logo, today) {
     doc.setFillColor(...RED);
     doc.rect(M, titleY + 3.5, 18, 1.2, 'F');
 
-    const nomLines = doc.splitTextToSize(audit.nom || 'Rapport d\'Audit', W - 2 * M);
     doc.setFontSize(26); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY2);
+    const nomLines = doc.splitTextToSize(audit.nom || 'Rapport d\'Audit', W - 2 * M);
     doc.text(nomLines.slice(0, 3), M, titleY + 16);
-    const afterTitle = titleY + 16 + Math.min(nomLines.length, 3) * 11;
+    const afterTitle = titleY + 16 + Math.min(nomLines.length, 3) * 12;
 
     if (audit.client) {
         doc.setFontSize(13); doc.setFont('helvetica', 'normal'); doc.setTextColor(...NAVY3);
@@ -231,18 +231,24 @@ function renderCover(doc, audit, logo, today) {
         { label: 'Référentiel',  value: audit.referentiel?.nom || '—' },
         { label: 'Phase',        value: phase },
     ];
-    const colW = CW / 4;
+    // Diviser la barre pleine largeur (W) en 4 colonnes strictement égales
+    const colW  = W / 4;   // 52.5 mm chacune
     const infoY = barY + 16;
     cols.forEach(({ label, value }, i) => {
-        const x = M + i * colW;
+        const xCol    = i * colW;          // bord gauche de la colonne
+        const xCenter = xCol + colW / 2;   // centre exact de la colonne
+        const textW   = colW - 10;         // largeur pour le retour à la ligne
+        // Séparateur vertical
         if (i > 0) {
             doc.setDrawColor(...BDR); doc.setLineWidth(0.25);
-            doc.line(x - 3, barY + 8, x - 3, barY + 44);
+            doc.line(xCol, barY + 8, xCol, barY + 44);
         }
+        // Label centré
         doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
-        doc.text(label.toUpperCase(), x, infoY);
+        doc.text(label.toUpperCase(), xCenter, infoY, { align: 'center' });
+        // Valeur centrée (2 lignes max)
         doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY2);
-        doc.text(doc.splitTextToSize(value, colW - 5).slice(0, 2), x, infoY + 8);
+        doc.text(doc.splitTextToSize(value, textW).slice(0, 2), xCenter, infoY + 8, { align: 'center' });
     });
 
     doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
@@ -494,15 +500,18 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
         const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
         const ncMin = evs.filter(e => e.conformite === 'nc_mineure').length;
 
-        doc.setFillColor(...RED); doc.rect(M, y, 2, 12, 'F');
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY2);
-        doc.text(domaine.nom || domaine.code || '', M + 6, y + 8.5);
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+        const domaineTitleLines = doc.splitTextToSize(domaine.nom || domaine.code || '', CW * 0.55);
+        const domaineBoxH = Math.max(12, domaineTitleLines.length * 5 + 5);
+        doc.setFillColor(...RED); doc.rect(M, y, 2, domaineBoxH, 'F');
+        doc.setTextColor(...NAVY2);
+        doc.text(domaineTitleLines, M + 6, y + 6);
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
         doc.text(`${evs.length} mesures  ·  Conformes : ${conf}  ·  NC Min. : ${ncMin}  ·  NC Maj. : ${ncMaj}`, W - M, y + 8.5, { align: 'right' });
         doc.setDrawColor(...RED); doc.setLineWidth(0.4);
-        doc.line(M, y + 12, W - M, y + 12);
+        doc.line(M, y + domaineBoxH, W - M, y + domaineBoxH);
         doc.setLineWidth(0.25);
-        y += 17;
+        y += domaineBoxH + 5;
 
         autoTable(doc, {
             startY: y,
@@ -822,7 +831,7 @@ function renderConclusion(doc, audit, stats, planActions, logo, num) {
             ['1 — Immédiate',   `Remédier aux ${stats.counts.nc_majeure} NC majeure(s) identifiée(s)`,                                              '< 1 mois'],
             ['2 — Court terme', `Mettre en œuvre les ${planActions.filter(p => p.priorite === 'haute').length} plan(s) d'action haute priorité`,     '1–3 mois'],
             ['3 — Moyen terme', 'Traiter les NC mineures et améliorer le niveau de maturité global',                                                  '3–6 mois'],
-            ['4 — Long terme',  'Planifier le prochain audit de conformité DNSSI',                                                                    '12 mois'],
+            ['4 — Long terme',  `Planifier le prochain audit de conformité ${audit.referentiel?.nom || 'DNSSI'}`,                                    '12 mois'],
         ],
         styles: { fontSize: 8.5, cellPadding: 4, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
         headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', cellPadding: 4 },
@@ -929,6 +938,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
             faitsConstates:  options.faitsConstates  ?? true,
             recommandations: options.recommandations ?? true,
             soa:             options.soa             ?? true,
+            conclusion:      options.conclusion      ?? true,
         };
 
         if (o.introduction) {
@@ -961,6 +971,11 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
             renderRecommandations(doc, planActions, mesureMap, logo, num);
             tocSections.push({ title: `${num}. Recommandations et plans d'actions`, page });
         }
+        if (o.conclusion) {
+            const page = addPage(); num++;
+            renderConclusion(doc, audit, stats, planActions, logo, num);
+            tocSections.push({ title: `${num}. Conclusion et prochaines étapes`, page });
+        }
         if (o.soa && soaEntries?.length > 0) {
             const page = addPage();
             renderSoA(doc, soaEntries, mesureMap, logo);
@@ -981,5 +996,9 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
     const now = new Date();
     const dateStr = `${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${now.getFullYear()}`;
     const nomStr  = (audit.nom || 'audit').replace(/[\\/:*?"<>|]/g, ' ').trim();
+
+    if (options.returnBlobUrl) {
+        return doc.output('bloburl');
+    }
     doc.save(`${nomStr} - ${dateStr}.pdf`);
 }

@@ -18,6 +18,7 @@ const ISO_SECTIONS = [
     { key: 'planAudit',       label: "Plan d'audit",                      desc: 'Informations générales et domaines couverts' },
     { key: 'faitsConstates',  label: 'Faits constatés',                   desc: 'Évaluations détaillées mesure par mesure' },
     { key: 'recommandations', label: "Recommandations & Plans d'actions", desc: 'Mesures correctives classées par priorité' },
+    { key: 'conclusion',      label: 'Conclusion & Prochaines étapes',    desc: 'Synthèse finale et feuille de route' },
     { key: 'soa',             label: 'Annexe A — SoA',                    desc: "Déclaration d'applicabilité complète (clause 6.1.3)" },
 ];
 
