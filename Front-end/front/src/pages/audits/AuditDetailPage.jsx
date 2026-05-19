@@ -973,7 +973,7 @@ const AuditDetailPage = () => {
                             synthese={synthese}
                             onSave={() => handleSaveInfo('indicateurs', indicateurs)}
                             saving={savingInfo}
-                            readOnly={isClient || isTermine}
+                            readOnly={isTermine}
                         />
                     )}
                     {isISO && activeTab === 'exigences_smsi' && (
@@ -1025,7 +1025,7 @@ const AuditDetailPage = () => {
                             setIndicateurs={setIndicateurs}
                             onSave={() => handleSaveInfo('indicateurs', indicateurs)}
                             saving={savingInfo}
-                            readOnly={isClient || isTermine}
+                            readOnly={isTermine}
                         />
                     )}
                     {activeTab === 'plans_actions' && canSeeGraphs && (
