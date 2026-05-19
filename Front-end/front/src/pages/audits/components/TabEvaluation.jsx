@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { NIVEAUX } from './auditConstants';
 import { stripNumericPrefix, stripObjectifPrefix, calcConformite } from './auditHelpers';
 import { TabInfo, ConformiteBadge } from './AuditBadges';
@@ -6,7 +7,18 @@ import AppSelect from '../../../components/common/AppSelect';
 const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpenDomaines, isDirty, saving, onSave, readOnly }) => {
     if (!referentiel) return <div className="text-gray-400 text-sm">Chargement du référentiel...</div>;
 
-    const toggleDomaine = (id) => setOpenDomaines(prev => ({ ...prev, [id]: !prev[id] }));
+    const domaineRefs = useRef({});
+    const toggleDomaine = (id) => {
+        setOpenDomaines(prev => {
+            const isNowOpen = !prev[id];
+            if (isNowOpen) setTimeout(() => {
+                const el = domaineRefs.current[id];
+                if (el) el.style.scrollMarginTop = '120px';
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+            return { [id]: isNowOpen };
+        });
+    };
 
     return (
         <div className="space-y-3">
@@ -48,7 +60,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                 const isOpen = openDomaines[domaine.id];
 
                 return (
-                    <div key={domaine.id} className={`bg-white rounded-2xl overflow-hidden shadow-sm ${isDomainNA ? 'border border-gray-200 opacity-70' : 'border border-gray-100'}`}>
+                    <div key={domaine.id} ref={el => domaineRefs.current[domaine.id] = el} className={`bg-white rounded-2xl overflow-hidden shadow-sm ${isDomainNA ? 'border border-gray-200 opacity-70' : 'border border-gray-100'}`}>
                         {/* En-tête domaine */}
                         <button
                             onClick={() => toggleDomaine(domaine.id)}

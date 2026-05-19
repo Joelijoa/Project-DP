@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ISO_CONF_STATES } from './auditConstants';
 import { stripObjectifPrefix } from './auditHelpers';
 import { TabInfo, TabPlaceholder } from './AuditBadges';
 
 const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, saving, onSave, readOnly }) => {
     const [openThemes, setOpenThemes] = useState({});
+    const themeRefs = useRef({});
 
     useEffect(() => {
         if (referentiel?.domaines?.length > 0) {
@@ -12,7 +13,17 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
         }
     }, [referentiel]);
 
-    const toggleTheme = (id) => setOpenThemes(prev => ({ ...prev, [id]: !prev[id] }));
+    const toggleTheme = (id) => {
+        setOpenThemes(prev => {
+            const isNowOpen = !prev[id];
+            if (isNowOpen) setTimeout(() => {
+                const el = themeRefs.current[id];
+                if (el) el.style.scrollMarginTop = '120px';
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+            return { [id]: isNowOpen };
+        });
+    };
 
     const annexeDomaines = referentiel?.domaines?.filter(d => d.code.startsWith('A.')) ?? [];
 
@@ -67,7 +78,7 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                 ).length;
 
                 return (
-                    <div key={theme.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div key={theme.id} ref={el => themeRefs.current[theme.id] = el} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <button onClick={() => toggleTheme(theme.id)}
                             className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition">
                             <div className="flex items-center gap-3">

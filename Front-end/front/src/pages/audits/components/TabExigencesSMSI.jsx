@@ -1,16 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ISO_CONF_STATES } from './auditConstants';
 import { TabInfo } from './AuditBadges';
 
 const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, onSave, readOnly }) => {
     const [openSections, setOpenSections] = useState({});
+    const sectionRefs = useRef({});
 
     useEffect(() => {
         const mainBody = referentiel?.domaines?.filter(d => !d.code.startsWith('A.')) ?? [];
         if (mainBody.length > 0) setOpenSections({ [mainBody[0].id]: true });
     }, [referentiel]);
 
-    const toggleSection = (id) => setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
+    const toggleSection = (id) => {
+        setOpenSections(prev => {
+            const isNowOpen = !prev[id];
+            if (isNowOpen) setTimeout(() => {
+                const el = sectionRefs.current[id];
+                if (el) el.style.scrollMarginTop = '120px';
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+            return { [id]: isNowOpen };
+        });
+    };
 
     const mainBodyDomaines = referentiel?.domaines?.filter(d => !d.code.startsWith('A.')) ?? [];
     const allMesures = mainBodyDomaines.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []);
@@ -57,7 +68,7 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                 ).length;
 
                 return (
-                    <div key={section.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div key={section.id} ref={el => sectionRefs.current[section.id] = el} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <button onClick={() => toggleSection(section.id)}
                             className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition">
                             <div className="flex items-center gap-3">
