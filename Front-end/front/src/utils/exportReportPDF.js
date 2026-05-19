@@ -222,33 +222,36 @@ function renderCover(doc, audit, logo, today) {
     doc.setFillColor(...LIGHT2); doc.rect(0, barY, W, 52, 'F');
     doc.setFillColor(...RED);   doc.rect(0, barY, W, 2, 'F');
 
-    const auditeurs = audit.auditeurs?.map(a => `${a.prenom} ${a.nom}`).join(', ') || '—';
-    const periode   = audit.date_debut ? new Date(audit.date_debut).toLocaleDateString('fr-FR') : today;
-    const phase     = PHASE[audit.phase] || audit.phase || '—';
+    const auditeurLines = audit.auditeurs?.length
+        ? audit.auditeurs.map(a => `${a.prenom} ${a.nom}`)
+        : ['—'];
+    const periode = audit.date_debut ? new Date(audit.date_debut).toLocaleDateString('fr-FR') : today;
+    const phase   = PHASE[audit.phase] || audit.phase || '—';
     const cols = [
-        { label: 'Auditeur(s)',  value: auditeurs },
-        { label: 'Période',      value: periode },
-        { label: 'Référentiel',  value: audit.referentiel?.nom || '—' },
-        { label: 'Phase',        value: phase },
+        { label: 'Auditeur(s)', lines: auditeurLines },
+        { label: 'Période',     value: periode },
+        { label: 'Référentiel', value: audit.referentiel?.nom || '—' },
+        { label: 'Phase',       value: phase },
     ];
     // Diviser la barre pleine largeur (W) en 4 colonnes strictement égales
     const colW  = W / 4;   // 52.5 mm chacune
     const infoY = barY + 16;
-    cols.forEach(({ label, value }, i) => {
-        const xCol    = i * colW;          // bord gauche de la colonne
-        const xCenter = xCol + colW / 2;   // centre exact de la colonne
-        const textW   = colW - 10;         // largeur pour le retour à la ligne
-        // Séparateur vertical
+    cols.forEach(({ label, value, lines }, i) => {
+        const xCol    = i * colW;
+        const xCenter = xCol + colW / 2;
+        const textW   = colW - 10;
         if (i > 0) {
             doc.setDrawColor(...BDR); doc.setLineWidth(0.25);
             doc.line(xCol, barY + 8, xCol, barY + 44);
         }
-        // Label centré
         doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GRAY);
         doc.text(label.toUpperCase(), xCenter, infoY, { align: 'center' });
-        // Valeur centrée (2 lignes max)
         doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY2);
-        doc.text(doc.splitTextToSize(value, textW).slice(0, 2), xCenter, infoY + 8, { align: 'center' });
+        // Auditeurs : une ligne par nom ; autres colonnes : splitTextToSize
+        const textLines = lines
+            ? lines.slice(0, 3)
+            : doc.splitTextToSize(value, textW).slice(0, 2);
+        doc.text(textLines, xCenter, infoY + 8, { align: 'center' });
     });
 
     doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
