@@ -4,7 +4,7 @@ const path = require('path');
 const fs   = require('fs');
 const multer = require('multer');
 const { verifyToken, verifyRole } = require('../middlewares/authMiddleware');
-const { getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut } = require('../controllers/documentController');
+const { getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut, updateDocumentCommentaire } = require('../controllers/documentController');
 
 // ─── Multer config ────────────────────────────────────────────────────────────
 const UPLOADS_DIR = path.join(__dirname, '../../uploads/documents');
@@ -903,6 +903,7 @@ router.get   ('/:id/documents/:docId/download',    verifyToken, downloadDocument
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.put   ('/:id/documents/:docId/statut',      verifyToken, verifyRole('admin', 'auditeur_senior', 'auditeur_junior', 'client'), updateDocumentStatut);
+router.put   ('/:id/documents/:docId/commentaire', verifyToken, verifyRole('admin', 'auditeur_senior', 'auditeur_junior'), updateDocumentCommentaire);
 
 // ─── Plans d'actions ────────────────────────────────────────────────────────
 

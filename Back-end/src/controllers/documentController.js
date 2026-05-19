@@ -180,4 +180,27 @@ const updateDocumentStatut = async (req, res) => {
     }
 };
 
-module.exports = { getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut };
+const updateDocumentCommentaire = async (req, res) => {
+    try {
+        const { id, docId } = req.params;
+        const { commentaire_entretien } = req.body;
+
+        if (req.user.role === 'client')
+            return res.status(403).json({ message: 'Non autorisé.' });
+
+        const doc = await Document.findOne({ where: { id: docId, audit_id: id } });
+        if (!doc) return res.status(404).json({ message: 'Document non trouvé.' });
+
+        await doc.update({ commentaire_entretien: commentaire_entretien ?? null });
+        const updated = await Document.findByPk(doc.id, {
+            include: [{ model: User, as: 'uploader', attributes: UPLOADER_ATTRS }],
+        });
+
+        log(req.user.userId, 'doc_commentaire', 'document', doc.id, doc.nom_original, getIp(req));
+        res.json({ document: updated });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = { getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut, updateDocumentCommentaire };

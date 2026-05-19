@@ -5,7 +5,7 @@ import {
     getEvaluations, saveEvaluations,
     getSoA, saveSoA,
     soumettreAudit, validerAudit, rejeterAudit, changerPhase,
-    getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut,
+    getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut, updateDocumentCommentaire,
     soumettreValidationRapport, annulerValidationRapport,
 } from '../../services/endpoints/auditService';
 import {
@@ -215,6 +215,17 @@ const AuditDetailPage = () => {
             toast.success(statut === 'valide' ? 'Document validé.' : 'Document refusé.');
         } catch (err) {
             toast.error(err?.response?.data?.message || 'Erreur lors de la mise à jour du statut.');
+        }
+    };
+
+    const handleSaveCommentaire = async (docId, commentaire) => {
+        try {
+            await updateDocumentCommentaire(id, docId, commentaire);
+            const res = await getDocuments(id);
+            setDocuments(res.data.documents || []);
+            toast.success('Commentaire sauvegardé.');
+        } catch (err) {
+            toast.error('Erreur lors de la sauvegarde du commentaire.');
         }
     };
 
@@ -842,8 +853,7 @@ const AuditDetailPage = () => {
                             isClient={isClient}
                             onDownload={handleDownloadDocument}
                             onFetchBlob={handleFetchDocBlob}
-                            onUpdateStatut={handleUpdateDocStatut}
-                            onReplace={handleReplaceDocument}
+                            onSaveCommentaire={handleSaveCommentaire}
                         />
                     </div>
                 )}

@@ -24,3 +24,4 @@ export const uploadDocuments = (id, formData) => api.post(`/audits/${id}/documen
 export const deleteDocument  = (id, docId) => api.delete(`/audits/${id}/documents/${docId}`);
 export const downloadDocument = (id, docId) => api.get(`/audits/${id}/documents/${docId}/download`, { responseType: 'blob' });
 export const updateDocumentStatut = (id, docId, statut, constat) => api.put(`/audits/${id}/documents/${docId}/statut`, { statut, constat });
+export const updateDocumentCommentaire = (id, docId, commentaire) => api.put(`/audits/${id}/documents/${docId}/commentaire`, { commentaire_entretien: commentaire });
