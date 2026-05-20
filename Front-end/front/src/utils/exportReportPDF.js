@@ -47,7 +47,7 @@ export function getReferentielType(referentiel) {
 // ─── UTILITAIRES ──────────────────────────────────────────────────────────────
 function stripObjPrefix(text) {
     if (!text) return '';
-    return text.replace(/^Objectif\s+\d+\s*:\s*/i, '').trim() || text;
+    return text.replace(/^Objectif\s+\d+\s*:\s*/i, '').replace(/^[\d.]+\s*[—\-–]\s*/, '').trim() || text;
 }
 
 async function imgToBase64(url) {
@@ -476,7 +476,7 @@ function renderPlanAudit(doc, audit, referentiel, logo, num) {
     }
 }
 
-function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num) {
+function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, selectedDomainIds = null) {
     const hdr = `${num}. Faits constatés`;
     drawHeader(doc, logo, hdr);
     let y = 32;
@@ -489,7 +489,11 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
     doc.text(`Mesures évaluées : ${evaluations.length}  ·  Conformes : ${totalOk}  ·  Non conformités : ${totalNc}`, M, y);
     y += 10;
 
-    for (const domaine of sortedDomaines(referentiel)) {
+    const domainesFiltered = selectedDomainIds
+        ? sortedDomaines(referentiel).filter(d => selectedDomainIds.includes(d.id))
+        : sortedDomaines(referentiel);
+
+    for (const domaine of domainesFiltered) {
         const ids = new Set();
         for (const o of domaine.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
         const evs = evaluations.filter(e => ids.has(e.mesure_id));
@@ -912,7 +916,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
         }
         if (o.faitsConstates) {
             const page = addPage(); num++;
-            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num);
+            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, options.domainesFC ?? null);
             tocSections.push({ title: `${num}. Faits constatés`, page });
         }
         if (o.tableauDeBord) {
@@ -966,7 +970,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
         }
         if (o.faitsConstates) {
             const page = addPage(); num++;
-            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num);
+            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, options.domainesFC ?? null);
             tocSections.push({ title: `${num}. Faits constatés`, page });
         }
         if (o.recommandations) {

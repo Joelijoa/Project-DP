@@ -54,7 +54,7 @@ export default function RapportsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [exporting, setExporting] = useState({});
-    const [configModal, setConfigModal] = useState({ open: false, audit: null });
+    const [configModal, setConfigModal] = useState({ open: false, audit: null, referentiel: null, loadingRef: false });
 
     useEffect(() => {
         getAllAudits()
@@ -102,9 +102,19 @@ export default function RapportsPage() {
         }
     }, []);
 
+    const handleOpenConfigModal = useCallback(async (audit) => {
+        setConfigModal({ open: true, audit, referentiel: null, loadingRef: true });
+        try {
+            const refRes = await getReferentielById(audit.referentiel_id);
+            setConfigModal(prev => prev.open ? { ...prev, referentiel: refRes.data.referentiel, loadingRef: false } : prev);
+        } catch {
+            setConfigModal(prev => prev.open ? { ...prev, loadingRef: false } : prev);
+        }
+    }, []);
+
     const handlePdfConfirm = useCallback((options) => {
         const audit = configModal.audit;
-        setConfigModal({ open: false, audit: null });
+        setConfigModal({ open: false, audit: null, referentiel: null, loadingRef: false });
         handleExport(audit, 'pdf', options);
     }, [configModal.audit, handleExport]);
 
@@ -200,7 +210,7 @@ export default function RapportsPage() {
                                             <div className="flex items-center justify-end gap-2">
                                                 {/* PDF */}
                                                 <button
-                                                    onClick={() => setConfigModal({ open: true, audit })}
+                                                    onClick={() => handleOpenConfigModal(audit)}
                                                     disabled={!!exp}
                                                     title="Configurer et télécharger le rapport PDF"
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#CC0000] text-white hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -237,8 +247,10 @@ export default function RapportsPage() {
             {configModal.open && (
                 <ReportConfigModal
                     audit={configModal.audit}
+                    referentiel={configModal.referentiel}
+                    loadingRef={configModal.loadingRef}
                     onConfirm={handlePdfConfirm}
-                    onClose={() => setConfigModal({ open: false, audit: null })}
+                    onClose={() => setConfigModal({ open: false, audit: null, referentiel: null, loadingRef: false })}
                 />
             )}
         </div>

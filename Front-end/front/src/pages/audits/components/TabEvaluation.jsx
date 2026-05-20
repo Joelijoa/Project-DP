@@ -126,10 +126,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                             <div key={objectif.id} className="border-b border-gray-50 last:border-0">
                                                 {/* En-tête objectif */}
                                                 <div className="px-5 py-2.5 bg-gray-50/60">
-                                                    <p className="text-xs font-semibold text-gray-600">
-                                                        <span className="text-gray-400 mr-1">{objectif.code}</span>
-                                                        {objDesc}
-                                                    </p>
+                                                    <p className="text-xs font-semibold text-gray-600">{objDesc}</p>
                                                 </div>
 
                                                 {/* Table des mesures */}

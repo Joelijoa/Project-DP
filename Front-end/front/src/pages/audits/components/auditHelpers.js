@@ -2,7 +2,8 @@
 import { NIVEAUX } from './auditConstants';
 
 export const stripNumericPrefix = (str = '') => str.replace(/^\d+[\.\s\t]+/, '').trim();
-export const stripObjectifPrefix = (str = '') => str.replace(/^Objectif\s+\d+\s*:\s*/i, '').trim();
+export const stripObjectifPrefix = (str = '') =>
+    str.replace(/^Objectif\s+\d+\s*:\s*/i, '').replace(/^[\d.]+\s*[—\-–]\s*/, '').trim();
 
 export const fmtISODate = (iso) => {
     if (!iso) return '—';
