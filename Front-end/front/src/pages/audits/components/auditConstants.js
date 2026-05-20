@@ -49,12 +49,20 @@ export const TABS_ISO = [
     { id: 'description', label: "Description de l'audit" },
     { id: 'identification', label: "Identification de l'organisme" },
     { id: 'exigences_smsi', label: 'Exigences SMSI (§4-10)' },
-    { id: 'soa', label: "Déclaration d'Applicabilité" },
     { id: 'evaluation_iso', label: 'Évaluation Annexe A' },
     { id: 'plans_actions', label: "Plan d'actions" },
     { id: 'synthese_iso', label: 'Synthèse par thème' },
     { id: 'nc', label: 'Non-conformités' },
     { id: 'indicateurs_iso', label: 'Indicateurs SMSI' },
+];
+
+export const ISO_NIVEAUX = [
+    { value: 0, label: 'Inexistant',    color: 'text-red-600' },
+    { value: 1, label: 'Initié',        color: 'text-orange-500' },
+    { value: 2, label: 'Reproductible', color: 'text-yellow-500' },
+    { value: 3, label: 'Défini',        color: 'text-blue-500' },
+    { value: 4, label: 'Géré',          color: 'text-indigo-600' },
+    { value: 5, label: 'Optimisé',      color: 'text-green-600' },
 ];
 
 // Raisons d'inclusion ISO 27001

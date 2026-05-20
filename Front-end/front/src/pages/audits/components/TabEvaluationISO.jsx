@@ -1,21 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
-import { ISO_CONF_STATES } from './auditConstants';
-import { stripObjectifPrefix } from './auditHelpers';
-import { TabInfo, TabPlaceholder } from './AuditBadges';
-import AppTooltip from '../../../components/common/AppTooltip';
+import { useRef } from 'react';
+import { ISO_NIVEAUX } from './auditConstants';
+import { TabInfo } from './AuditBadges';
+import AppSelect from '../../../components/common/AppSelect';
 
-const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, saving, onSave, readOnly }) => {
-    const [openThemes, setOpenThemes] = useState({});
+const naturalSort = (a, b) =>
+    (a.code ?? '').localeCompare(b.code ?? '', undefined, { numeric: true, sensitivity: 'base' });
+
+// Extrait le titre avant le " — " dans la description
+const extractTitle = (desc = '') => {
+    const idx = desc.indexOf(' — ');
+    return idx !== -1 ? desc.slice(0, idx) : desc;
+};
+
+const TabEvaluationISO = ({ referentiel, localEvals, setEval, openDomaines, setOpenDomaines, isDirty, saving, onSave, readOnly }) => {
     const themeRefs = useRef({});
 
-    useEffect(() => {
-        if (referentiel?.domaines?.length > 0) {
-            setOpenThemes({ [referentiel.domaines[0].id]: true });
-        }
-    }, [referentiel]);
-
     const toggleTheme = (id) => {
-        setOpenThemes(prev => {
+        setOpenDomaines(prev => {
             const isNowOpen = !prev[id];
             if (isNowOpen) setTimeout(() => {
                 const el = themeRefs.current[id];
@@ -26,164 +27,181 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
         });
     };
 
-    const annexeDomaines = referentiel?.domaines?.filter(d => d.code.startsWith('A.')) ?? [];
+    const annexeDomaines = (referentiel?.domaines ?? []).filter(d => d.code.startsWith('A.'));
 
-    const allApplicable = annexeDomaines.flatMap(d =>
-        d.objectifs?.flatMap(o => o.mesures?.filter(m => soaMap[m.id]?.applicable === true) ?? []) ?? []
-    );
-
-    if (allApplicable.length === 0) {
-        return (
-            <div className="space-y-4">
-                <TabInfo text="Complétez d'abord la Déclaration d'Applicabilité pour définir les contrôles applicables avant d'évaluer." />
-                <TabPlaceholder titre="Aucun contrôle applicable défini" texte="Retournez à l'onglet 'Déclaration d'Applicabilité' et marquez les contrôles applicables avant de commencer l'évaluation." />
-            </div>
-        );
-    }
-
-    const conforme = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
-    const ncMineure = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
-    const ncMajeure = allApplicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
-    const evaluated = conforme + ncMineure + ncMajeure;
+    if (annexeDomaines.length === 0)
+        return <div className="text-gray-400 text-sm">Chargement du référentiel...</div>;
 
     return (
-        <div className="space-y-4">
-            <TabInfo text="Évaluez la conformité de chaque contrôle ISO 27001:2022 applicable défini dans la SoA. Pour chaque contrôle, indiquez s'il est Conforme, NC mineure ou NC majeure, puis ajoutez votre constat et vos recommandations." />
+        <div className="space-y-3">
+            <TabInfo text="Évaluez le niveau de maturité de chaque contrôle de l'Annexe A ISO 27001:2022. Utilisez 'N/A' pour les contrôles non applicables à l'organisation et justifiez le cas échéant." />
 
-            {/* KPIs */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: 'Contrôles applicables', value: allApplicable.length, sub: `${evaluated} évalués`, color: '#111827' },
-                    { label: 'Conformes', value: conforme, color: '#16a34a' },
-                    { label: 'NC mineures', value: ncMineure, color: '#ea580c' },
-                    { label: 'NC majeures', value: ncMajeure, color: '#dc2626' },
-                ].map((kpi, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
-                        <p className="text-3xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
-                        {kpi.sub && <p className="text-xs text-gray-400">{kpi.sub}</p>}
-                    </div>
-                ))}
+            {/* Barre sauvegarde */}
+            <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3">
+                <p className="text-sm text-gray-600">
+                    <strong>Évaluation Annexe A — Contrôles ISO 27001:2022</strong>
+                    {isDirty && !readOnly && <span className="ml-2 text-xs text-orange-500">— modifications non sauvegardées</span>}
+                </p>
+                {!readOnly && (
+                    <button onClick={onSave} disabled={saving || !isDirty}
+                        className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white rounded-xl transition disabled:opacity-50"
+                        style={{ backgroundColor: 'var(--brand-red)' }}>
+                        {saving ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                        Sauvegarder
+                    </button>
+                )}
             </div>
 
-            {/* Accordion par thème — Annexe A uniquement */}
+            {/* Légende */}
+            <div className="flex flex-wrap gap-3 px-1">
+                {ISO_NIVEAUX.map(n => (
+                    <span key={n.value} className={`text-xs font-medium ${n.color}`}>
+                        {n.value} = {n.label}
+                    </span>
+                ))}
+                <span className="text-xs font-medium text-gray-400">N/A = Non applicable</span>
+            </div>
+
+            {/* Accordion par chapitre (5 / 6 / 7 / 8) */}
             {annexeDomaines.map(theme => {
-                const isOpen = !!openThemes[theme.id];
-                const themeMesures = theme.objectifs?.flatMap(o =>
-                    o.mesures?.filter(m => soaMap[m.id]?.applicable === true) ?? []) ?? [];
+                const shortCode = theme.code.replace(/^A\./, '');
+                const allMesures = (theme.objectifs ?? [])
+                    .flatMap(o => o.mesures ?? [])
+                    .sort(naturalSort);
 
-                if (themeMesures.length === 0) return null;
+                if (allMesures.length === 0) return null;
 
-                const themeEval = themeMesures.filter(m =>
-                    localEvals[m.id]?.niveau_maturite !== null && localEvals[m.id]?.niveau_maturite !== undefined
-                ).length;
+                const evCount = allMesures.filter(m => {
+                    const n = localEvals[m.id]?.niveau_maturite;
+                    return n !== null && n !== undefined;
+                }).length;
+                const isOpen = !!openDomaines[theme.id];
 
                 return (
-                    <div key={theme.id} ref={el => themeRefs.current[theme.id] = el} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                        <button onClick={() => toggleTheme(theme.id)}
-                            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition">
+                    <div key={theme.id} ref={el => themeRefs.current[theme.id] = el}
+                        className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+
+                        <div onClick={() => toggleTheme(theme.id)}
+                            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50/60 transition cursor-pointer">
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>
-                                    {theme.code}
+                                    {shortCode}
                                 </span>
                                 <span className="text-sm font-semibold text-gray-800">{theme.nom}</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="text-xs text-gray-500">{themeEval}/{themeMesures.length} évalués</span>
+                                <span className="text-xs text-gray-500">{evCount}/{allMesures.length} évalués</span>
+                                <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full" style={{ width: `${allMesures.length > 0 ? (evCount / allMesures.length) * 100 : 0}%`, backgroundColor: 'var(--brand-red)' }} />
+                                </div>
                                 <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                                 </svg>
                             </div>
-                        </button>
+                        </div>
 
                         {isOpen && (
                             <div className="border-t border-gray-100">
-                                {theme.objectifs?.map(objectif => {
-                                    const objApplicable = objectif.mesures?.filter(m => soaMap[m.id]?.applicable === true) ?? [];
-                                    if (objApplicable.length === 0) return null;
-                                    const objDesc = stripObjectifPrefix(objectif.description || '');
-                                    return (
-                                        <div key={objectif.id} className="border-b border-gray-50 last:border-0">
-                                            <div className="px-5 py-2.5 bg-gray-50/60">
-                                                <p className="text-xs font-semibold text-gray-600">
-                                                    <span className="text-gray-400 mr-1">{objectif.code}</span>
-                                                    {objDesc}
-                                                </p>
-                                            </div>
-                                            {objApplicable.map(mesure => {
-                                                const ev = localEvals[mesure.id] || {};
-                                                const niveau = ev.niveau_maturite ?? null;
-                                                return (
-                                                    <div key={mesure.id} className="px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors">
-                                                        <div className="flex items-start gap-4">
-                                                            {/* Code + tooltip */}
-                                                            <div className="flex-shrink-0 w-20">
-                                                                <AppTooltip code={mesure.code?.trim()} description={mesure.description} />
-                                                            </div>
-                                                            {/* Description de la règle */}
-                                                            <p className="flex-1 text-xs text-gray-700 leading-relaxed">{mesure.description || objDesc}</p>
-                                                            {/* 3-state toggle */}
-                                                            <div className="flex items-center flex-shrink-0">
-                                                                {ISO_CONF_STATES.map((s, idx) => (
-                                                                    <button key={s.value}
-                                                                        onClick={() => !readOnly && setEval(mesure.id, 'niveau_maturite', niveau === s.value ? null : s.value)}
-                                                                        className={`px-2.5 py-1 text-xs font-medium border transition
-                                                                            ${idx === 0 ? 'rounded-l-md border-r-0' : ''}
-                                                                            ${idx === ISO_CONF_STATES.length - 1 ? 'rounded-r-md' : ''}
-                                                                            ${idx > 0 && idx < ISO_CONF_STATES.length - 1 ? 'border-r-0' : ''}
-                                                                            ${readOnly ? 'cursor-not-allowed' : ''}
-                                                                            ${niveau === s.value ? s.activeCls : s.inactiveCls}`}
-                                                                    >
-                                                                        {s.label}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                        {/* Preuve + constat + recommandation si évalué */}
-                                                        {niveau !== null && (
-                                                            <div className="mt-2 ml-24 grid gap-3" style={{ gridTemplateColumns: '180px 1fr 1fr' }}>
-                                                                <input type="text" value={ev.preuve || ''}
-                                                                    onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
-                                                                    readOnly={readOnly}
-                                                                    placeholder={readOnly ? '—' : 'Références / preuves...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed self-start" />
-                                                                <textarea value={ev.commentaire || ''}
-                                                                    onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
-                                                                    readOnly={readOnly}
-                                                                    rows={4}
-                                                                    placeholder={readOnly ? '—' : 'Constat...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
-                                                                <textarea value={ev.recommandation || ''}
-                                                                    onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
-                                                                    readOnly={readOnly}
-                                                                    rows={4}
-                                                                    placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
-                                                            </div>
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 bg-gray-50/60">
+                                            <th className="text-left px-5 py-2.5 font-semibold text-gray-400 uppercase tracking-wider w-56">Contrôle</th>
+                                            <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider w-44">Niveau maturité</th>
+                                            <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider w-36">Preuves / Références</th>
+                                            <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Constat</th>
+                                            <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Recommandation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {allMesures.map(mesure => {
+                                            const ev = localEvals[mesure.id] || {};
+                                            const niveau = ev.niveau_maturite ?? null;
+                                            const isNA = niveau === -2;
+                                            const shortMesureCode = mesure.code?.trim().replace(/^A\./, '');
+                                            const title = extractTitle(mesure.description || '');
+
+                                            return (
+                                                <tr key={mesure.id} className={`border-b border-gray-50 transition-colors align-top ${isNA ? 'bg-gray-50/60 opacity-70' : 'hover:bg-gray-50/40'}`}>
+                                                    {/* Code + titre */}
+                                                    <td className="px-5 py-3">
+                                                        <span className="font-mono text-[11px] font-semibold text-gray-500 mr-1.5">{shortMesureCode}</span>
+                                                        <span className={`text-xs ${isNA ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{title}</span>
+                                                    </td>
+                                                    {/* Niveau maturité + N/A */}
+                                                    <td className="px-3 py-3">
+                                                        <AppSelect
+                                                            value={niveau === null || niveau === undefined ? '' : niveau === -2 ? 'na' : String(niveau)}
+                                                            onChange={v => {
+                                                                if (readOnly) return;
+                                                                setEval(mesure.id, 'niveau_maturite', v === '' ? null : v === 'na' ? -2 : parseInt(v));
+                                                            }}
+                                                            locked={readOnly}
+                                                            size="sm"
+                                                            options={[
+                                                                { value: '',   label: '— Sélectionner —' },
+                                                                { value: 'na', label: 'N/A — Non applicable' },
+                                                                { value: '0',  label: '0 — Inexistant' },
+                                                                { value: '1',  label: '1 — Initié' },
+                                                                { value: '2',  label: '2 — Reproductible' },
+                                                                { value: '3',  label: '3 — Défini' },
+                                                                { value: '4',  label: '4 — Géré' },
+                                                                { value: '5',  label: '5 — Optimisé' },
+                                                            ]}
+                                                        />
+                                                        {/* Raison N/A */}
+                                                        {isNA && (
+                                                            <textarea
+                                                                value={ev.preuve || ''}
+                                                                onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
+                                                                readOnly={readOnly}
+                                                                rows={2}
+                                                                placeholder={readOnly ? '—' : 'Justifier la non-applicabilité...'}
+                                                                className="mt-1.5 w-full text-xs border border-orange-200 bg-orange-50/60 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y"
+                                                            />
                                                         )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                })}
+                                                    </td>
+                                                    {/* Preuves */}
+                                                    <td className="px-3 py-3">
+                                                        {!isNA && (
+                                                            <input type="text" value={ev.preuve || ''}
+                                                                onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
+                                                                readOnly={readOnly}
+                                                                placeholder={readOnly ? '—' : 'Références...'}
+                                                                className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed" />
+                                                        )}
+                                                    </td>
+                                                    {/* Constat */}
+                                                    <td className="px-3 py-3">
+                                                        {!isNA && (
+                                                            <textarea value={ev.commentaire || ''}
+                                                                onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
+                                                                readOnly={readOnly}
+                                                                rows={5}
+                                                                placeholder={readOnly ? '—' : 'Constat...'}
+                                                                className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
+                                                        )}
+                                                    </td>
+                                                    {/* Recommandation */}
+                                                    <td className="px-3 py-3">
+                                                        {!isNA && (
+                                                            <textarea value={ev.recommandation || ''}
+                                                                onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
+                                                                readOnly={readOnly}
+                                                                rows={5}
+                                                                placeholder={readOnly ? '—' : 'Recommandation...'}
+                                                                className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>
                 );
             })}
-
-            {/* Bouton flottant sauvegarde */}
-            {isDirty && !readOnly && (
-                <div className="sticky bottom-4 flex justify-end">
-                    <button onClick={onSave} disabled={saving}
-                        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-xl shadow-lg transition disabled:opacity-60"
-                        style={{ backgroundColor: 'var(--brand-red)' }}>
-                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-                        Sauvegarder l'évaluation
-                    </button>
-                </div>
-            )}
         </div>
     );
 };

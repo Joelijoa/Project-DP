@@ -37,7 +37,6 @@ import TabSyntheseConformite from './components/TabSyntheseConformite';
 import TabAvancement from './components/TabAvancement';
 import TabIndicateurs from './components/TabIndicateurs';
 import TabExigencesSMSI from './components/TabExigencesSMSI';
-import TabSoA from './components/TabSoA';
 import TabEvaluationISO from './components/TabEvaluationISO';
 import TabSyntheseISO from './components/TabSyntheseISO';
 import TabNC from './components/TabNC';
@@ -1027,23 +1026,13 @@ const AuditDetailPage = () => {
                             readOnly={isClient || isTermine}
                         />
                     )}
-                    {isISO && activeTab === 'soa' && (
-                        <TabSoA
-                            referentiel={referentiel}
-                            soaMap={soaMap}
-                            setSoaEntry={setSoaEntry}
-                            soaDirty={soaDirty}
-                            savingSoa={savingSoa}
-                            onSave={handleSaveSoA}
-                            readOnly={isClient || isTermine}
-                        />
-                    )}
                     {isISO && activeTab === 'evaluation_iso' && (
                         <TabEvaluationISO
                             referentiel={referentiel}
-                            soaMap={soaMap}
                             localEvals={localEvals}
                             setEval={setEval}
+                            openDomaines={openDomaines}
+                            setOpenDomaines={setOpenDomaines}
                             isDirty={isDirty}
                             saving={saving}
                             onSave={handleSaveEvals}

@@ -571,7 +571,10 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
                 const mat = ev.niveau_maturite != null && ev.niveau_maturite >= 0 ? `${ev.niveau_maturite}/5` : 'N/A';
                 const constat = isNA && ev.preuve ? `Raison N/A : ${ev.preuve}` : (ev.commentaire || '—');
                 const reco = isNA ? '—' : (ev.recommandation || '—');
-                return [inf?.mesure?.code || `M${ev.mesure_id}`, inf?.mesure?.description || '—', CONFORMITE[ev.conformite] || ev.conformite, mat, constat, reco];
+                const conformiteDisplay = isNA
+                    ? (ev.conformite ? (CONFORMITE[ev.conformite] || ev.conformite) : 'Non applicable')
+                    : (CONFORMITE[ev.conformite] || ev.conformite || '—');
+                return [inf?.mesure?.code || `M${ev.mesure_id}`, inf?.mesure?.description || '—', conformiteDisplay, mat, constat, reco];
             }),
             ...soaRows,
         ];
@@ -591,7 +594,7 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
                 if (d.section === 'body') {
                     const rowData = d.row.raw;
                     const conformiteCell = Array.isArray(rowData) ? rowData[2] : null;
-                    const isNARow = conformiteCell === 'N/A';
+                    const isNARow = conformiteCell === 'N/A' || conformiteCell === 'Non applicable';
                     if (isNARow) {
                         d.cell.styles.textColor = [148, 163, 184];
                         d.cell.styles.fontStyle = 'italic';
