@@ -60,6 +60,21 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                 ))}
             </div>
 
+            {/* Légende niveaux de conformité */}
+            <div className="flex flex-wrap gap-x-5 gap-y-1 px-1">
+                {[
+                    { dot: 'bg-green-600',  label: 'Conforme',    desc: 'Exigence pleinement satisfaite' },
+                    { dot: 'bg-orange-500', label: 'NC mineure',  desc: 'Écart limité, correction planifiée requise' },
+                    { dot: 'bg-red-600',    label: 'NC majeure',  desc: 'Écart critique, action corrective urgente' },
+                ].map(n => (
+                    <div key={n.label} className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${n.dot}`} />
+                        <span className="text-xs font-semibold text-gray-700">{n.label}</span>
+                        <span className="text-xs text-gray-400">— {n.desc}</span>
+                    </div>
+                ))}
+            </div>
+
             {/* Accordion par clause §4-10 */}
             {mainBodyDomaines.map(section => {
                 const isOpen = !!openSections[section.id];
