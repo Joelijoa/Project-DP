@@ -1,3 +1,4 @@
+import React from 'react';
 import { NIVEAUX } from './auditConstants';
 import { isoConformite, niveauLabel } from './auditHelpers';
 import { TabInfo, ConformiteBadge } from './AuditBadges';
@@ -46,9 +47,9 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
                         </thead>
                         <tbody>
                             {referentiel.domaines?.map(domaine => (
-                                <>
+                                <React.Fragment key={domaine.id}>
                                     {/* Ligne d'en-tête domaine */}
-                                    <tr key={`dom-${domaine.id}`} className="bg-gray-100/70">
+                                    <tr className="bg-gray-100/70">
                                         <td colSpan={6} className="px-4 py-2 border-b border-gray-200">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[10px] font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--brand-red)' }}>
@@ -96,7 +97,7 @@ const TabAvancement = ({ referentiel, localEvals, synthese }) => {
                                             );
                                         });
                                     })}
-                                </>
+                                </React.Fragment>
                             ))}
                         </tbody>
                     </table>

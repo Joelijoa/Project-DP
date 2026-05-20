@@ -63,9 +63,9 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                 return (
                     <div key={domaine.id} ref={el => domaineRefs.current[domaine.id] = el} className={`bg-white rounded-2xl overflow-hidden shadow-sm ${isDomainNA ? 'border border-gray-200 opacity-70' : 'border border-gray-100'}`}>
                         {/* En-tête domaine */}
-                        <button
+                        <div
                             onClick={() => toggleDomaine(domaine.id)}
-                            className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50/60 transition"
+                            className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50/60 transition cursor-pointer"
                         >
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-bold text-white px-2 py-0.5 rounded" style={{ backgroundColor: isDomainNA ? '#9ca3af' : 'var(--brand-red)' }}>
@@ -100,7 +100,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                                 </svg>
                             </div>
-                        </button>
+                        </div>
 
                         {isOpen && (
                             <div className="border-t border-gray-100">

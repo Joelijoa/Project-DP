@@ -54,7 +54,10 @@ const TabNav = ({ activeTab, setActiveTab, tabs, tabStatus = {} }) => {
                 {tabs.map((tab, i) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
+                        onClick={e => {
+                            setActiveTab(tab.id);
+                            e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                        }}
                         className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id
                             ? 'border-current -mb-px'
                             : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
