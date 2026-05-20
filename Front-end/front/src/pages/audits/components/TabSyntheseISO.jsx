@@ -87,17 +87,47 @@ const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
 
             {/* KPIs globaux */}
             <div className="grid grid-cols-4 gap-4">
-                {[
-                    { label: 'Taux global', value: `${tauxGlobal}%`, color: tauxGlobal >= 75 ? '#16a34a' : tauxGlobal >= 50 ? '#d97706' : '#dc2626', accent: true },
-                    { label: 'Conformes', value: totConf, color: '#16a34a' },
-                    { label: 'NC mineures', value: totMin, color: '#ea580c' },
-                    { label: 'NC majeures', value: totMaj, color: '#dc2626' },
-                ].map((k, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4" style={k.accent ? { borderTopWidth: '3px', borderTopColor: k.color } : {}}>
-                        <p className="text-xs font-medium text-gray-500">{k.label}</p>
-                        <p className="text-2xl font-bold mt-1" style={{ color: k.color }}>{k.value}</p>
+                {(() => {
+                    const tColor = tauxGlobal >= 70 ? '#16a34a' : tauxGlobal >= 40 ? '#f97316' : '#dc2626';
+                    return (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                            <div className="flex items-start justify-between mb-4">
+                                <p className="text-xs font-medium text-gray-400">Taux global</p>
+                                <div className="p-1.5 rounded-lg" style={{ backgroundColor: `${tColor}15`, color: tColor }}>
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" /></svg>
+                                </div>
+                            </div>
+                            <p className="text-3xl font-bold tracking-tight" style={{ color: tColor }}>{tauxGlobal}%</p>
+                        </div>
+                    );
+                })()}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">Conformes</p>
+                        <div className="p-1.5 rounded-lg bg-green-50 text-green-500">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
                     </div>
-                ))}
+                    <p className="text-3xl font-bold tracking-tight text-green-600">{totConf}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">NC mineures</p>
+                        <div className="p-1.5 rounded-lg bg-orange-50 text-orange-500">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                        </div>
+                    </div>
+                    <p className="text-3xl font-bold tracking-tight text-orange-600">{totMin}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">NC majeures</p>
+                        <div className="p-1.5 rounded-lg bg-red-50 text-red-500">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                    </div>
+                    <p className="text-3xl font-bold tracking-tight text-red-600">{totMaj}</p>
+                </div>
             </div>
 
             {/* §4-10 */}

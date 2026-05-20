@@ -38,17 +38,42 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
 
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: 'Total contrôles', value: total, color: '#111827' },
-                    { label: 'Applicables', value: applicable, color: '#16a34a' },
-                    { label: 'Non applicables', value: nonApplicable, color: '#dc2626' },
-                    { label: 'À décider', value: undecided, color: '#d97706' },
-                ].map((kpi, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
-                        <p className="text-3xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">Total contrôles</p>
+                        <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /></svg>
+                        </div>
                     </div>
-                ))}
+                    <p className="text-3xl font-bold tracking-tight text-gray-900">{total}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">Applicables</p>
+                        <div className="p-1.5 rounded-lg bg-green-50 text-green-500">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                    </div>
+                    <p className="text-3xl font-bold tracking-tight text-green-600">{applicable}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">Non applicables</p>
+                        <div className="p-1.5 rounded-lg bg-red-50 text-red-500">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        </div>
+                    </div>
+                    <p className="text-3xl font-bold tracking-tight text-red-600">{nonApplicable}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">À décider</p>
+                        <div className="p-1.5 rounded-lg bg-amber-50 text-amber-500">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" /></svg>
+                        </div>
+                    </div>
+                    <p className="text-3xl font-bold tracking-tight text-amber-600">{undecided}</p>
+                </div>
             </div>
 
             {/* Accordion par thème */}
@@ -118,15 +143,13 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                                                             <div className="flex items-center gap-1 flex-shrink-0">
                                                                 <button
                                                                     onClick={() => !readOnly && setSoaEntry(mesure.id, 'applicable', isApplicable === true ? null : true)}
-                                                                    disabled={readOnly}
-                                                                    className={`px-2.5 py-1 text-xs font-medium rounded-l-md border transition ${isApplicable === true ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-500 border-gray-200 hover:border-green-400'} ${readOnly ? 'cursor-default' : ''}`}
+                                                                    className={`px-2.5 py-1 text-xs font-medium rounded-l-md border transition ${isApplicable === true ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-500 border-gray-200 hover:border-green-400'} ${readOnly ? 'cursor-not-allowed' : ''}`}
                                                                 >
                                                                     Oui
                                                                 </button>
                                                                 <button
                                                                     onClick={() => !readOnly && setSoaEntry(mesure.id, 'applicable', isApplicable === false ? null : false)}
-                                                                    disabled={readOnly}
-                                                                    className={`px-2.5 py-1 text-xs font-medium rounded-r-md border-t border-r border-b transition ${isApplicable === false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-200 hover:border-red-400'} ${readOnly ? 'cursor-default' : ''}`}
+                                                                    className={`px-2.5 py-1 text-xs font-medium rounded-r-md border-t border-r border-b transition ${isApplicable === false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-200 hover:border-red-400'} ${readOnly ? 'cursor-not-allowed' : ''}`}
                                                                 >
                                                                     Non
                                                                 </button>
@@ -141,7 +164,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                                                                     <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Raisons d'inclusion</p>
                                                                     <div className="flex flex-wrap gap-2">
                                                                         {RAISONS_INCLUSION.map(r => (
-                                                                            <label key={r.value} className={`flex items-center gap-1.5 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}>
+                                                                            <label key={r.value} className={`flex items-center gap-1.5 ${readOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                                                                                 <input
                                                                                     type="checkbox"
                                                                                     checked={raisons.includes(r.value)}
@@ -162,7 +185,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                                                                         <AppSelect
                                                                             value={entry.statut_implementation ?? ''}
                                                                             onChange={v => setSoaEntry(mesure.id, 'statut_implementation', v || null)}
-                                                                            disabled={readOnly}
+                                                                            locked={readOnly}
                                                                             placeholder="— Sélectionner —"
                                                                             options={Object.entries(STATUT_IMPL_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))}
                                                                         />
@@ -177,7 +200,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                                                                             onChange={e => setSoaEntry(mesure.id, 'reference_document', e.target.value || null)}
                                                                             readOnly={readOnly}
                                                                             placeholder="Ex : POL-SEC-001"
-                                                                            className={`w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-gray-50 text-gray-600 cursor-default' : ''}`}
+                                                                            className={`w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 ${readOnly ? 'bg-white text-gray-700 cursor-not-allowed' : ''}`}
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -194,7 +217,7 @@ const TabSoA = ({ referentiel, soaMap, setSoaEntry, soaDirty, savingSoa, onSave,
                                                                     readOnly={readOnly}
                                                                     placeholder="Expliquer pourquoi ce contrôle n'est pas applicable..."
                                                                     rows={2}
-                                                                    className={`w-full text-xs border border-orange-200 rounded-xl px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1 resize-none ${readOnly ? 'text-gray-600 cursor-default' : ''}`}
+                                                                    className={`w-full text-xs border border-orange-200 rounded-xl px-2 py-1.5 bg-orange-50 focus:outline-none focus:ring-1 resize-none ${readOnly ? 'text-gray-700 cursor-not-allowed' : ''}`}
                                                                 />
                                                             </div>
                                                         )}

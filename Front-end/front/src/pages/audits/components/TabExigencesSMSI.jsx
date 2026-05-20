@@ -45,18 +45,43 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
 
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: 'Exigences totales', value: allMesures.length, sub: `${evaluated} évaluées`, color: '#111827' },
-                    { label: 'Conformes', value: conforme, color: '#16a34a' },
-                    { label: 'NC mineures', value: ncMineure, color: '#ea580c' },
-                    { label: 'NC majeures', value: ncMajeure, color: '#dc2626' },
-                ].map((kpi, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
-                        <p className="text-3xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
-                        {kpi.sub && <p className="text-xs text-gray-400">{kpi.sub}</p>}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">Exigences totales</p>
+                        <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
+                        </div>
                     </div>
-                ))}
+                    <p className="text-3xl font-bold tracking-tight text-gray-900">{allMesures.length}</p>
+                    <p className="text-xs text-gray-400 mt-1">{evaluated} évaluées</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">Conformes</p>
+                        <div className="p-1.5 rounded-lg bg-green-50 text-green-500">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                    </div>
+                    <p className="text-3xl font-bold tracking-tight text-green-600">{conforme}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">NC mineures</p>
+                        <div className="p-1.5 rounded-lg bg-orange-50 text-orange-500">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                        </div>
+                    </div>
+                    <p className="text-3xl font-bold tracking-tight text-orange-600">{ncMineure}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <p className="text-xs font-medium text-gray-400">NC majeures</p>
+                        <div className="p-1.5 rounded-lg bg-red-50 text-red-500">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                    </div>
+                    <p className="text-3xl font-bold tracking-tight text-red-600">{ncMajeure}</p>
+                </div>
             </div>
 
             {/* Accordion par section §4-10 */}
@@ -103,12 +128,11 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                                                                 {ISO_CONF_STATES.map((s, idx) => (
                                                                     <button key={s.value}
                                                                         onClick={() => !readOnly && setEval(mesure.id, 'niveau_maturite', niveau === s.value ? null : s.value)}
-                                                                        disabled={readOnly}
                                                                         className={`px-2.5 py-1 text-xs font-medium border transition
                                                                             ${idx === 0 ? 'rounded-l-md border-r-0' : ''}
                                                                             ${idx === ISO_CONF_STATES.length - 1 ? 'rounded-r-md' : ''}
                                                                             ${idx > 0 && idx < ISO_CONF_STATES.length - 1 ? 'border-r-0' : ''}
-                                                                            ${readOnly ? 'cursor-default' : ''}
+                                                                            ${readOnly ? 'cursor-not-allowed' : ''}
                                                                             ${niveau === s.value ? s.activeCls : s.inactiveCls}`}
                                                                     >
                                                                         {s.label}
@@ -122,19 +146,19 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
                                                                     readOnly={readOnly}
                                                                     placeholder={readOnly ? '—' : 'Références / preuves...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 self-start" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed self-start" />
                                                                 <textarea value={ev.commentaire || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
                                                                     readOnly={readOnly}
                                                                     rows={4}
                                                                     placeholder={readOnly ? '—' : 'Constat...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-y" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
                                                                 <textarea value={ev.recommandation || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
                                                                     readOnly={readOnly}
                                                                     rows={4}
                                                                     placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-y" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
                                                             </div>
                                                         )}
                                                     </div>
