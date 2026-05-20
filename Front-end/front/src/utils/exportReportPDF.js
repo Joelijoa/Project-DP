@@ -476,7 +476,14 @@ function renderPlanAudit(doc, audit, referentiel, logo, num) {
     }
 }
 
-function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, selectedDomainIds = null) {
+function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, selectedDomainIds = null, soaEntries = null) {
+    // Build map of non-applicable SoA entries: mesure_id → justification_exclusion
+    const soaNAMap = {};
+    if (soaEntries) {
+        for (const s of soaEntries) {
+            if (s.applicable === false) soaNAMap[s.mesure_id] = s.justification_exclusion || '';
+        }
+    }
     const hdr = `${num}. Faits constatés`;
     drawHeader(doc, logo, hdr);
     let y = 32;
@@ -493,55 +500,108 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
         ? sortedDomaines(referentiel).filter(d => selectedDomainIds.includes(d.id))
         : sortedDomaines(referentiel);
 
+    let firstDomain = true;
     for (const domaine of domainesFiltered) {
         const ids = new Set();
         for (const o of domaine.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
         const evs = evaluations.filter(e => ids.has(e.mesure_id));
-        if (evs.length === 0) continue;
 
-        doc.addPage();
-        drawHeader(doc, logo, hdr);
-        y = 28;
+        // Check if all measures in this domain are non-applicable via SoA
+        const allMesureIds = [...ids];
+        const isNADomViaSoA = allMesureIds.length > 0 && allMesureIds.every(id => id in soaNAMap);
 
-        const conf  = evs.filter(e => e.conformite === 'conforme').length;
-        const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
-        const ncMin = evs.filter(e => e.conformite === 'nc_mineure').length;
+        if (evs.length === 0 && !isNADomViaSoA) continue;
+
+        if (!firstDomain) {
+            doc.addPage();
+            drawHeader(doc, logo, hdr);
+            y = 28;
+        }
+        firstDomain = false;
+
+        const conf    = evs.filter(e => e.conformite === 'conforme').length;
+        const ncMaj   = evs.filter(e => e.conformite === 'nc_majeure').length;
+        const ncMin   = evs.filter(e => e.conformite === 'nc_mineure').length;
+        const isNADom = isNADomViaSoA || (evs.length > 0 && evs.every(e => e.conformite === 'na' || (e.niveau_maturite != null && e.niveau_maturite < 0)));
+        const naReason = isNADom
+            ? (isNADomViaSoA ? (soaNAMap[allMesureIds[0]] || '') : (evs[0]?.preuve || ''))
+            : null;
 
         doc.setFontSize(9); doc.setFont('helvetica', 'bold');
         const domaineTitleLines = doc.splitTextToSize(domaine.nom || domaine.code || '', CW * 0.55);
         const domaineBoxH = Math.max(12, domaineTitleLines.length * 5 + 5);
-        doc.setFillColor(...RED); doc.rect(M, y, 2, domaineBoxH, 'F');
+        doc.setFillColor(...(isNADom ? GRAY : RED)); doc.rect(M, y, 2, domaineBoxH, 'F');
         doc.setTextColor(...NAVY2);
         doc.text(domaineTitleLines, M + 6, y + 6);
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...LGRAY);
-        doc.text(`${evs.length} mesures  ·  Conformes : ${conf}  ·  NC Min. : ${ncMin}  ·  NC Maj. : ${ncMaj}`, W - M, y + 8.5, { align: 'right' });
-        doc.setDrawColor(...RED); doc.setLineWidth(0.4);
+        const domaineStats = isNADom
+            ? `${evs.length} mesure(s)  ·  Non applicable`
+            : `${evs.length} mesures  ·  Conformes : ${conf}  ·  NC Min. : ${ncMin}  ·  NC Maj. : ${ncMaj}`;
+        doc.text(domaineStats, W - M, y + 8.5, { align: 'right' });
+        doc.setDrawColor(...(isNADom ? GRAY : RED)); doc.setLineWidth(0.4);
         doc.line(M, y + domaineBoxH, W - M, y + domaineBoxH);
         doc.setLineWidth(0.25);
         y += domaineBoxH + 5;
+
+        // Raison de non-applicabilité avant le tableau
+        if (isNADom) {
+            const reasonText = naReason || '(non renseignée)';
+            doc.setFillColor(248, 250, 252);
+            const reasonLines = doc.splitTextToSize(`Raison de non-applicabilité : ${reasonText}`, CW - 10);
+            const reasonBoxH = reasonLines.length * 4.5 + 7;
+            doc.roundedRect(M, y, CW, reasonBoxH, 1.5, 1.5, 'F');
+            doc.setFontSize(7.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...GRAY);
+            doc.text(reasonLines, M + 5, y + 5.5);
+            y += reasonBoxH + 4;
+        }
+
+        // Build rows: evaluated measures + SoA N/A measures not already in evs
+        const evsIds = new Set(evs.map(e => e.mesure_id));
+        const soaRows = allMesureIds
+            .filter(id => id in soaNAMap && !evsIds.has(id))
+            .map(id => {
+                const inf = mesureMap[id];
+                const justif = soaNAMap[id] || '(non renseignée)';
+                return [inf?.mesure?.code || `M${id}`, inf?.mesure?.description || '—', 'N/A', 'N/A', `Exclu du périmètre : ${justif}`, '—'];
+            });
+        const tableRows = [
+            ...evs.map(ev => {
+                const inf = mesureMap[ev.mesure_id];
+                const isNA = ev.conformite === 'na' || (ev.niveau_maturite != null && ev.niveau_maturite < 0);
+                const mat = ev.niveau_maturite != null && ev.niveau_maturite >= 0 ? `${ev.niveau_maturite}/5` : 'N/A';
+                const constat = isNA && ev.preuve ? `Raison N/A : ${ev.preuve}` : (ev.commentaire || '—');
+                const reco = isNA ? '—' : (ev.recommandation || '—');
+                return [inf?.mesure?.code || `M${ev.mesure_id}`, inf?.mesure?.description || '—', CONFORMITE[ev.conformite] || ev.conformite, mat, constat, reco];
+            }),
+            ...soaRows,
+        ];
 
         autoTable(doc, {
             startY: y,
             showHead: 'everyPage',
             rowPageBreak: 'avoid',
             head: [['Code', 'Mesure / Exigence', 'Conformité', 'Mat.', 'Constat', 'Recommandation']],
-            body: evs.map(ev => {
-                const inf = mesureMap[ev.mesure_id];
-                const mat = ev.niveau_maturite != null && ev.niveau_maturite >= 0 ? `${ev.niveau_maturite}/5` : 'N/A';
-                return [inf?.mesure?.code || `M${ev.mesure_id}`, inf?.mesure?.description || '—', CONFORMITE[ev.conformite] || ev.conformite, mat, ev.commentaire || '—', ev.recommandation || '—'];
-            }),
+            body: tableRows,
             styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
             headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', fontSize: 8, cellPadding: 4 },
             alternateRowStyles: { fillColor: LIGHT },
             columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 32 }, 2: { cellWidth: 26 }, 3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 39 }, 5: { cellWidth: 39 } },
             margin: { left: M, right: M, top: 26, bottom: 16 },
             didParseCell: d => {
-                if (d.section === 'body' && d.column.index === 2) {
-                    const v = d.cell.raw;
-                    if (v === 'NC Majeure' || v === 'Non conforme') { d.cell.styles.textColor = [220, 38, 38]; d.cell.styles.fontStyle = 'bold'; }
-                    else if (v === 'NC Mineure') d.cell.styles.textColor = [234, 88, 12];
-                    else if (v === 'Conforme') d.cell.styles.textColor = [22, 163, 74];
-                    else if (v === 'Partiellement conforme') d.cell.styles.textColor = [161, 98, 7];
+                if (d.section === 'body') {
+                    const rowData = d.row.raw;
+                    const conformiteCell = Array.isArray(rowData) ? rowData[2] : null;
+                    const isNARow = conformiteCell === 'N/A';
+                    if (isNARow) {
+                        d.cell.styles.textColor = [148, 163, 184];
+                        d.cell.styles.fontStyle = 'italic';
+                    } else if (d.column.index === 2) {
+                        const v = d.cell.raw;
+                        if (v === 'NC Majeure' || v === 'Non conforme') { d.cell.styles.textColor = [220, 38, 38]; d.cell.styles.fontStyle = 'bold'; }
+                        else if (v === 'NC Mineure') d.cell.styles.textColor = [234, 88, 12];
+                        else if (v === 'Conforme') d.cell.styles.textColor = [22, 163, 74];
+                        else if (v === 'Partiellement conforme') d.cell.styles.textColor = [161, 98, 7];
+                    }
                 }
             },
             didDrawPage: d => { if (d.pageNumber > 1) drawHeader(doc, logo, hdr); },
@@ -970,7 +1030,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
         }
         if (o.faitsConstates) {
             const page = addPage(); num++;
-            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, options.domainesFC ?? null);
+            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, options.domainesFC ?? null, soaEntries);
             tocSections.push({ title: `${num}. Faits constatés`, page });
         }
         if (o.recommandations) {

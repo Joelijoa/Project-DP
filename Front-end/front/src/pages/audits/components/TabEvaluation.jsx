@@ -81,6 +81,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                             e.stopPropagation();
                                             const newValue = isDomainNA ? null : -1;
                                             mesures.forEach(m => setEval(m.id, 'niveau_maturite', newValue));
+                                            if (newValue === -1) setOpenDomaines(prev => ({ ...prev, [domaine.id]: true }));
                                         }}
                                         className={`text-xs px-2.5 py-1 rounded-xl font-medium transition border ${isDomainNA
                                             ? 'bg-gray-100 border-gray-300 text-gray-500 hover:bg-gray-200'
@@ -105,19 +106,36 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                         {isOpen && (
                             <div className="border-t border-gray-100">
                                 {isDomainNA ? (
-                                    <div className="px-5 py-4 flex items-center gap-2.5 text-sm text-gray-500 bg-gray-50">
-                                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                        </svg>
-                                        Ce domaine a été marqué comme <strong className="font-semibold">non applicable</strong> à l'organisation auditée.
-                                        {!readOnly && (
-                                            <button
-                                                onClick={() => mesures.forEach(m => setEval(m.id, 'niveau_maturite', null))}
-                                                className="ml-auto text-xs text-gray-400 hover:text-gray-600 underline"
-                                            >
-                                                Annuler
-                                            </button>
-                                        )}
+                                    <div className="px-5 py-4 space-y-3 bg-gray-50">
+                                        <div className="flex items-center gap-2.5 text-sm text-gray-500">
+                                            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                            </svg>
+                                            Ce domaine a été marqué comme <strong className="font-semibold">non applicable</strong> à l'organisation auditée.
+                                            {!readOnly && (
+                                                <button
+                                                    onClick={() => mesures.forEach(m => setEval(m.id, 'niveau_maturite', null))}
+                                                    className="ml-auto text-xs text-gray-400 hover:text-gray-600 underline"
+                                                >
+                                                    Annuler
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="ml-6">
+                                            <label className="text-xs font-medium text-gray-500 mb-1 block">Raison de non-applicabilité</label>
+                                            <textarea
+                                                value={localEvals[mesures[0]?.id]?.preuve || ''}
+                                                onChange={e => {
+                                                    if (readOnly) return;
+                                                    const val = e.target.value;
+                                                    mesures.forEach(m => setEval(m.id, 'preuve', val));
+                                                }}
+                                                readOnly={readOnly}
+                                                rows={2}
+                                                placeholder={readOnly ? '—' : 'Justifier pourquoi ce domaine n\'est pas applicable à l\'organisation auditée…'}
+                                                className="w-full text-xs border border-orange-200 bg-orange-50/60 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-orange-300 read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y"
+                                            />
+                                        </div>
                                     </div>
                                 ) : (
                                     <>{domaine.objectifs?.map(objectif => {
@@ -136,7 +154,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                             <th className="text-left px-5 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Règle</th>
                                                             <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-44">Niveau maturité</th>
                                                             <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-28">Conformité</th>
-                                                            <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-36">Preuves / Références</th>
+                                                            <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider w-36">Preuves / Raison N/A</th>
                                                             <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Constat</th>
                                                             <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wider">Recommandation</th>
                                                         </tr>
