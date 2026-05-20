@@ -127,12 +127,11 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                                                 {ISO_CONF_STATES.map((s, idx) => (
                                                                     <button key={s.value}
                                                                         onClick={() => !readOnly && setEval(mesure.id, 'niveau_maturite', niveau === s.value ? null : s.value)}
-                                                                        disabled={readOnly}
                                                                         className={`px-2.5 py-1 text-xs font-medium border transition
                                                                             ${idx === 0 ? 'rounded-l-md border-r-0' : ''}
                                                                             ${idx === ISO_CONF_STATES.length - 1 ? 'rounded-r-md' : ''}
                                                                             ${idx > 0 && idx < ISO_CONF_STATES.length - 1 ? 'border-r-0' : ''}
-                                                                            ${readOnly ? 'cursor-default' : ''}
+                                                                            ${readOnly ? 'cursor-not-allowed' : ''}
                                                                             ${niveau === s.value ? s.activeCls : s.inactiveCls}`}
                                                                     >
                                                                         {s.label}
@@ -147,19 +146,19 @@ const TabEvaluationISO = ({ referentiel, soaMap, localEvals, setEval, isDirty, s
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
                                                                     readOnly={readOnly}
                                                                     placeholder={readOnly ? '—' : 'Références / preuves...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 self-start" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed self-start" />
                                                                 <textarea value={ev.commentaire || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
                                                                     readOnly={readOnly}
                                                                     rows={4}
                                                                     placeholder={readOnly ? '—' : 'Constat...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-y" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
                                                                 <textarea value={ev.recommandation || ''}
                                                                     onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
                                                                     readOnly={readOnly}
                                                                     rows={4}
                                                                     placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-gray-50 read-only:text-gray-600 resize-y" />
+                                                                    className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
                                                             </div>
                                                         )}
                                                     </div>

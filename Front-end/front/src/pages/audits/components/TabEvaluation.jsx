@@ -163,7 +163,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                                 if (readOnly) return;
                                                                                 setEval(mesure.id, 'niveau_maturite', v === '' ? null : v === 'na' ? -2 : parseInt(v));
                                                                             }}
-                                                                            disabled={readOnly}
+                                                                            locked={readOnly}
                                                                             size="sm"
                                                                             options={[
                                                                                 { value: '', label: '— Sélectionner —' },
@@ -187,9 +187,9 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                             onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
                                                                             readOnly={readOnly}
                                                                             placeholder={readOnly ? '—' : isNA ? 'Justifier la N/A...' : 'Références...'}
-                                                                            className={`w-full text-xs border rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-default ${isNA && !readOnly
-                                                                                ? 'border-orange-200 bg-orange-50 read-only:bg-gray-50'
-                                                                                : 'border-gray-200 read-only:bg-gray-50 read-only:text-gray-600'
+                                                                            className={`w-full text-xs border rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-not-allowed ${isNA && !readOnly
+                                                                                ? 'border-orange-200 bg-orange-50 read-only:bg-orange-50'
+                                                                                : 'border-gray-200 read-only:bg-white read-only:text-gray-700'
                                                                                 }`}
                                                                         />
                                                                     </td>
@@ -200,7 +200,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                             readOnly={readOnly}
                                                                             rows={4}
                                                                             placeholder={readOnly ? '—' : 'Constat...'}
-                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-y"
+                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y"
                                                                         />
                                                                     </td>
                                                                     <td className="px-3 py-2">
@@ -210,7 +210,7 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                             readOnly={readOnly}
                                                                             rows={4}
                                                                             placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-gray-50 read-only:text-gray-600 read-only:cursor-default resize-y"
+                                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y"
                                                                         />
                                                                     </td>
                                                                 </tr>

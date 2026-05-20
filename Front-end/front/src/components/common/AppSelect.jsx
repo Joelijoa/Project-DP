@@ -8,6 +8,7 @@ const AppSelect = ({
     placeholder = 'Sélectionner…',
     className = '',
     disabled = false,
+    locked = false,
     align = 'left',
     size = 'default',
 }) => {
@@ -35,7 +36,7 @@ const AppSelect = ({
 
     // Recalculer la position du dropdown quand il s'ouvre
     const handleToggle = () => {
-        if (disabled) return;
+        if (disabled || locked) return;
         if (!open && triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
             setPos({
@@ -65,7 +66,7 @@ const AppSelect = ({
                 onClick={handleToggle}
                 className={`w-full flex items-center justify-between gap-2 ${triggerPadding} border rounded-xl bg-white text-left focus:outline-none focus:ring-2 focus:border-transparent transition ${
                     open ? 'border-gray-300 ring-2' : 'border-gray-200'
-                } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-gray-300'}`}
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : locked ? 'cursor-not-allowed' : 'cursor-pointer hover:border-gray-300'}`}
                 style={{ '--tw-ring-color': 'var(--brand-red)', color: selected ? '#111827' : '#9ca3af' }}
             >
                 <span className="truncate">{selected ? selected.label : placeholder}</span>

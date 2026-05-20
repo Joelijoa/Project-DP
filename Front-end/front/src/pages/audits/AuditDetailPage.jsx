@@ -583,7 +583,7 @@ const AuditDetailPage = () => {
     const canSeeGraphs = user?.role !== 'auditeur_junior' || isAssigned || isClient;
     const isJunior = user?.role === 'auditeur_junior';
     const isSeniorOrAdmin = user?.role === 'admin' || user?.role === 'auditeur_senior';
-    const isTermine = audit.statut === 'termine';
+    const isTermine = audit.statut === 'termine' || audit.statut === 'archive';
     const canSoumettreAudit = isJunior && isAssigned && audit.statut_validation !== 'en_attente' && audit.statut_validation !== 'valide';
     const canValiderRejeter = isSeniorOrAdmin && audit.statut_validation === 'en_attente';
     const validationCfg = VALIDATION_CONFIG[audit.statut_validation];
