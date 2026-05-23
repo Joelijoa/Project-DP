@@ -524,6 +524,7 @@ const AuditDetailPage = () => {
     const totalConforme = synthese.reduce((a, d) => a + d.conforme, 0);
     const totalPartiel = synthese.reduce((a, d) => a + d.partiel, 0);
     const totalNC = synthese.reduce((a, d) => a + d.non_conforme, 0);
+    const totalNA = synthese.reduce((a, d) => a + d.na, 0);
     const tauxGlobal = (totalMesures - synthese.reduce((a, d) => a + d.na, 0)) > 0
         ? Math.round(((totalConforme + totalPartiel * 0.5) / (totalMesures - synthese.reduce((a, d) => a + d.na, 0))) * 100)
         : 0;
@@ -999,6 +1000,7 @@ const AuditDetailPage = () => {
                             totalConforme={totalConforme}
                             totalPartiel={totalPartiel}
                             totalNC={totalNC}
+                            totalNA={totalNA}
                             tauxGlobal={tauxGlobal}
                         />
                     )}

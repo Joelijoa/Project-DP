@@ -1,10 +1,10 @@
 import { TabInfo } from './AuditBadges';
 
-const TabSyntheseConformite = ({ synthese, totalConforme, totalPartiel, totalNC, tauxGlobal }) => (
+const TabSyntheseConformite = ({ synthese, totalConforme, totalPartiel, totalNC, totalNA, tauxGlobal }) => (
     <div className="space-y-4">
         <TabInfo text="Cette feuille a pour but de donner une synthèse du niveau de conformité du SI par rapport aux règles de la DNSSI selon les valeurs renseignées par l'entité ou de l'IIV. La conformité est déduite du niveau de maturité : niveaux 0-1 → Non conforme, 2-3 → Partielle, 4-5 → Totale." />
         {/* KPIs */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <div className="flex items-start justify-between mb-4">
                     <p className="text-xs font-medium text-gray-400">Conforme (Totale)</p>
@@ -31,6 +31,15 @@ const TabSyntheseConformite = ({ synthese, totalConforme, totalPartiel, totalNC,
                     </div>
                 </div>
                 <p className="text-3xl font-bold tracking-tight text-red-600">{totalNC}</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div className="flex items-start justify-between mb-4">
+                    <p className="text-xs font-medium text-gray-400">Non applicable</p>
+                    <div className="p-1.5 rounded-lg bg-gray-100 text-gray-400">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                    </div>
+                </div>
+                <p className="text-3xl font-bold tracking-tight text-gray-400">{totalNA ?? 0}</p>
             </div>
             {(() => {
                 const color = tauxGlobal >= 70 ? '#16a34a' : tauxGlobal >= 40 ? '#f97316' : '#dc2626';

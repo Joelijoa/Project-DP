@@ -44,9 +44,8 @@ const SyntheseTable = ({ rows, caption }) => (
     </div>
 );
 
-const KpiPanel = ({ label, subtitle, taux, conforme, ncMineure, ncMajeure, evaluated, total }) => {
+const KpiPanel = ({ label, subtitle, taux, conforme, ncMineure, ncMajeure, na, evaluated, total }) => {
     const tColor = taux >= 75 ? '#16a34a' : taux >= 50 ? '#f97316' : '#dc2626';
-    const barW   = `${taux}%`;
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-4">
             {/* En-tête */}
@@ -60,22 +59,26 @@ const KpiPanel = ({ label, subtitle, taux, conforme, ncMineure, ncMajeure, evalu
 
             {/* Barre de progression */}
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: barW, backgroundColor: tColor }} />
+                <div className="h-full rounded-full transition-all" style={{ width: `${taux}%`, backgroundColor: tColor }} />
             </div>
 
             {/* Compteurs */}
-            <div className="grid grid-cols-3 divide-x divide-gray-100">
-                <div className="flex flex-col items-center gap-1 pr-4">
+            <div className="grid grid-cols-4 divide-x divide-gray-100">
+                <div className="flex flex-col items-center gap-1 pr-3">
                     <span className="text-lg font-bold text-green-600">{conforme}</span>
-                    <span className="text-xs text-gray-400">Conformes</span>
+                    <span className="text-xs text-gray-400 text-center">Conformes</span>
                 </div>
-                <div className="flex flex-col items-center gap-1 px-4">
+                <div className="flex flex-col items-center gap-1 px-3">
                     <span className="text-lg font-bold text-orange-500">{ncMineure}</span>
-                    <span className="text-xs text-gray-400">NC mineures</span>
+                    <span className="text-xs text-gray-400 text-center">NC mineures</span>
                 </div>
-                <div className="flex flex-col items-center gap-1 pl-4">
+                <div className="flex flex-col items-center gap-1 px-3">
                     <span className="text-lg font-bold text-red-600">{ncMajeure}</span>
-                    <span className="text-xs text-gray-400">NC majeures</span>
+                    <span className="text-xs text-gray-400 text-center">NC majeures</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 pl-3">
+                    <span className="text-lg font-bold text-gray-400">{na}</span>
+                    <span className="text-xs text-gray-400 text-center">Non appl.</span>
                 </div>
             </div>
 
@@ -87,25 +90,26 @@ const KpiPanel = ({ label, subtitle, taux, conforme, ncMineure, ncMajeure, evalu
 
 const computeRows = (domaines, localEvals) =>
     domaines.map(d => {
-        const mesures = d.objectifs.flatMap(o => o.mesures);
-        // Exclure les mesures N/A (niveau -2) du total effectif
-        const actives = mesures.filter(m => localEvals[m.id]?.niveau_maturite !== -2);
+        const mesures   = d.objectifs.flatMap(o => o.mesures);
+        const na        = mesures.filter(m => localEvals[m.id]?.niveau_maturite === -2).length;
+        const actives   = mesures.filter(m => localEvals[m.id]?.niveau_maturite !== -2);
         const conforme  = actives.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
         const ncMineure = actives.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
         const ncMajeure = actives.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
         const evaluated = conforme + ncMineure + ncMajeure;
         const taux = evaluated > 0 ? Math.round(((conforme + ncMineure * 0.5) / evaluated) * 100) : 0;
-        return { ...d, total: actives.length, evaluated, conforme, ncMineure, ncMajeure, taux };
+        return { ...d, total: actives.length, evaluated, conforme, ncMineure, ncMajeure, na, taux };
     });
 
 const sumKpis = rows => {
     const conf   = rows.reduce((s, t) => s + t.conforme,  0);
     const min    = rows.reduce((s, t) => s + t.ncMineure, 0);
     const maj    = rows.reduce((s, t) => s + t.ncMajeure, 0);
+    const na     = rows.reduce((s, t) => s + t.na,        0);
     const eval_  = rows.reduce((s, t) => s + t.evaluated, 0);
     const total  = rows.reduce((s, t) => s + t.total,     0);
     const taux   = eval_ > 0 ? Math.round(((conf + min * 0.5) / eval_) * 100) : 0;
-    return { conforme: conf, ncMineure: min, ncMajeure: maj, evaluated: eval_, total, taux };
+    return { conforme: conf, ncMineure: min, ncMajeure: maj, na, evaluated: eval_, total, taux };
 };
 
 const TabSyntheseISO = ({ referentiel, localEvals }) => {
