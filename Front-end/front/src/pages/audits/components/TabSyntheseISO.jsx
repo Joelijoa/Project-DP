@@ -44,110 +44,117 @@ const SyntheseTable = ({ rows, caption }) => (
     </div>
 );
 
-const TabSyntheseISO = ({ referentiel, soaMap, localEvals }) => {
-    if (!referentiel) return <div className="text-gray-400 text-sm">Chargement...</div>;
-
-    const mainBodyDomaines = referentiel.domaines.filter(d => !d.code.startsWith('A.'));
-    const annexeDomaines = referentiel.domaines.filter(d => d.code.startsWith('A.'));
-
-    // §4-10 : toutes les mesures (pas de SoA)
-    const smsiRows = mainBodyDomaines.map(d => {
-        const mesures = d.objectifs.flatMap(o => o.mesures);
-        const conforme = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
-        const ncMineure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
-        const ncMajeure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
-        const evaluated = conforme + ncMineure + ncMajeure;
-        const taux = evaluated > 0 ? Math.round(((conforme + ncMineure * 0.5) / evaluated) * 100) : 0;
-        return { ...d, total: mesures.length, evaluated, conforme, ncMineure, ncMajeure, taux };
-    });
-
-    // Annexe A : filtrée par SoA
-    const annexeRows = annexeDomaines.map(d => {
-        const mesures = d.objectifs.flatMap(o => o.mesures).filter(m => soaMap[m.id]?.applicable === true);
-        const conforme = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
-        const ncMineure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
-        const ncMajeure = mesures.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
-        const evaluated = conforme + ncMineure + ncMajeure;
-        const taux = evaluated > 0 ? Math.round(((conforme + ncMineure * 0.5) / evaluated) * 100) : 0;
-        return { ...d, total: mesures.length, evaluated, conforme, ncMineure, ncMajeure, taux };
-    });
-
-    const allRows = [...smsiRows, ...annexeRows];
-    const totConf = allRows.reduce((s, t) => s + t.conforme, 0);
-    const totMin = allRows.reduce((s, t) => s + t.ncMineure, 0);
-    const totMaj = allRows.reduce((s, t) => s + t.ncMajeure, 0);
-    const totEval = allRows.reduce((s, t) => s + t.evaluated, 0);
-    const tauxGlobal = totEval > 0 ? Math.round(((totConf + totMin * 0.5) / totEval) * 100) : 0;
-
-    const hasAnySoA = annexeRows.some(t => t.total > 0);
-
+const KpiPanel = ({ label, subtitle, taux, conforme, ncMineure, ncMajeure, evaluated, total }) => {
+    const tColor = taux >= 75 ? '#16a34a' : taux >= 50 ? '#f97316' : '#dc2626';
+    const barW   = `${taux}%`;
     return (
-        <div className="space-y-4">
-            <TabInfo text="Synthèse globale de la conformité ISO 27001:2022 — exigences du corps principal (§4-10) et contrôles de l'Annexe A (SoA)." />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-4">
+            {/* En-tête */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-sm font-semibold text-gray-800">{label}</p>
+                    {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+                </div>
+                <span className="text-2xl font-bold tracking-tight" style={{ color: tColor }}>{taux}%</span>
+            </div>
 
-            {/* KPIs globaux */}
-            <div className="grid grid-cols-4 gap-4">
-                {(() => {
-                    const tColor = tauxGlobal >= 70 ? '#16a34a' : tauxGlobal >= 40 ? '#f97316' : '#dc2626';
-                    return (
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                            <div className="flex items-start justify-between mb-4">
-                                <p className="text-xs font-medium text-gray-400">Taux global</p>
-                                <div className="p-1.5 rounded-lg" style={{ backgroundColor: `${tColor}15`, color: tColor }}>
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" /></svg>
-                                </div>
-                            </div>
-                            <p className="text-3xl font-bold tracking-tight" style={{ color: tColor }}>{tauxGlobal}%</p>
-                        </div>
-                    );
-                })()}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                    <div className="flex items-start justify-between mb-4">
-                        <p className="text-xs font-medium text-gray-400">Conformes</p>
-                        <div className="p-1.5 rounded-lg bg-green-50 text-green-500">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        </div>
-                    </div>
-                    <p className="text-3xl font-bold tracking-tight text-green-600">{totConf}</p>
+            {/* Barre de progression */}
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: barW, backgroundColor: tColor }} />
+            </div>
+
+            {/* Compteurs */}
+            <div className="grid grid-cols-3 divide-x divide-gray-100">
+                <div className="flex flex-col items-center gap-1 pr-4">
+                    <span className="text-lg font-bold text-green-600">{conforme}</span>
+                    <span className="text-xs text-gray-400">Conformes</span>
                 </div>
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                    <div className="flex items-start justify-between mb-4">
-                        <p className="text-xs font-medium text-gray-400">NC mineures</p>
-                        <div className="p-1.5 rounded-lg bg-orange-50 text-orange-500">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                        </div>
-                    </div>
-                    <p className="text-3xl font-bold tracking-tight text-orange-600">{totMin}</p>
+                <div className="flex flex-col items-center gap-1 px-4">
+                    <span className="text-lg font-bold text-orange-500">{ncMineure}</span>
+                    <span className="text-xs text-gray-400">NC mineures</span>
                 </div>
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                    <div className="flex items-start justify-between mb-4">
-                        <p className="text-xs font-medium text-gray-400">NC majeures</p>
-                        <div className="p-1.5 rounded-lg bg-red-50 text-red-500">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        </div>
-                    </div>
-                    <p className="text-3xl font-bold tracking-tight text-red-600">{totMaj}</p>
+                <div className="flex flex-col items-center gap-1 pl-4">
+                    <span className="text-lg font-bold text-red-600">{ncMajeure}</span>
+                    <span className="text-xs text-gray-400">NC majeures</span>
                 </div>
             </div>
 
-            {/* §4-10 */}
-            {smsiRows.length > 0 && (
-                <SyntheseTable rows={smsiRows} caption="Exigences SMSI — Corps principal §4-10 (toutes applicables)" />
-            )}
-            {smsiRows.length === 0 && (
+            {/* Progression évaluation */}
+            <p className="text-xs text-gray-400 text-right">{evaluated} / {total} évaluées</p>
+        </div>
+    );
+};
+
+const computeRows = (domaines, localEvals) =>
+    domaines.map(d => {
+        const mesures = d.objectifs.flatMap(o => o.mesures);
+        // Exclure les mesures N/A (niveau -2) du total effectif
+        const actives = mesures.filter(m => localEvals[m.id]?.niveau_maturite !== -2);
+        const conforme  = actives.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+        const ncMineure = actives.filter(m => localEvals[m.id]?.niveau_maturite === 2).length;
+        const ncMajeure = actives.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
+        const evaluated = conforme + ncMineure + ncMajeure;
+        const taux = evaluated > 0 ? Math.round(((conforme + ncMineure * 0.5) / evaluated) * 100) : 0;
+        return { ...d, total: actives.length, evaluated, conforme, ncMineure, ncMajeure, taux };
+    });
+
+const sumKpis = rows => {
+    const conf   = rows.reduce((s, t) => s + t.conforme,  0);
+    const min    = rows.reduce((s, t) => s + t.ncMineure, 0);
+    const maj    = rows.reduce((s, t) => s + t.ncMajeure, 0);
+    const eval_  = rows.reduce((s, t) => s + t.evaluated, 0);
+    const total  = rows.reduce((s, t) => s + t.total,     0);
+    const taux   = eval_ > 0 ? Math.round(((conf + min * 0.5) / eval_) * 100) : 0;
+    return { conforme: conf, ncMineure: min, ncMajeure: maj, evaluated: eval_, total, taux };
+};
+
+const TabSyntheseISO = ({ referentiel, localEvals }) => {
+    if (!referentiel) return <div className="text-gray-400 text-sm">Chargement...</div>;
+
+    const mainBodyDomaines = referentiel.domaines.filter(d => !d.code.startsWith('A.'));
+    const annexeDomaines   = referentiel.domaines.filter(d =>  d.code.startsWith('A.'));
+
+    const smsiRows   = computeRows(mainBodyDomaines, localEvals);
+    const annexeRows = computeRows(annexeDomaines,   localEvals);
+
+    const smsiKpis   = sumKpis(smsiRows);
+    const annexeKpis = sumKpis(annexeRows);
+
+    return (
+        <div className="space-y-4">
+            <TabInfo text="Synthèse globale de la conformité ISO 27001:2022 — exigences du corps principal (§4-10) et contrôles de l'Annexe A." />
+
+            {/* KPIs côte à côte */}
+            <div className="grid grid-cols-2 gap-4">
+                <KpiPanel
+                    label="SMSI — Corps principal"
+                    subtitle="Exigences §4 à §10"
+                    {...smsiKpis}
+                />
+                <KpiPanel
+                    label="Annexe A — Contrôles"
+                    subtitle="Chapitres A.5 à A.8"
+                    {...annexeKpis}
+                />
+            </div>
+
+            {/* Table §4-10 */}
+            {smsiRows.length > 0 ? (
+                <SyntheseTable rows={smsiRows} caption="Exigences SMSI — Corps principal §4-10" />
+            ) : (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                     <p className="text-sm font-semibold text-gray-700 mb-2">Exigences SMSI — Corps principal §4-10</p>
                     <p className="text-xs text-gray-400">Non disponible — lancez le seed ISO 27001:2022 pour ajouter les exigences §4-10.</p>
                 </div>
             )}
 
-            {/* Annexe A */}
-            {hasAnySoA ? (
-                <SyntheseTable rows={annexeRows.filter(t => t.total > 0)} caption="Annexe A — Contrôles applicables (SoA)" />
+            {/* Table Annexe A — tous les chapitres (A.5→A.8) */}
+            {annexeRows.length > 0 ? (
+                <SyntheseTable rows={annexeRows} caption="Annexe A — Contrôles (A.5 à A.8)" />
             ) : (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                     <p className="text-sm font-semibold text-gray-700 mb-2">Annexe A — Contrôles</p>
-                    <p className="text-xs text-gray-400">Complétez la Déclaration d'Applicabilité pour voir la synthèse Annexe A.</p>
+                    <p className="text-xs text-gray-400">Aucun contrôle Annexe A disponible dans ce référentiel.</p>
                 </div>
             )}
         </div>

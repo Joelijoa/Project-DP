@@ -1040,7 +1040,7 @@ const AuditDetailPage = () => {
                         />
                     )}
                     {isISO && activeTab === 'synthese_iso' && canSeeGraphs && (
-                        <TabSyntheseISO referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />
+                        <TabSyntheseISO referentiel={referentiel} localEvals={localEvals} />
                     )}
                     {isISO && activeTab === 'nc' && canSeeGraphs && (
                         <TabNC referentiel={referentiel} soaMap={soaMap} localEvals={localEvals} />
