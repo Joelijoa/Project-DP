@@ -903,6 +903,56 @@ router.get   ('/:id/documents/:docId/download',    verifyToken, downloadDocument
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.put   ('/:id/documents/:docId/statut',      verifyToken, verifyRole('admin', 'auditeur_senior', 'auditeur_junior', 'client'), updateDocumentStatut);
+
+/**
+ * @swagger
+ * /api/audits/{id}/documents/{docId}/commentaire:
+ *   put:
+ *     summary: Mettre à jour le commentaire d'entretien d'un document
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'audit
+ *       - in: path
+ *         name: docId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du document
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               commentaire_entretien:
+ *                 type: string
+ *                 nullable: true
+ *                 example: "Document vérifié lors de l'entretien du 12/05/2026."
+ *     responses:
+ *       200:
+ *         description: Commentaire mis à jour
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 document:
+ *                   $ref: '#/components/schemas/Document'
+ *       403:
+ *         description: Non autorisé (rôle client)
+ *       404:
+ *         description: Document introuvable
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.put   ('/:id/documents/:docId/commentaire', verifyToken, verifyRole('admin', 'auditeur_senior', 'auditeur_junior'), updateDocumentCommentaire);
 
 // ─── Plans d'actions ────────────────────────────────────────────────────────

@@ -59,6 +59,39 @@ const changePasswordValidation = [
  *         description: Token manquant
  *       403:
  *         description: Token invalide ou expiré
+ *   put:
+ *     summary: Mettre à jour le profil de l'utilisateur connecté
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nom:
+ *                 type: string
+ *                 example: Dupont
+ *               prenom:
+ *                 type: string
+ *                 example: Jean
+ *               organisation:
+ *                 type: string
+ *                 example: Acme Corp
+ *               telephone:
+ *                 type: string
+ *                 example: "+261 34 00 000 00"
+ *     responses:
+ *       200:
+ *         description: Profil mis à jour avec succès
+ *       401:
+ *         description: Token manquant
+ *       403:
+ *         description: Token invalide ou expiré
+ *       500:
+ *         description: Erreur serveur
  */
 router.get('/profile', verifyToken, getProfile);
 router.put('/profile', verifyToken, updateProfile);
