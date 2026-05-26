@@ -556,7 +556,7 @@ const AuditDetailPage = () => {
 
     const _isISO = referentiel?.type === 'ISO27001';
     const auditComplete = _isISO
-        ? identFilled && Object.keys(soaMap).length > 0 && allEvalsISO
+        ? identFilled && Object.keys(soaMap).length > 0 && isoEvalsDone
         : identFilled && totalMesures > 0 && totalEvaluated === totalMesures;
 
     // ── États de chargement ───────────────────────────────────────────────────
