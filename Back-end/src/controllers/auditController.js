@@ -13,23 +13,38 @@ const calcConformite = (niveau) => {
     return 'conforme';
 };
 
-// GET /api/audits
+// GET /api/audits  (+ ?statut=archive pour les archives)
 const getAllAudits = async (req, res) => {
     try {
-        const where = { statut: { [Op.ne]: 'archive' } };
+        const { statut: statutQuery } = req.query;
+        const archiveMode = statutQuery === 'archive';
+
+        const where = archiveMode
+            ? { statut: 'archive' }
+            : { statut: { [Op.ne]: 'archive' } };
+
         if (req.user.role === 'client') {
             if (!req.user.entite_id) return res.json({ audits: [] });
             where.entite_id = req.user.entite_id;
         }
-        const audits = await Audit.findAll({
+
+        let audits = await Audit.findAll({
             where,
             include: [
                 { model: Referentiel, as: 'referentiel', attributes: ['id', 'nom', 'type'] },
                 { model: User, as: 'createur', attributes: ['id', 'nom', 'prenom'] },
                 { model: User, as: 'auditeurs', attributes: ['id', 'nom', 'prenom'], through: { attributes: [] } },
             ],
-            order: [['createdAt', 'DESC']],
+            order: [['updatedAt', 'DESC']],
         });
+
+        if (archiveMode && (req.user.role === 'auditeur_junior' || req.user.role === 'auditeur_senior')) {
+            const userId = req.user.userId;
+            audits = audits.filter(a =>
+                a.auditeurs?.some(au => au.id === userId) || a.created_by === userId
+            );
+        }
+
         res.json({ audits });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -142,7 +157,7 @@ const updateAudit = async (req, res) => {
         const audit = await Audit.findByPk(req.params.id);
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
 
-        const { nom, client, perimetre, date_debut, date_fin, statut, phase, identification, indicateurs, entite_id, auditeurs_ids } = req.body;
+        const { nom, client, perimetre, date_debut, date_fin, statut, phase, identification, indicateurs, entite_id, auditeurs_ids, rapport_archive } = req.body;
         await audit.update({
             ...(nom !== undefined && { nom }),
             ...(client !== undefined && { client }),
@@ -154,6 +169,7 @@ const updateAudit = async (req, res) => {
             ...(identification !== undefined && { identification }),
             ...(indicateurs !== undefined && { indicateurs }),
             ...(entite_id !== undefined && { entite_id: entite_id || null }),
+            ...(rapport_archive !== undefined && { rapport_archive }),
         });
 
         if (auditeurs_ids !== undefined) {
@@ -419,38 +435,4 @@ const changerPhase = async (req, res) => {
     }
 };
 
-// GET /api/audits/archives
-const getArchivedAudits = async (req, res) => {
-    try {
-        const role = req.user.role;
-        const userId = req.user.userId;
-
-        const where = { statut: 'archive' };
-        if (role === 'client') {
-            if (!req.user.entite_id) return res.json({ audits: [] });
-            where.entite_id = req.user.entite_id;
-        }
-
-        let audits = await Audit.findAll({
-            where,
-            include: [
-                { model: Referentiel, as: 'referentiel', attributes: ['id', 'nom', 'type'] },
-                { model: User, as: 'createur', attributes: ['id', 'nom', 'prenom'] },
-                { model: User, as: 'auditeurs', attributes: ['id', 'nom', 'prenom'], through: { attributes: [] } },
-            ],
-            order: [['updatedAt', 'DESC']],
-        });
-
-        if (role === 'auditeur_junior' || role === 'auditeur_senior') {
-            audits = audits.filter(a =>
-                a.auditeurs?.some(au => au.id === userId) || a.created_by === userId
-            );
-        }
-
-        res.json({ audits });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-module.exports = { getAllAudits, getArchivedAudits, getAuditById, createAudit, updateAudit, deleteAudit, getEvaluations, saveEvaluations, soumettreAudit, validerAudit, rejeterAudit, changerPhase };
+module.exports = { getAllAudits, getAuditById, createAudit, updateAudit, deleteAudit, getEvaluations, saveEvaluations, soumettreAudit, validerAudit, rejeterAudit, changerPhase };

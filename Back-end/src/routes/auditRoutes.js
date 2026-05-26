@@ -38,7 +38,6 @@ const upload = multer({
 
 const {
     getAllAudits,
-    getArchivedAudits,
     getAuditById,
     createAudit,
     updateAudit,
@@ -115,8 +114,6 @@ router.get('/', verifyToken, getAllAudits);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.get('/plans-actions', verifyToken, getAllPlanActions);
-
-router.get('/archives', verifyToken, getArchivedAudits);
 
 /**
  * @swagger

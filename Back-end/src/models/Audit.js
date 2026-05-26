@@ -78,6 +78,10 @@ const Audit = sequelize.define('Audit', {
         allowNull: true,
         defaultValue: null,
     },
+    rapport_archive: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
 }, {
     tableName: 'audits',
 });

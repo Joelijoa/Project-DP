@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/auth/AuthContext';
-import { getAllAudits, deleteAudit } from '../../services/endpoints/auditService';
+import { getAllAudits, deleteAudit, archiverAudit } from '../../services/endpoints/auditService';
 import { toast } from 'react-toastify';
 import AppSelect from '../../components/common/AppSelect';
 
@@ -70,6 +70,8 @@ const AuditsListPage = () => {
     const [filterRef, setFilterRef]         = useState('');
     const [filterPhase, setFilterPhase]     = useState('');
     const [confirmDelete, setConfirmDelete] = useState(null);
+    const [confirmArchive, setConfirmArchive] = useState(null);
+    const [archiving, setArchiving] = useState(false);
 
     const load = async () => {
         try {
@@ -96,6 +98,21 @@ const AuditsListPage = () => {
             load();
         } catch {
             toast.error('Erreur lors de la suppression');
+        }
+    };
+
+    const handleArchive = async () => {
+        if (!confirmArchive) return;
+        setArchiving(true);
+        try {
+            await archiverAudit(confirmArchive.id);
+            toast.success(`"${confirmArchive.nom}" archivé`);
+            setConfirmArchive(null);
+            load();
+        } catch {
+            toast.error("Erreur lors de l'archivage");
+        } finally {
+            setArchiving(false);
         }
     };
 
@@ -330,6 +347,16 @@ const AuditsListPage = () => {
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                                                     </svg>
                                                 </Link>
+                                                {!isJunior && !isClient && audit.statut === 'termine' && (
+                                                    <button
+                                                        onClick={() => setConfirmArchive(audit)}
+                                                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+                                                        title="Archiver cet audit">
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                                                        </svg>
+                                                    </button>
+                                                )}
                                                 {canAdmin && (
                                                     <button
                                                         onClick={() => setConfirmDelete(audit)}
@@ -349,6 +376,38 @@ const AuditsListPage = () => {
                     </table>
                 )}
             </div>
+
+            {/* ── Modal archivage ── */}
+            {confirmArchive && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-amber-50 flex-shrink-0">
+                                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900">Archiver l'audit</h3>
+                                <p className="text-xs text-gray-400 mt-0.5">L'audit sera retiré de la liste principale</p>
+                            </div>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-5">
+                            Voulez-vous archiver <strong className="text-gray-900">{confirmArchive.nom}</strong> ? Il restera consultable en lecture seule dans la section Archives.
+                        </p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setConfirmArchive(null)}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition">
+                                Annuler
+                            </button>
+                            <button onClick={handleArchive} disabled={archiving}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition disabled:opacity-60">
+                                {archiving ? 'Archivage…' : 'Archiver'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Modal suppression ── */}
             {confirmDelete && (
