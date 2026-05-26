@@ -36,21 +36,6 @@ const TabEvaluationISO = ({ referentiel, localEvals, setEval, openDomaines, setO
         <div className="space-y-3">
             <TabInfo text="Évaluez le niveau de maturité de chaque contrôle de l'Annexe A ISO 27001:2022. Utilisez 'N/A' pour les contrôles non applicables à l'organisation et justifiez le cas échéant." />
 
-            {/* Barre sauvegarde */}
-            <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3">
-                <p className="text-sm text-gray-600">
-                    <strong>Évaluation Annexe A — Contrôles ISO 27001:2022</strong>
-                    {isDirty && !readOnly && <span className="ml-2 text-xs text-orange-500">— modifications non sauvegardées</span>}
-                </p>
-                {!readOnly && (
-                    <button onClick={onSave} disabled={saving || !isDirty}
-                        className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white rounded-xl transition disabled:opacity-50"
-                        style={{ backgroundColor: 'var(--brand-red)' }}>
-                        {saving ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-                        Sauvegarder
-                    </button>
-                )}
-            </div>
 
             {/* Légende */}
             <div className="flex flex-wrap gap-3 px-1">
@@ -202,6 +187,16 @@ const TabEvaluationISO = ({ referentiel, localEvals, setEval, openDomaines, setO
                     </div>
                 );
             })}
+            {isDirty && !readOnly && (
+                <div className="sticky bottom-4 flex justify-end">
+                    <button onClick={onSave} disabled={saving}
+                        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-xl shadow-lg transition disabled:opacity-60"
+                        style={{ backgroundColor: 'var(--brand-red)' }}>
+                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                        Sauvegarder les modifications
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
