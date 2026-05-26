@@ -40,6 +40,8 @@ const PlansActionsPage = () => {
     const [savingId, setSavingId]         = useState(null);
     const [rejetingPlanId, setRejetingPlanId] = useState(null);
     const [openGroups, setOpenGroups]     = useState(new Set());
+    const [showCloture, setShowCloture]   = useState(false);
+    const [confirmCloturePlan, setConfirmCloturePlan] = useState(null);
 
     const handleUpdateStatut = async (plan, newStatut) => {
         setSavingId(plan.id);

@@ -73,7 +73,20 @@ const createPlanAction = async (req, res) => {
 // PUT /api/audits/:id/plans-actions/:planId
 const updatePlanAction = async (req, res) => {
     try {
-        if (req.user.role === 'client') return res.status(403).json({ message: 'Accès refusé.' });
+        // Client : seul le statut est modifiable, accès vérifié via entite_id du plan
+        if (req.user.role === 'client') {
+            const plan = await PlanAction.findByPk(req.params.planId, {
+                include: [{ model: Audit, as: 'audit', attributes: ['id', 'entite_id'] }],
+            });
+            if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
+            if (Number(plan.audit?.entite_id) !== Number(req.user.entite_id))
+                return res.status(403).json({ message: 'Accès refusé.' });
+            const { statut } = req.body;
+            await plan.update({ statut });
+            log(req.user?.userId, 'UPDATE_PLAN_ACTION', 'plan_action', plan.id, `statut: ${statut}`, getIp(req));
+            return res.json({ plan_action: plan });
+        }
+
         const { error, message } = await checkAuditAccess(req.params.id, req.user);
         if (error) return res.status(error).json({ message });
         const plan = await PlanAction.findByPk(req.params.planId);
