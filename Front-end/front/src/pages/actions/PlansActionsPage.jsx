@@ -74,7 +74,10 @@ const PlansActionsPage = () => {
 
     // ── Filtrage ───────────────────────────────────────────────────────────────
 
+    const clotureCount = useMemo(() => plans.filter(p => p.statut === 'cloture').length, [plans]);
+
     const filtered = useMemo(() => plans.filter(p => {
+        if (isClient && !showCloture && p.statut === 'cloture') return false;
         if (filterStatut    && p.statut    !== filterStatut)    return false;
         if (filterPriorite  && p.priorite  !== filterPriorite)  return false;
         if (search) {
@@ -88,7 +91,7 @@ const PlansActionsPage = () => {
             );
         }
         return true;
-    }), [plans, filterStatut, filterPriorite, search]);
+    }), [plans, filterStatut, filterPriorite, search, isClient, showCloture]);
 
     // ── Groupement par audit ───────────────────────────────────────────────────
 
@@ -240,6 +243,15 @@ const PlansActionsPage = () => {
                         { value: 'basse',  label: 'Basse' },
                     ]}
                 />
+                {isClient && clotureCount > 0 && (
+                    <button onClick={() => setShowCloture(prev => !prev)}
+                        className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl border transition ${showCloture ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-700'}`}>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d={showCloture ? 'M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88' : 'M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z'} />
+                        </svg>
+                        {showCloture ? 'Masquer les clôturés' : `Afficher les clôturés (${clotureCount})`}
+                    </button>
+                )}
                 {(filterStatut || filterPriorite || search) && (
                     <button onClick={() => { setFilterStatut(''); setFilterPriorite(''); setSearch(''); }}
                         className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 transition px-2 py-2">
@@ -397,17 +409,24 @@ const PlansActionsPage = () => {
                                                             {/* Statut — client : select direct, autres : badge fixe */}
                                                             <td className="px-4 py-3 text-center">
                                                                 {isClient ? (
-                                                                    <AppSelect
-                                                                        value={plan.statut}
-                                                                        disabled={savingId === plan.id}
-                                                                        onChange={v => handleUpdateStatut(plan, v)}
-                                                                        options={[
-                                                                            { value: 'a_faire',  label: 'À faire' },
-                                                                            { value: 'en_cours', label: 'En cours' },
-                                                                            { value: 'cloture',  label: 'Clôturé' },
-                                                                        ]}
-                                                                        className="min-w-[110px]"
-                                                                    />
+                                                                    plan.statut === 'cloture' ? (
+                                                                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium cursor-not-allowed ${st.bg} ${st.text}`}
+                                                                            title="Action clôturée — non modifiable">
+                                                                            {st.label}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <AppSelect
+                                                                            value={plan.statut}
+                                                                            disabled={savingId === plan.id}
+                                                                            onChange={v => v === 'cloture' ? setConfirmCloturePlan(plan) : handleUpdateStatut(plan, v)}
+                                                                            options={[
+                                                                                { value: 'a_faire',  label: 'À faire' },
+                                                                                { value: 'en_cours', label: 'En cours' },
+                                                                                { value: 'cloture',  label: 'Clôturé' },
+                                                                            ]}
+                                                                            className="min-w-[110px]"
+                                                                        />
+                                                                    )
                                                                 ) : (
                                                                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${st.bg} ${st.text}`}>{st.label}</span>
                                                                 )}
@@ -491,6 +510,48 @@ const PlansActionsPage = () => {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {confirmCloturePlan && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-9 h-9 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4.5 h-4.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-base font-semibold text-gray-900">Clôturer cette action ?</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Cette opération est définitive.</p>
+                            </div>
+                        </div>
+                        <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 mb-5">
+                            <p className="text-xs text-gray-500 mb-0.5 font-medium">Action concernée</p>
+                            <p className="text-sm text-gray-800 line-clamp-2">
+                                {confirmCloturePlan.action_corrective || `Plan d'action #${confirmCloturePlan.id}`}
+                            </p>
+                            {confirmCloturePlan.mesure?.code && (
+                                <span className="inline-block mt-1.5 font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                    {confirmCloturePlan.mesure.code}
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-5">
+                            Une fois clôturée, cette action ne pourra plus être modifiée. Confirmez-vous la clôture ?
+                        </p>
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setConfirmCloturePlan(null)}
+                                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition">
+                                Annuler
+                            </button>
+                            <button onClick={() => { handleUpdateStatut(confirmCloturePlan, 'cloture'); setConfirmCloturePlan(null); }}
+                                className="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition">
+                                Confirmer la clôture
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
