@@ -11,7 +11,7 @@ const TabNC = ({ referentiel, soaMap, localEvals }) => {
                     const isNC = n === 0 || n === 2;
                     if (!isNC) return false;
                     // §4-10 : toujours applicables ; Annexe A : filtrée par SoA
-                    return theme.code.startsWith('A.') ? soaMap[m.id]?.applicable === true : true;
+                    return theme.code.startsWith('A.') ? !!soaMap[m.id]?.applicable : true;
                 })
                 .map(m => ({ ...m, theme, obj, ncType: localEvals[m.id]?.niveau_maturite === 0 ? 'majeure' : 'mineure' }))
         )

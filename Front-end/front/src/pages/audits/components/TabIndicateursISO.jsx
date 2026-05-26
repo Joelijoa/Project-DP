@@ -18,9 +18,9 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
     const visibleDef = ISO_INDICATEURS_DEF.filter(d => !hiddenKeys.includes(d.key));
 
     const allMesures = referentiel?.domaines?.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []) ?? [];
-    const applicable = allMesures.filter(m => soaMap[m.id]?.applicable === true);
-    const ncCount = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 0).length;
-    const confCount = applicable.filter(m => localEvals[m.id]?.niveau_maturite === 5).length;
+    const applicable = allMesures.filter(m => !!soaMap[m.id]?.applicable);
+    const ncCount = applicable.filter(m => { const n = localEvals[m.id]?.niveau_maturite; return n === 0 || n === 2; }).length;
+    const confCount = applicable.filter(m => { const n = localEvals[m.id]?.niveau_maturite; return n !== null && n !== undefined && n !== -2 && n >= 3; }).length;
     const implCount = allMesures.filter(m => ['implemente', 'partiel', 'planifie'].includes(soaMap[m.id]?.statut_implementation)).length;
 
     const getAutoValue = (key) => {
