@@ -1053,6 +1053,7 @@ const AuditDetailPage = () => {
                             referentiel={referentiel}
                             soaMap={soaMap}
                             localEvals={localEvals}
+                            planActions={planActions}
                             indicateurs={indicateurs}
                             setIndicateurs={setIndicateurs}
                             onSave={() => handleSaveInfo('indicateurs', indicateurs)}

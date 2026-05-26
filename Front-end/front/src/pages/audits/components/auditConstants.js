@@ -104,7 +104,7 @@ export const ISO_INDICATEURS_DEF = [
     { key: 'iso_audits_internes', label: "Nombre d'audits internes réalisés", unit: '/an' },
     { key: 'iso_rev_direction', label: "Nombre de revues de direction réalisées", unit: '/an' },
     { key: 'iso_taux_sensibilisation', label: "Taux de personnel sensibilisé ISO 27001", unit: '%' },
-    { key: 'iso_actions_clot', label: "Nombre d'actions correctives clôturées", unit: '' },
+    { key: 'iso_actions_clot', label: "Nombre d'actions correctives clôturées", auto: 'actions_clot' },
 ];
 
 export const VALIDATION_CONFIG = {

@@ -1,17 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ISO_INDICATEURS_DEF } from './auditConstants';
 import { TabInfo } from './AuditBadges';
 
-const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIndicateurs, onSave, saving, readOnly }) => {
+const TabIndicateursISO = ({ referentiel, soaMap, localEvals, planActions, indicateurs, setIndicateurs, onSave, saving, readOnly }) => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [newLabel, setNewLabel] = useState('');
     const [newValeur, setNewValeur] = useState('');
     const [newUnite, setNewUnite] = useState('');
     const [contextMenu, setContextMenu] = useState(null);
     const [editItem, setEditItem] = useState(null);
+    const [isDirty, setIsDirty] = useState(false);
+    const prevSaving = useRef(false);
 
-    const set = (k, v) => setIndicateurs(prev => ({ ...prev, [k]: v }));
+    useEffect(() => {
+        if (prevSaving.current && !saving) setIsDirty(false);
+        prevSaving.current = saving;
+    }, [saving]);
+
+    const markDirty = (fn) => { fn(); setIsDirty(true); };
+    const set = (k, v) => markDirty(() => setIndicateurs(prev => ({ ...prev, [k]: v })));
     const customList = indicateurs.custom || [];
     const hiddenKeys = indicateurs.hidden || [];
     const overrides = indicateurs.overrides || {};
@@ -23,7 +31,10 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
     const confCount = applicable.filter(m => { const n = localEvals[m.id]?.niveau_maturite; return n !== null && n !== undefined && n !== -2 && n >= 3; }).length;
     const implCount = allMesures.filter(m => ['implemente', 'partiel', 'planifie'].includes(soaMap[m.id]?.statut_implementation)).length;
 
+    const actionsClotCount = (planActions || []).filter(p => p.statut === 'cloture').length;
+
     const getAutoValue = (key) => {
+        if (key === 'iso_actions_clot') return String(actionsClotCount);
         if (!applicable.length) return '—';
         if (key === 'iso_taux_nc') return `${Math.round(ncCount / applicable.length * 100)}%`;
         if (key === 'iso_taux_conf') return `${Math.round(confCount / applicable.length * 100)}%`;
@@ -32,32 +43,32 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
     };
 
     const setCustomField = (id, field, value) =>
-        setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === id ? { ...c, [field]: value } : c) }));
+        markDirty(() => setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === id ? { ...c, [field]: value } : c) })));
 
     const addCustom = () => {
         if (!newLabel.trim()) return;
         const item = { id: `c_${Date.now()}`, label: newLabel.trim(), valeur: newValeur, unite: newUnite.trim() };
-        setIndicateurs(prev => ({ ...prev, custom: [...(prev.custom || []), item] }));
+        markDirty(() => setIndicateurs(prev => ({ ...prev, custom: [...(prev.custom || []), item] })));
         setNewLabel(''); setNewValeur(''); setNewUnite('');
         setShowAddForm(false);
     };
 
     const deleteCustom = (id) => {
-        setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).filter(c => c.id !== id) }));
+        markDirty(() => setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).filter(c => c.id !== id) })));
         setContextMenu(null);
     };
 
     const hidePredefined = (key) => {
-        setIndicateurs(prev => ({ ...prev, hidden: [...(prev.hidden || []), key] }));
+        markDirty(() => setIndicateurs(prev => ({ ...prev, hidden: [...(prev.hidden || []), key] })));
         setContextMenu(null);
     };
 
     const saveEdit = () => {
         if (!editItem) return;
         if (editItem.type === 'custom') {
-            setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === editItem.id ? { ...c, label: editItem.label, unite: editItem.unite } : c) }));
+            markDirty(() => setIndicateurs(prev => ({ ...prev, custom: (prev.custom || []).map(c => c.id === editItem.id ? { ...c, label: editItem.label, unite: editItem.unite } : c) })));
         } else {
-            setIndicateurs(prev => ({ ...prev, overrides: { ...(prev.overrides || {}), [editItem.key]: editItem.label } }));
+            markDirty(() => setIndicateurs(prev => ({ ...prev, overrides: { ...(prev.overrides || {}), [editItem.key]: editItem.label } })));
         }
         setEditItem(null);
     };
@@ -210,8 +221,8 @@ const TabIndicateursISO = ({ referentiel, soaMap, localEvals, indicateurs, setIn
                 {/* Bouton sauvegarde */}
                 {!readOnly && (
                     <div className="flex justify-end pt-2 border-t border-gray-100">
-                        <button onClick={onSave} disabled={saving}
-                            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-60"
+                        <button onClick={onSave} disabled={saving || !isDirty}
+                            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-40 transition"
                             style={{ backgroundColor: 'var(--brand-red)' }}>
                             {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                             Enregistrer les indicateurs
