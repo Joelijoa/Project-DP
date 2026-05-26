@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/auth/AuthContext';
 import { getAllAudits } from '../../services/endpoints/auditService';
@@ -66,6 +66,12 @@ const EmptyTab = ({ label }) => (
     </div>
 );
 
+const PLAN_VALIDATION_CONFIG = {
+    en_attente: { label: 'En attente', bg: 'bg-amber-50', text: 'text-amber-700' },
+    valide:     { label: 'Validé',     bg: 'bg-green-50', text: 'text-green-700' },
+    rejete:     { label: 'Rejeté',     bg: 'bg-red-50',   text: 'text-red-700'  },
+};
+
 const MesSoumissionsPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -73,6 +79,7 @@ const MesSoumissionsPage = () => {
     const [audits, setAudits] = useState([]);
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [openGroups, setOpenGroups] = useState(new Set());
 
     useEffect(() => {
         const run = async () => {
@@ -87,16 +94,32 @@ const MesSoumissionsPage = () => {
                         a.statut_validation != null
                     )
                 );
-                setPlans(
-                    allPlans.filter(p =>
-                        p.audit?.auditeurs?.some(au => au.id === user.id) &&
-                        p.statut_validation != null
-                    )
+                const filteredPlans = allPlans.filter(p =>
+                    p.audit?.auditeurs?.some(au => au.id === user.id) &&
+                    p.statut_validation != null
                 );
+                setPlans(filteredPlans);
+                const ids = new Set(filteredPlans.map(p => p.audit_id));
+                setOpenGroups(ids);
             } catch { } finally { setLoading(false); }
         };
         run();
     }, [user.id]);
+
+    const plansByAudit = useMemo(() => {
+        const map = {};
+        plans.forEach(p => {
+            if (!map[p.audit_id]) map[p.audit_id] = { audit: p.audit, auditId: p.audit_id, plans: [] };
+            map[p.audit_id].plans.push(p);
+        });
+        return Object.values(map);
+    }, [plans]);
+
+    const toggleGroup = (id) => setOpenGroups(prev => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+    });
 
     const countByStatut = (list) => ({
         en_attente: list.filter(x => x.statut_validation === 'en_attente').length,
@@ -228,62 +251,105 @@ const MesSoumissionsPage = () => {
                             </div>
                     )}
 
-                    {/* Liste plans */}
+                    {/* Liste plans — groupés par audit */}
                     {tab === 'plans' && (
-                        plans.length === 0
+                        plansByAudit.length === 0
                             ? <EmptyTab label="Aucun plan d'action soumis" />
                             : <div className="space-y-3 max-w-4xl">
-                                {plans.map(p => {
+                                {plansByAudit.map(({ audit, auditId, plans: groupPlans }) => {
+                                    const isOpen = openGroups.has(auditId);
+                                    const byStatut = {
+                                        en_attente: groupPlans.filter(p => p.statut_validation === 'en_attente').length,
+                                        valide:     groupPlans.filter(p => p.statut_validation === 'valide').length,
+                                        rejete:     groupPlans.filter(p => p.statut_validation === 'rejete').length,
+                                    };
                                     return (
-                                        <div key={p.id}
-                                            className={`bg-white border rounded-2xl p-5 transition-all ${p.statut_validation === 'rejete' ? 'border-red-200' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}>
-                                            <div className="flex items-start justify-between gap-4">
+                                        <div key={auditId} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                                            {/* En-tête groupe */}
+                                            <button onClick={() => toggleGroup(auditId)}
+                                                className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition text-left">
+                                                <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                                </svg>
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 flex-wrap mb-2">
-                                                        <StatusBadge statut={p.statut_validation} />
-                                                        {p.mesure?.code && (
-                                                            <span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                                                {p.mesure.code}
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="text-sm font-semibold text-gray-800 truncate">
+                                                            {audit?.nom || `Audit #${auditId}`}
+                                                        </span>
+                                                        {audit?.referentiel?.nom && (
+                                                            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 flex-shrink-0">
+                                                                {audit.referentiel.nom}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-sm font-semibold text-gray-900 line-clamp-2">
-                                                        {p.action_corrective || `Plan d'action #${p.id}`}
-                                                    </p>
-                                                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                                                        {p.audit && (
-                                                            <span className="text-xs text-gray-400">{p.audit.nom}</span>
-                                                        )}
-                                                        {p.responsable && (
-                                                            <span className="text-xs text-gray-400">· Resp. {p.responsable}</span>
-                                                        )}
-                                                        {p.delai && (
-                                                            <span className="text-xs text-gray-400">
-                                                                · {new Date(p.delai).toLocaleDateString('fr-FR')}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {/* Motif de rejet */}
-                                                    {p.statut_validation === 'rejete' && p.commentaire_rejet && (
-                                                        <div className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2.5">
-                                                            <svg className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-                                                            </svg>
-                                                            <div>
-                                                                <p className="text-[11px] font-semibold text-red-600 mb-0.5">Motif du rejet</p>
-                                                                <p className="text-xs text-red-700 leading-relaxed">{p.commentaire_rejet}</p>
-                                                            </div>
-                                                        </div>
+                                                    {audit?.client && (
+                                                        <p className="text-xs text-gray-400 mt-0.5 truncate">{audit.client}</p>
                                                     )}
                                                 </div>
-                                                <button onClick={() => navigate(`/audits/${p.audit_id}`)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition flex-shrink-0">
-                                                    Voir l'audit
-                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                                                    </svg>
-                                                </button>
-                                            </div>
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                    <span className="text-xs font-semibold text-gray-500">{groupPlans.length} plan{groupPlans.length > 1 ? 's' : ''}</span>
+                                                    {byStatut.en_attente > 0 && <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">{byStatut.en_attente} en attente</span>}
+                                                    {byStatut.valide > 0     && <span className="text-[11px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 font-medium">{byStatut.valide} validé{byStatut.valide > 1 ? 's' : ''}</span>}
+                                                    {byStatut.rejete > 0     && <span className="text-[11px] px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-medium">{byStatut.rejete} rejeté{byStatut.rejete > 1 ? 's' : ''}</span>}
+                                                </div>
+                                            </button>
+
+                                            {/* Plans du groupe */}
+                                            {isOpen && (
+                                                <div className="border-t border-gray-100 divide-y divide-gray-50">
+                                                    {groupPlans.map(p => {
+                                                        const vc = PLAN_VALIDATION_CONFIG[p.statut_validation];
+                                                        return (
+                                                            <div key={p.id} className={`px-5 py-3.5 ${p.statut_validation === 'rejete' ? 'bg-red-50/30' : ''}`}>
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                                            {vc && (
+                                                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${vc.bg} ${vc.text}`}>
+                                                                                    {vc.label}
+                                                                                </span>
+                                                                            )}
+                                                                            {p.mesure?.code && (
+                                                                                <span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                                                    {p.mesure.code}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-sm text-gray-800 line-clamp-2">
+                                                                            {p.action_corrective || `Plan d'action #${p.id}`}
+                                                                        </p>
+                                                                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                                                            {p.responsable && <span className="text-xs text-gray-400">Resp. {p.responsable}</span>}
+                                                                            {p.delai && <span className="text-xs text-gray-400">· {new Date(p.delai).toLocaleDateString('fr-FR')}</span>}
+                                                                        </div>
+                                                                        {p.statut_validation === 'rejete' && p.commentaire_rejet && (
+                                                                            <div className="mt-2 flex items-start gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2">
+                                                                                <svg className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                                                                                </svg>
+                                                                                <div>
+                                                                                    <p className="text-[11px] font-semibold text-red-600 mb-0.5">Motif du rejet</p>
+                                                                                    <p className="text-xs text-red-700 leading-relaxed">{p.commentaire_rejet}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    <div className="px-4 py-2.5 flex justify-end">
+                                                        <button onClick={() => navigate(`/audits/${auditId}`)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition">
+                                                            Voir l'audit
+                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}

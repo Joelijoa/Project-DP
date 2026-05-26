@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllAudits, validerAudit, rejeterAudit } from '../../services/endpoints/auditService';
 import { getAllPlanActions, validerPlanAction, rejeterPlanAction } from '../../services/endpoints/planActionService';
 import AuditCard from './components/AuditCard';
-import PlanCard from './components/PlanCard';
 
 // ── Spinner ────────────────────────────────────────────────────────────────────
 const Spinner = () => (
@@ -36,6 +35,7 @@ const ValidationPage = () => {
     const [rejetTarget, setRejetTarget] = useState(null);
     const [rejetComment, setRejetComment] = useState('');
     const [saving, setSaving] = useState(false);
+    const [openGroups, setOpenGroups] = useState(new Set());
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -43,7 +43,9 @@ const ValidationPage = () => {
         try {
             const [auditsRes, plansRes] = await Promise.all([getAllAudits(), getAllPlanActions()]);
             setAudits((auditsRes.data.audits || []).filter(a => a.statut_validation === 'en_attente'));
-            setPlans((plansRes.data.plans_actions || []).filter(p => p.statut_validation === 'en_attente'));
+            const filteredPlans = (plansRes.data.plans_actions || []).filter(p => p.statut_validation === 'en_attente');
+            setPlans(filteredPlans);
+            setOpenGroups(new Set(filteredPlans.map(p => p.audit_id)));
         } catch (e) {
             setError(e.message);
         } finally {
@@ -81,6 +83,21 @@ const ValidationPage = () => {
             await load();
         } finally { setSaving(false); }
     };
+
+    const plansByAudit = useMemo(() => {
+        const map = {};
+        plans.forEach(p => {
+            if (!map[p.audit_id]) map[p.audit_id] = { audit: p.audit, auditId: p.audit_id, plans: [] };
+            map[p.audit_id].plans.push(p);
+        });
+        return Object.values(map);
+    }, [plans]);
+
+    const toggleGroup = (id) => setOpenGroups(prev => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+    });
 
     const pendingAudits = audits.length;
     const pendingPlans  = plans.length;
@@ -154,16 +171,102 @@ const ValidationPage = () => {
                                 </div>
                         )}
                         {tab === 'plans' && (
-                            plans.length === 0
+                            plansByAudit.length === 0
                                 ? <EmptyState label="Aucun plan d'action en attente de validation" />
                                 : <div className="space-y-3 max-w-4xl">
-                                    {plans.map(p => (
-                                        <PlanCard key={p.id} plan={p}
-                                            onNavigate={() => navigate(`/audits/${p.audit_id}`)}
-                                            onValider={() => handleValiderPlan(p.audit_id, p.id)}
-                                            onRejeter={() => openRejet('plan', p.id, p.audit_id)}
-                                            saving={saving} />
-                                    ))}
+                                    {plansByAudit.map(({ audit, auditId, plans: groupPlans }) => {
+                                        const isOpen = openGroups.has(auditId);
+                                        return (
+                                            <div key={auditId} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                                {/* En-tête groupe */}
+                                                <button onClick={() => toggleGroup(auditId)}
+                                                    className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition text-left">
+                                                    <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                                    </svg>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-sm font-semibold text-gray-800 truncate">
+                                                                {audit?.nom || `Audit #${auditId}`}
+                                                            </span>
+                                                            {audit?.referentiel?.nom && (
+                                                                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 flex-shrink-0">
+                                                                    {audit.referentiel.nom}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {audit?.client && (
+                                                            <p className="text-xs text-gray-400 mt-0.5 truncate">{audit.client}</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <span className="text-xs font-semibold text-gray-500">{groupPlans.length} plan{groupPlans.length > 1 ? 's' : ''}</span>
+                                                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">en attente</span>
+                                                        <button onClick={e => { e.stopPropagation(); navigate(`/audits/${auditId}`); }}
+                                                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition">
+                                                            Voir l'audit
+                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </button>
+
+                                                {/* Plans du groupe */}
+                                                {isOpen && (
+                                                    <div className="border-t border-gray-100 divide-y divide-gray-50">
+                                                        {groupPlans.map(p => (
+                                                            <div key={p.id} className="px-5 py-3.5 flex items-start justify-between gap-4">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                                        {p.mesure?.code && (
+                                                                            <span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                                                {p.mesure.code}
+                                                                            </span>
+                                                                        )}
+                                                                        {p.priorite && (
+                                                                            <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${
+                                                                                p.priorite === 'haute'   ? 'bg-red-50 text-red-700' :
+                                                                                p.priorite === 'moyenne' ? 'bg-yellow-50 text-yellow-700' :
+                                                                                                          'bg-green-50 text-green-700'
+                                                                            }`}>
+                                                                                {p.priorite.charAt(0).toUpperCase() + p.priorite.slice(1)}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-sm text-gray-800 line-clamp-2">
+                                                                        {p.action_corrective || `Plan d'action #${p.id}`}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                                                        {p.responsable && <span className="text-xs text-gray-400">Resp. {p.responsable}</span>}
+                                                                        {p.delai && <span className="text-xs text-gray-400">· {new Date(p.delai).toLocaleDateString('fr-FR')}</span>}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
+                                                                    <button onClick={() => handleValiderPlan(auditId, p.id)} disabled={saving}
+                                                                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition">
+                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                                                        </svg>
+                                                                        Valider
+                                                                    </button>
+                                                                    <button onClick={() => openRejet('plan', p.id, auditId)} disabled={saving}
+                                                                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition"
+                                                                        style={{ backgroundColor: 'var(--brand-red)' }}>
+                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                                        </svg>
+                                                                        Rejeter
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                         )}
                     </>
