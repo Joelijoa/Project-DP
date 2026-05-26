@@ -584,7 +584,8 @@ const AuditDetailPage = () => {
     const isJunior = user?.role === 'auditeur_junior';
     const isSeniorOrAdmin = user?.role === 'admin' || user?.role === 'auditeur_senior';
     const isTermine = audit.statut === 'termine' || audit.statut === 'archive';
-    const canSoumettreAudit = isJunior && isAssigned && audit.statut_validation !== 'en_attente' && audit.statut_validation !== 'valide';
+    const allPlansValides = planActions.every(p => p.statut_validation === 'valide');
+    const canSoumettreAudit = isJunior && isAssigned && !isTermine && allPlansValides && audit.statut_validation !== 'en_attente' && audit.statut_validation !== 'valide';
     const canValiderRejeter = isSeniorOrAdmin && audit.statut_validation === 'en_attente';
     const validationCfg = VALIDATION_CONFIG[audit.statut_validation];
 
