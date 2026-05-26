@@ -1,6 +1,9 @@
 import api from '../api/axios';
 
 export const getAllAudits = () => api.get('/audits');
+export const getArchivedAudits = () => api.get('/audits/archives');
+export const archiverAudit = (id) => api.put(`/audits/${id}`, { statut: 'archive' });
+export const desarchiverAudit = (id) => api.put(`/audits/${id}`, { statut: 'termine' });
 export const getAuditById = (id) => api.get(`/audits/${id}`);
 export const createAudit = (data) => api.post('/audits', data);
 export const updateAudit = (id, data) => api.put(`/audits/${id}`, data);

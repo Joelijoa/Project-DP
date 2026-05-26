@@ -23,6 +23,7 @@ import ProfilPage from '../pages/profil/ProfilPage';
 import ValidationPage from '../pages/validation/ValidationPage';
 import MesSoumissionsPage from '../pages/messoumissions/MesSoumissionsPage';
 import MesRapportsPage from '../pages/mesrapports/MesRapportsPage';
+import ArchivesPage from '../pages/archives/ArchivesPage';
 
 const AppRouter = () => {
     const { isAuthenticated } = useAuth();
@@ -107,6 +108,9 @@ const AppRouter = () => {
                         <ProtectedRoute roles={['admin']}><JournauxPage /></ProtectedRoute>
                     } />
                     <Route path="/parametres" element={<ParametresPage />} />
+
+                    {/* Archives */}
+                    <Route path="/archives" element={<ArchivesPage />} />
 
                     {/* Profil */}
                     <Route path="/profil" element={<ProfilPage />} />

@@ -1,4 +1,5 @@
 const { Audit, User, Referentiel, Mesure, Evaluation, AuditAuditeur, Entite, PlanAction, SoA, Document, Notification } = require('../models');
+const { Op } = require('sequelize');
 const { log, getIp } = require('../services/logService');
 const { notifierUsers, notifierRole } = require('../services/notificationService');
 
@@ -15,7 +16,7 @@ const calcConformite = (niveau) => {
 // GET /api/audits
 const getAllAudits = async (req, res) => {
     try {
-        const where = {};
+        const where = { statut: { [Op.ne]: 'archive' } };
         if (req.user.role === 'client') {
             if (!req.user.entite_id) return res.json({ audits: [] });
             where.entite_id = req.user.entite_id;
@@ -418,4 +419,38 @@ const changerPhase = async (req, res) => {
     }
 };
 
-module.exports = { getAllAudits, getAuditById, createAudit, updateAudit, deleteAudit, getEvaluations, saveEvaluations, soumettreAudit, validerAudit, rejeterAudit, changerPhase };
+// GET /api/audits/archives
+const getArchivedAudits = async (req, res) => {
+    try {
+        const role = req.user.role;
+        const userId = req.user.userId;
+
+        const where = { statut: 'archive' };
+        if (role === 'client') {
+            if (!req.user.entite_id) return res.json({ audits: [] });
+            where.entite_id = req.user.entite_id;
+        }
+
+        let audits = await Audit.findAll({
+            where,
+            include: [
+                { model: Referentiel, as: 'referentiel', attributes: ['id', 'nom', 'type'] },
+                { model: User, as: 'createur', attributes: ['id', 'nom', 'prenom'] },
+                { model: User, as: 'auditeurs', attributes: ['id', 'nom', 'prenom'], through: { attributes: [] } },
+            ],
+            order: [['updatedAt', 'DESC']],
+        });
+
+        if (role === 'auditeur_junior' || role === 'auditeur_senior') {
+            audits = audits.filter(a =>
+                a.auditeurs?.some(au => au.id === userId) || a.created_by === userId
+            );
+        }
+
+        res.json({ audits });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { getAllAudits, getArchivedAudits, getAuditById, createAudit, updateAudit, deleteAudit, getEvaluations, saveEvaluations, soumettreAudit, validerAudit, rejeterAudit, changerPhase };

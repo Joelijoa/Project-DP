@@ -7,6 +7,7 @@ import {
     soumettreAudit, validerAudit, rejeterAudit, changerPhase,
     getDocuments, uploadDocuments, deleteDocument, downloadDocument, updateDocumentStatut, updateDocumentCommentaire,
     soumettreValidationRapport, annulerValidationRapport,
+    archiverAudit, desarchiverAudit,
 } from '../../services/endpoints/auditService';
 import {
     getPlanActions, createPlanAction, updatePlanAction, deletePlanAction,
@@ -78,6 +79,8 @@ const AuditDetailPage = () => {
     const [validatingClient, setValidatingClient] = useState(false);
     const [showClotureModal, setShowClotureModal] = useState(false);
     const [cloturing, setCloturing] = useState(false);
+    const [archiving, setArchiving] = useState(false);
+    const [showArchiveModal, setShowArchiveModal] = useState(false);
 
     // ── Chargement initial ────────────────────────────────────────────────────
     useEffect(() => {
@@ -454,6 +457,32 @@ const AuditDetailPage = () => {
         }
     };
 
+    const handleArchiverAudit = async () => {
+        setArchiving(true);
+        try {
+            await archiverAudit(id);
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success('Audit archivé');
+        } catch {
+            toast.error("Erreur lors de l'archivage");
+        } finally {
+            setArchiving(false);
+            setShowArchiveModal(false);
+        }
+    };
+
+    const handleDesarchiverAudit = async () => {
+        try {
+            await desarchiverAudit(id);
+            const res = await getAuditById(id);
+            setAudit(res.data.audit);
+            toast.success('Audit désarchivé — statut Terminé');
+        } catch {
+            toast.error('Erreur lors du désarchivage');
+        }
+    };
+
     // ── Sauvegarde infos audit ────────────────────────────────────────────────
     const handleUpdateAuditInfo = async (data) => {
         setSavingInfo(true);
@@ -648,6 +677,18 @@ const AuditDetailPage = () => {
                             Clôturer l'audit
                         </button>
                     )}
+                    {audit.statut === 'termine' && isSeniorOrAdmin && (
+                        <button
+                            onClick={() => setShowArchiveModal(true)}
+                            disabled={archiving}
+                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition disabled:opacity-60"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                            </svg>
+                            Archiver
+                        </button>
+                    )}
                     {audit.statut === 'termine' && !isJunior && !isClient && (
                         <button
                             onClick={handleRouvrirAudit}
@@ -657,6 +698,17 @@ const AuditDetailPage = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                             </svg>
                             Rouvrir l'audit
+                        </button>
+                    )}
+                    {audit.statut === 'archive' && user?.role === 'admin' && (
+                        <button
+                            onClick={handleDesarchiverAudit}
+                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            Désarchiver
                         </button>
                     )}
                     {canSoumettreAudit && !isClient && (
@@ -1084,6 +1136,16 @@ const AuditDetailPage = () => {
             </div>
 
             {/* ── Modales ── */}
+            <ConfirmModal
+                isOpen={showArchiveModal}
+                title="Archiver l'audit"
+                message={`Êtes-vous sûr de vouloir archiver "${audit.nom}" ? L'audit sera retiré de la liste principale et consultable en lecture seule dans les Archives.`}
+                confirmLabel={archiving ? 'Archivage…' : 'Archiver'}
+                cancelLabel="Annuler"
+                danger={false}
+                onConfirm={handleArchiverAudit}
+                onCancel={() => setShowArchiveModal(false)}
+            />
             <ConfirmModal
                 isOpen={showClotureModal}
                 title="Clôturer l'audit"
