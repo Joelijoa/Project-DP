@@ -78,7 +78,27 @@ const Audit = sequelize.define('Audit', {
         allowNull: true,
         defaultValue: null,
     },
-    rapport_archive: {
+    archive_interne: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
+    archive_junior: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
+    archive_client: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
+    rapport_archive_interne: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
+    rapport_archive_junior: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
+    rapport_archive_client: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
     },

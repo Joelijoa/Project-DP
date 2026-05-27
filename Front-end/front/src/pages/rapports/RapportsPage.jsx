@@ -54,7 +54,7 @@ export default function RapportsPage() {
     const [archivingRapportId, setArchivingRapportId] = useState(null);
     const [configModal, setConfigModal] = useState({ open: false, audit: null, referentiel: null, loadingRef: false });
 
-    const canArchive = user?.role === 'admin' || user?.role === 'auditeur_senior';
+    const canArchive = !!user;
 
     const load = useCallback(() => {
         setLoading(true);

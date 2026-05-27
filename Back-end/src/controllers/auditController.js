@@ -13,17 +13,21 @@ const calcConformite = (niveau) => {
     return 'conforme';
 };
 
-// GET /api/audits  (+ ?statut=archive pour les archives)
+const getArchiveCol        = (role) => role === 'client' ? 'archive_client' : role === 'auditeur_junior' ? 'archive_junior' : 'archive_interne';
+const getRapportArchiveCol = (role) => role === 'client' ? 'rapport_archive_client' : role === 'auditeur_junior' ? 'rapport_archive_junior' : 'rapport_archive_interne';
+
+// GET /api/audits  (+ ?statut=archive pour les archives par rôle)
 const getAllAudits = async (req, res) => {
     try {
         const { statut: statutQuery } = req.query;
         const archiveMode = statutQuery === 'archive';
+        const role = req.user.role;
+        const archCol = getArchiveCol(role);
+        const rapportCol = getRapportArchiveCol(role);
 
-        const where = archiveMode
-            ? { statut: 'archive' }
-            : { statut: { [Op.ne]: 'archive' } };
+        const where = { [archCol]: archiveMode ? true : { [Op.ne]: true } };
 
-        if (req.user.role === 'client') {
+        if (role === 'client') {
             if (!req.user.entite_id) return res.json({ audits: [] });
             where.entite_id = req.user.entite_id;
         }
@@ -38,14 +42,20 @@ const getAllAudits = async (req, res) => {
             order: [['updatedAt', 'DESC']],
         });
 
-        if (archiveMode && (req.user.role === 'auditeur_junior' || req.user.role === 'auditeur_senior')) {
+        if (role === 'auditeur_junior') {
             const userId = req.user.userId;
             audits = audits.filter(a =>
                 a.auditeurs?.some(au => au.id === userId) || a.created_by === userId
             );
         }
 
-        res.json({ audits });
+        // Normaliser rapport_archive selon le rôle
+        const result = audits.map(a => ({
+            ...a.toJSON(),
+            rapport_archive: a[rapportCol],
+        }));
+
+        res.json({ audits: result });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -133,6 +143,32 @@ const updateAudit = async (req, res) => {
     try {
         const role   = req.user.role;
         const userId = req.user.userId;
+        const { archiver, archiver_rapport, ...rest } = req.body;
+
+        // Tous les rôles peuvent archiver/désarchiver leur propre vue
+        if (archiver !== undefined || archiver_rapport !== undefined) {
+            const audit = await Audit.findByPk(req.params.id, {
+                include: [{ model: User, as: 'auditeurs', attributes: ['id'], through: { attributes: [] } }],
+            });
+            if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
+
+            if (role === 'auditeur_junior') {
+                const isAssigned = audit.auditeurs.some(a => a.id === userId) || audit.created_by === userId;
+                if (!isAssigned) return res.status(403).json({ message: 'Vous n\'êtes pas assigné à cet audit.' });
+            }
+            if (role === 'client' && audit.entite_id !== req.user.entite_id) {
+                return res.status(403).json({ message: 'Accès refusé.' });
+            }
+
+            const archCol        = getArchiveCol(role);
+            const rapportArchCol = getRapportArchiveCol(role);
+            await audit.update({
+                ...(archiver         !== undefined && { [archCol]: archiver }),
+                ...(archiver_rapport !== undefined && { [rapportArchCol]: archiver_rapport }),
+            });
+            log(userId, 'UPDATE_AUDIT', 'audit', audit.id, audit.nom, getIp(req));
+            return res.json({ message: 'Audit mis à jour', audit });
+        }
 
         // auditeur_junior : uniquement identification et indicateurs, seulement si assigné
         if (role === 'auditeur_junior') {
@@ -142,7 +178,7 @@ const updateAudit = async (req, res) => {
             if (!auditJr) return res.status(404).json({ message: 'Audit non trouvé' });
             const isAssigned = auditJr.auditeurs.some(a => a.id === userId) || auditJr.created_by === userId;
             if (!isAssigned) return res.status(403).json({ message: 'Vous n\'êtes pas assigné à cet audit.' });
-            const { identification, indicateurs } = req.body;
+            const { identification, indicateurs } = rest;
             await auditJr.update({
                 ...(identification !== undefined && { identification }),
                 ...(indicateurs    !== undefined && { indicateurs    }),
@@ -151,13 +187,13 @@ const updateAudit = async (req, res) => {
             return res.json({ message: 'Audit mis à jour', audit: auditJr });
         }
 
-        // client : aucune modification autorisée
+        // client : aucune autre modification autorisée
         if (role === 'client') return res.status(403).json({ message: 'Droits insuffisants.' });
 
         const audit = await Audit.findByPk(req.params.id);
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
 
-        const { nom, client, perimetre, date_debut, date_fin, statut, phase, identification, indicateurs, entite_id, auditeurs_ids, rapport_archive } = req.body;
+        const { nom, client, perimetre, date_debut, date_fin, statut, phase, identification, indicateurs, entite_id, auditeurs_ids } = rest;
         await audit.update({
             ...(nom !== undefined && { nom }),
             ...(client !== undefined && { client }),
@@ -169,7 +205,6 @@ const updateAudit = async (req, res) => {
             ...(identification !== undefined && { identification }),
             ...(indicateurs !== undefined && { indicateurs }),
             ...(entite_id !== undefined && { entite_id: entite_id || null }),
-            ...(rapport_archive !== undefined && { rapport_archive }),
         });
 
         if (auditeurs_ids !== undefined) {

@@ -38,7 +38,6 @@ const STATUT_OPTIONS = [
     { value: 'brouillon', label: 'Brouillon' },
     { value: 'en_cours',  label: 'En cours' },
     { value: 'termine',   label: 'Terminé' },
-    { value: 'archive',   label: 'Archivé' },
 ];
 const REF_OPTIONS = [
     { value: '',        label: 'Tous les référentiels' },
@@ -347,11 +346,11 @@ const AuditsListPage = () => {
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                                                     </svg>
                                                 </Link>
-                                                {!isJunior && !isClient && audit.statut === 'termine' && (
+                                                {audit.statut === 'termine' && (
                                                     <button
                                                         onClick={() => setConfirmArchive(audit)}
                                                         className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
-                                                        title="Archiver cet audit">
+                                                        title="Archiver cet audit (pour ma vue)">
                                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                                                         </svg>

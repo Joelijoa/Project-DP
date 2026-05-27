@@ -125,7 +125,7 @@ const ArchivesPage = () => {
     const [exporting, setExporting] = useState({});
     const [configModal, setConfigModal] = useState({ open: false, audit: null, referentiel: null, loadingRef: false });
 
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = !!user;
 
     const load = useCallback(async () => {
         try {
