@@ -73,13 +73,13 @@ const getAuditById = async (req, res) => {
         });
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
 
-        if (req.user.role === 'client' && audit.entite_id !== req.user.entite_id) {
+        if (req.user.role === 'client' && Number(audit.entite_id) !== Number(req.user.entite_id)) {
             return res.status(403).json({ message: 'Accès refusé.' });
         }
 
         if (req.user.role === 'auditeur_junior') {
-            const isAssigned = audit.auditeurs?.some(a => a.id === req.user.userId)
-                || audit.created_by === req.user.userId;
+            const isAssigned = audit.auditeurs?.some(a => Number(a.id) === Number(req.user.userId))
+                || Number(audit.created_by) === Number(req.user.userId);
             if (!isAssigned) return res.status(403).json({ message: 'Vous n\'êtes pas assigné à cet audit.' });
         }
 
@@ -153,11 +153,12 @@ const updateAudit = async (req, res) => {
             if (!audit) return res.status(404).json({ message: 'Audit non trouvé' });
 
             if (role === 'auditeur_junior') {
-                const isAssigned = audit.auditeurs.some(a => a.id === userId) || audit.created_by === userId;
+                const isAssigned = audit.auditeurs.some(a => Number(a.id) === Number(userId)) || Number(audit.created_by) === Number(userId);
                 if (!isAssigned) return res.status(403).json({ message: 'Vous n\'êtes pas assigné à cet audit.' });
             }
-            if (role === 'client' && audit.entite_id !== req.user.entite_id) {
-                return res.status(403).json({ message: 'Accès refusé.' });
+            if (role === 'client') {
+                if (!req.user.entite_id) return res.status(403).json({ message: 'Accès refusé.' });
+                if (Number(audit.entite_id) !== Number(req.user.entite_id)) return res.status(403).json({ message: 'Accès refusé.' });
             }
 
             const archCol        = getArchiveCol(role);
