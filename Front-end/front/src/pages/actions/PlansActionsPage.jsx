@@ -44,6 +44,7 @@ const PlansActionsPage = () => {
     const [showCloture, setShowCloture]   = useState(false);
     const [confirmCloturePlan, setConfirmCloturePlan] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
+    const [pendingEditPlan, setPendingEditPlan] = useState(null);
 
     const handleUpdateStatut = async (plan, newStatut) => {
         setSavingId(plan.id);
@@ -110,11 +111,9 @@ const PlansActionsPage = () => {
         if (allOpen) setOpenGroups(new Set());
         else setOpenGroups(new Set(groups.map(g => g.auditId)));
     };
-    const toggleGroup = (id) => setOpenGroups(prev => {
-        const next = new Set(prev);
-        next.has(id) ? next.delete(id) : next.add(id);
-        return next;
-    });
+    const toggleGroup = (id) => setOpenGroups(prev =>
+        prev.has(id) ? new Set() : new Set([id])
+    );
 
     // ── Stats globales ─────────────────────────────────────────────────────────
 
@@ -127,7 +126,7 @@ const PlansActionsPage = () => {
 
     // ── Actions ────────────────────────────────────────────────────────────────
 
-    const startEdit = (plan) => {
+    const doStartEdit = (plan) => {
         setEditingId(plan.id);
         setEditForm({
             responsable: plan.responsable || '',
@@ -136,6 +135,14 @@ const PlansActionsPage = () => {
                 ? { statut: plan.statut || 'a_faire' }
                 : { action_corrective: plan.action_corrective || '' }),
         });
+    };
+
+    const startEdit = (plan) => {
+        if (editingId && editingId !== plan.id) {
+            setPendingEditPlan(plan);
+            return;
+        }
+        doStartEdit(plan);
     };
     const cancelEdit = () => { setEditingId(null); setEditForm({}); };
 
@@ -203,7 +210,8 @@ const PlansActionsPage = () => {
                 {plans.length > 0 && (
                     <button
                         onClick={() => setShowExportModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 shadow-sm transition">
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl text-white shadow-sm transition hover:opacity-90"
+                    style={{ backgroundColor: 'var(--brand-red)' }}>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -534,6 +542,63 @@ const PlansActionsPage = () => {
                     })}
                 </div>
             )}
+
+            {/* Modal avertissement — modifications non enregistrées */}
+            {pendingEditPlan && (() => {
+                const currentPlan = plans.find(p => p.id === editingId);
+                return (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+                            <div className="px-6 pt-6 pb-2 flex items-start gap-3">
+                                <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-gray-900">Modifications non enregistrées</h3>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Vous avez des modifications en cours sur{' '}
+                                        <span className="font-medium text-gray-700">
+                                            {currentPlan?.mesure?.code || `#${editingId}`}
+                                        </span>
+                                        {' '}qui n'ont pas été enregistrées.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="px-6 py-4 flex flex-col gap-2">
+                                <button
+                                    onClick={async () => {
+                                        const planToSave = plans.find(p => p.id === editingId);
+                                        if (planToSave) await saveEdit(planToSave);
+                                        setPendingEditPlan(null);
+                                        doStartEdit(pendingEditPlan);
+                                    }}
+                                    className="w-full px-4 py-2 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition"
+                                    style={{ backgroundColor: 'var(--brand-red)' }}>
+                                    Enregistrer et continuer
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        cancelEdit();
+                                        const next = pendingEditPlan;
+                                        setPendingEditPlan(null);
+                                        doStartEdit(next);
+                                    }}
+                                    className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition">
+                                    Ignorer et continuer
+                                </button>
+                                <button
+                                    onClick={() => setPendingEditPlan(null)}
+                                    className="w-full px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-600 transition">
+                                    Continuer la modification
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Modal export PDF — choix de l'audit */}
             {showExportModal && (
