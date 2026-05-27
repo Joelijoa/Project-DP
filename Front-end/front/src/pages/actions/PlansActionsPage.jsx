@@ -48,8 +48,8 @@ const PlansActionsPage = () => {
     const handleUpdateStatut = async (plan, newStatut) => {
         setSavingId(plan.id);
         try {
-            const res = await updatePlanAction(plan.audit_id, plan.id, { statut: newStatut });
-            setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, ...res.data.plan_action } : p));
+            await updatePlanAction(plan.audit_id, plan.id, { statut: newStatut });
+            setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, statut: newStatut } : p));
         } catch { toast.error('Erreur lors de la mise à jour du statut'); }
         finally { setSavingId(null); }
     };
@@ -149,13 +149,8 @@ const PlansActionsPage = () => {
             const payload = isClient
                 ? { responsable: editForm.responsable, delai: editForm.delai, statut: editForm.statut }
                 : editForm;
-            const res = await updatePlanAction(plan.audit_id, plan.id, payload);
-            const updated = res.data.plan_action;
-            setPlans(prev => prev.map(p => {
-                if (p.id !== plan.id) return p;
-                // Préserver les associations (audit, mesure) qui ne sont pas renvoyées complètes par le backend
-                return { ...p, ...updated, audit: p.audit, mesure: p.mesure };
-            }));
+            await updatePlanAction(plan.audit_id, plan.id, payload);
+            setPlans(prev => prev.map(p => p.id !== plan.id ? p : { ...p, ...payload }));
             setEditingId(null);
             toast.success('Action mise à jour');
         } catch { toast.error('Erreur lors de la mise à jour'); }
