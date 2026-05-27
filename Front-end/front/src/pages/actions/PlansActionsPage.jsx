@@ -147,8 +147,8 @@ const PlansActionsPage = () => {
         setSavingId(plan.id);
         try {
             const payload = isClient
-                ? { responsable: editForm.responsable, delai: editForm.delai, statut: editForm.statut }
-                : editForm;
+                ? { responsable: editForm.responsable, delai: editForm.delai || null, statut: editForm.statut }
+                : { responsable: editForm.responsable, delai: editForm.delai || null, action_corrective: editForm.action_corrective };
             await updatePlanAction(plan.audit_id, plan.id, payload);
             setPlans(prev => prev.map(p => p.id !== plan.id ? p : { ...p, ...payload }));
             setEditingId(null);

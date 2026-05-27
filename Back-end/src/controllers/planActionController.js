@@ -83,8 +83,8 @@ const updatePlanAction = async (req, res) => {
                 return res.status(403).json({ message: 'Accès refusé.' });
             const { statut, delai, responsable } = req.body;
             await plan.update({
-                ...(statut     !== undefined && { statut }),
-                ...(delai      !== undefined && { delai }),
+                ...(statut      !== undefined && { statut }),
+                ...(delai       !== undefined && { delai: delai || null }),
                 ...(responsable !== undefined && { responsable }),
             });
             log(req.user?.userId, 'UPDATE_PLAN_ACTION', 'plan_action', plan.id, `statut: ${statut || plan.statut}`, getIp(req));
@@ -97,7 +97,7 @@ const updatePlanAction = async (req, res) => {
         if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
 
         const { description_nc, action_corrective, responsable, delai, priorite, statut, kpi } = req.body;
-        await plan.update({ description_nc, action_corrective, responsable, delai, priorite, statut, kpi });
+        await plan.update({ description_nc, action_corrective, responsable, delai: delai || null, priorite, statut, kpi });
         log(req.user?.userId, 'UPDATE_PLAN_ACTION', 'plan_action', plan.id, `statut: ${statut || plan.statut}`, getIp(req));
         res.json({ plan_action: plan });
     } catch (error) {
