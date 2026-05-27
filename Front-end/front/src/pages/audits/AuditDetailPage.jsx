@@ -1078,6 +1078,8 @@ const AuditDetailPage = () => {
                             onValider={handleValiderPlan}
                             onRejeter={(planId) => setRejetingPlanId(planId)}
                             readOnly={isClient || isTermine}
+                            auditNom={audit?.nom}
+                            clientNom={audit?.client}
                         />
                     )}
                 </>)}

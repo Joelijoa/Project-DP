@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { PRIORITE_CONFIG, STATUT_PLAN_CONFIG, PLAN_VALIDATION_CONFIG } from './auditConstants';
 import { TabInfo } from './AuditBadges';
 import AppSelect from '../../../components/common/AppSelect';
+import { exportPlanActionsPDF } from '../../../utils/exportPlanActionsPDF';
 
 const emptyPlanForm = { mesure_id: '', description_nc: '', action_corrective: '', responsable: '', delai: '', priorite: 'moyenne', statut: 'a_faire', kpi: '' };
 
-const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, user, onAdd, onBulkAdd, onUpdate, onDelete, onSoumettre, onValider, onRejeter, readOnly }) => {
+const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, user, onAdd, onBulkAdd, onUpdate, onDelete, onSoumettre, onValider, onRejeter, readOnly, auditNom, clientNom }) => {
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({ ...emptyPlanForm });
@@ -15,6 +16,26 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
     const [showGenConfirm, setShowGenConfirm] = useState(false);
     const [viewingPlan, setViewingPlan] = useState(null);
     const [filterPriorite, setFilterPriorite] = useState('all');
+    const [clientEditPlan, setClientEditPlan] = useState(null);
+    const [clientEditForm, setClientEditForm] = useState({ responsable: '', delai: '' });
+    const [clientEditSubmitting, setClientEditSubmitting] = useState(false);
+
+    const isClient = user?.role === 'client';
+
+    const openClientEdit = (plan) => {
+        setClientEditForm({ responsable: plan.responsable || '', delai: plan.delai || '' });
+        setClientEditPlan(plan);
+    };
+    const handleClientEditSubmit = async (e) => {
+        e.preventDefault();
+        setClientEditSubmitting(true);
+        try {
+            await onUpdate(clientEditPlan.id, { responsable: clientEditForm.responsable, delai: clientEditForm.delai });
+            setClientEditPlan(null);
+        } finally {
+            setClientEditSubmitting(false);
+        }
+    };
 
     const setF = (k, v) => {
         setForm(p => ({ ...p, [k]: v }));
@@ -144,6 +165,16 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
             <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-sm text-gray-600">{planActions.length} action(s) définie(s)</span>
+                    {planActions.length > 0 && (
+                        <button
+                            onClick={() => exportPlanActionsPDF({ plans: planActions, auditNom, clientNom, referentiel })}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Exporter PDF
+                        </button>
+                    )}
                     {nonConfIds.size > 0 && (
                         <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-50 text-red-700">
                             {nonConfIds.size} mesure(s) NC
@@ -463,6 +494,14 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                     </svg>
                                                 </button>
+                                                {isClient && (
+                                                    <button onClick={() => openClientEdit(plan)}
+                                                        className="p-1 text-gray-400 hover:text-blue-600 rounded" title="Modifier délai / responsable">
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                                                        </svg>
+                                                    </button>
+                                                )}
                                                 {!readOnly && (
                                                     <>
                                                         <button onClick={() => handleEdit(plan)}
@@ -486,6 +525,56 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                             })}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {/* Modal client : modifier délai + responsable */}
+            {clientEditPlan && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    onClick={e => { if (e.target === e.currentTarget) setClientEditPlan(null); }}>
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <h3 className="text-sm font-semibold text-gray-800">Modifier le suivi</h3>
+                            <button onClick={() => setClientEditPlan(null)}
+                                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <form onSubmit={handleClientEditSubmit} className="px-6 py-5 space-y-4">
+                            <div className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
+                                <span className="font-mono font-semibold text-gray-700">{clientEditPlan.mesure?.code || `#${clientEditPlan.mesure_id}`}</span>
+                                {' — '}{clientEditPlan.action_corrective?.substring(0, 80) || '—'}
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Responsable</label>
+                                <input type="text" value={clientEditForm.responsable}
+                                    onChange={e => setClientEditForm(p => ({ ...p, responsable: e.target.value }))}
+                                    placeholder="Nom du responsable..."
+                                    className="w-full mt-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Délai</label>
+                                <input type="date" value={clientEditForm.delai}
+                                    onChange={e => setClientEditForm(p => ({ ...p, delai: e.target.value }))}
+                                    className="w-full mt-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1" />
+                            </div>
+                            <div className="flex gap-2 pt-1 border-t border-gray-100">
+                                <button type="submit" disabled={clientEditSubmitting}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-60"
+                                    style={{ backgroundColor: 'var(--brand-red)' }}>
+                                    {clientEditSubmitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                    Enregistrer
+                                </button>
+                                <button type="button" onClick={() => setClientEditPlan(null)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">
+                                    Annuler
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 
