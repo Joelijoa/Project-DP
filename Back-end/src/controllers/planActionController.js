@@ -81,14 +81,17 @@ const updatePlanAction = async (req, res) => {
             if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
             if (Number(plan.audit?.entite_id) !== Number(req.user.entite_id))
                 return res.status(403).json({ message: 'Accès refusé.' });
+
             const { statut, delai, responsable } = req.body;
-            await plan.update({
+            const fields = {
                 ...(statut      !== undefined && { statut }),
                 ...(delai       !== undefined && { delai: delai || null }),
                 ...(responsable !== undefined && { responsable }),
-            });
-            log(req.user?.userId, 'UPDATE_PLAN_ACTION', 'plan_action', plan.id, `statut: ${statut || plan.statut}`, getIp(req));
-            return res.json({ plan_action: plan });
+            };
+            await PlanAction.update(fields, { where: { id: plan.id } });
+            const updated = await PlanAction.findByPk(plan.id);
+            log(req.user?.userId, 'UPDATE_PLAN_ACTION', 'plan_action', plan.id, `statut: ${updated.statut}`, getIp(req));
+            return res.json({ plan_action: updated });
         }
 
         const { error, message } = await checkAuditAccess(req.params.id, req.user);
@@ -97,9 +100,19 @@ const updatePlanAction = async (req, res) => {
         if (!plan) return res.status(404).json({ message: "Plan d'action introuvable" });
 
         const { description_nc, action_corrective, responsable, delai, priorite, statut, kpi } = req.body;
-        await plan.update({ description_nc, action_corrective, responsable, delai: delai || null, priorite, statut, kpi });
-        log(req.user?.userId, 'UPDATE_PLAN_ACTION', 'plan_action', plan.id, `statut: ${statut || plan.statut}`, getIp(req));
-        res.json({ plan_action: plan });
+        const fields = {
+            ...(description_nc    !== undefined && { description_nc }),
+            ...(action_corrective !== undefined && { action_corrective }),
+            ...(responsable       !== undefined && { responsable }),
+            ...(delai             !== undefined && { delai: delai || null }),
+            ...(priorite          !== undefined && { priorite }),
+            ...(statut            !== undefined && { statut }),
+            ...(kpi               !== undefined && { kpi }),
+        };
+        await PlanAction.update(fields, { where: { id: plan.id } });
+        const updated = await PlanAction.findByPk(plan.id);
+        log(req.user?.userId, 'UPDATE_PLAN_ACTION', 'plan_action', plan.id, `statut: ${updated.statut}`, getIp(req));
+        res.json({ plan_action: updated });
     } catch (error) {
         console.error('[PlanAction] updatePlanAction:', error.message);
         res.status(500).json({ message: error.message });

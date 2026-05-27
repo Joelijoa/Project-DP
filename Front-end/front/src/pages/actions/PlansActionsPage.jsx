@@ -149,12 +149,16 @@ const PlansActionsPage = () => {
             const payload = isClient
                 ? { responsable: editForm.responsable, delai: editForm.delai || null, statut: editForm.statut }
                 : { responsable: editForm.responsable, delai: editForm.delai || null, action_corrective: editForm.action_corrective };
-            await updatePlanAction(plan.audit_id, plan.id, payload);
-            setPlans(prev => prev.map(p => p.id !== plan.id ? p : { ...p, ...payload }));
+            const res = await updatePlanAction(plan.audit_id, plan.id, payload);
+            const saved = res.data.plan_action;
+            setPlans(prev => prev.map(p => p.id !== plan.id ? p : { ...p, ...saved, audit: p.audit, mesure: p.mesure }));
             setEditingId(null);
             toast.success('Action mise à jour');
-        } catch { toast.error('Erreur lors de la mise à jour'); }
-        finally { setSavingId(null); }
+        } catch (err) {
+            const msg = err?.response?.data?.message || 'Erreur lors de la mise à jour';
+            toast.error(msg);
+            console.error('[saveEdit]', err?.response?.status, err?.response?.data);
+        } finally { setSavingId(null); }
     };
 
     const handleSoumettre = async (plan) => {
