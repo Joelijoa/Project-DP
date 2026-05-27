@@ -84,7 +84,7 @@ export function exportPlanActionsPDF({ plans, auditNom, clientNom, referentiel }
         headStyles: { fillColor: NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 7.5 },
         alternateRowStyles: { fillColor: LIGHT },
         columnStyles: {
-            0: { cellWidth: 28, fontStyle: 'bold' },
+            0: { cellWidth: 48, fontStyle: 'bold' },
             1: { cellWidth: 'auto' },
             2: { cellWidth: 32 },
             3: { cellWidth: 24 },

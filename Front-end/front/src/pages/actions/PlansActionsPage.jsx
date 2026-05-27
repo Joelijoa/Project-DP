@@ -5,6 +5,7 @@ import { getAllPlanActions, updatePlanAction, deletePlanAction, soumettreValidat
 import { toast } from 'react-toastify';
 import RejeterPlanModal from './components/RejeterPlanModal';
 import AppSelect from '../../components/common/AppSelect';
+import { exportPlanActionsPDF } from '../../utils/exportPlanActionsPDF';
 
 const PLAN_VALIDATION_CONFIG = {
     en_attente: { label: 'En attente', bg: 'bg-amber-50',  text: 'text-amber-700' },
@@ -42,6 +43,7 @@ const PlansActionsPage = () => {
     const [openGroups, setOpenGroups]     = useState(new Set());
     const [showCloture, setShowCloture]   = useState(false);
     const [confirmCloturePlan, setConfirmCloturePlan] = useState(null);
+    const [showExportModal, setShowExportModal] = useState(false);
 
     const handleUpdateStatut = async (plan, newStatut) => {
         setSavingId(plan.id);
@@ -60,7 +62,6 @@ const PlansActionsPage = () => {
                 ? all.filter(p => p.audit?.auditeurs?.some(au => au.id === user.id))
                 : all;
             setPlans(visible);
-            // Tout déplier par défaut
             const ids = new Set(visible.map(p => p.audit_id));
             setOpenGroups(ids);
         } catch (err) {
@@ -129,18 +130,32 @@ const PlansActionsPage = () => {
     const startEdit = (plan) => {
         setEditingId(plan.id);
         setEditForm({
-            responsable:       plan.responsable       || '',
-            delai:             plan.delai             || '',
-            action_corrective: plan.action_corrective || '',
+            responsable: plan.responsable || '',
+            delai:       plan.delai       || '',
+            ...(isClient
+                ? { statut: plan.statut || 'a_faire' }
+                : { action_corrective: plan.action_corrective || '' }),
         });
     };
     const cancelEdit = () => { setEditingId(null); setEditForm({}); };
 
-    const saveEdit = async (plan) => {
+    const saveEdit = async (plan, skipClotureCheck = false) => {
+        if (isClient && editForm.statut === 'cloture' && plan.statut !== 'cloture' && !skipClotureCheck) {
+            setConfirmCloturePlan(plan);
+            return;
+        }
         setSavingId(plan.id);
         try {
-            const res = await updatePlanAction(plan.audit_id, plan.id, editForm);
-            setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, ...res.data.plan_action } : p));
+            const payload = isClient
+                ? { responsable: editForm.responsable, delai: editForm.delai, statut: editForm.statut }
+                : editForm;
+            const res = await updatePlanAction(plan.audit_id, plan.id, payload);
+            const updated = res.data.plan_action;
+            setPlans(prev => prev.map(p => {
+                if (p.id !== plan.id) return p;
+                // Préserver les associations (audit, mesure) qui ne sont pas renvoyées complètes par le backend
+                return { ...p, ...updated, audit: p.audit, mesure: p.mesure };
+            }));
             setEditingId(null);
             toast.success('Action mise à jour');
         } catch { toast.error('Erreur lors de la mise à jour'); }
@@ -186,6 +201,16 @@ const PlansActionsPage = () => {
                         : 'Suivi de toutes les actions correctives'}
                     </p>
                 </div>
+                {plans.length > 0 && (
+                    <button
+                        onClick={() => setShowExportModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 shadow-sm transition">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Exporter PDF
+                    </button>
+                )}
             </div>
 
             {/* KPIs */}
@@ -358,11 +383,14 @@ const PlansActionsPage = () => {
                                                     <th className="text-center px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Priorité</th>
                                                     <th className="text-center px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut</th>
                                                     {!isClient && <th className="text-center px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Validation</th>}
-                                                    {!isJunior && !isClient && <th className="px-4 py-2.5" />}
+                                                    {!isJunior && <th className="px-4 py-2.5" />}
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
-                                                {groupPlans.map(plan => {
+                                                {[...groupPlans].sort((a, b) => {
+                                                    const ORDER = { haute: 0, moyenne: 1, basse: 2 };
+                                                    return (ORDER[a.priorite] ?? 1) - (ORDER[b.priorite] ?? 1);
+                                                }).map(plan => {
                                                     const isEditing = editingId === plan.id;
                                                     const pr = PRIORITE_CONFIG[plan.priorite] ?? PRIORITE_CONFIG.moyenne;
                                                     const st = STATUT_CONFIG[plan.statut]     ?? STATUT_CONFIG.a_faire;
@@ -373,7 +401,7 @@ const PlansActionsPage = () => {
                                                                 <span className="font-mono text-xs text-gray-700 font-semibold">{plan.mesure?.code || '—'}</span>
                                                             </td>
                                                             <td className="px-4 py-3 max-w-xs">
-                                                                {isEditing ? (
+                                                                {isEditing && !isClient ? (
                                                                     <textarea value={editForm.action_corrective}
                                                                         onChange={e => setEditForm(p => ({ ...p, action_corrective: e.target.value }))}
                                                                         rows={2} className="w-full text-xs border border-gray-200 rounded px-2 py-1 resize-none focus:outline-none" />
@@ -406,27 +434,19 @@ const PlansActionsPage = () => {
                                                             <td className="px-4 py-3 text-center">
                                                                 <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${pr.bg} ${pr.text}`}>{pr.label}</span>
                                                             </td>
-                                                            {/* Statut — client : select direct, autres : badge fixe */}
+                                                            {/* Statut */}
                                                             <td className="px-4 py-3 text-center">
-                                                                {isClient ? (
-                                                                    plan.statut === 'cloture' ? (
-                                                                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium cursor-not-allowed ${st.bg} ${st.text}`}
-                                                                            title="Action clôturée — non modifiable">
-                                                                            {st.label}
-                                                                        </span>
-                                                                    ) : (
-                                                                        <AppSelect
-                                                                            value={plan.statut}
-                                                                            disabled={savingId === plan.id}
-                                                                            onChange={v => v === 'cloture' ? setConfirmCloturePlan(plan) : handleUpdateStatut(plan, v)}
-                                                                            options={[
-                                                                                { value: 'a_faire',  label: 'À faire' },
-                                                                                { value: 'en_cours', label: 'En cours' },
-                                                                                { value: 'cloture',  label: 'Clôturé' },
-                                                                            ]}
-                                                                            className="min-w-[110px]"
-                                                                        />
-                                                                    )
+                                                                {isClient && isEditing ? (
+                                                                    <AppSelect
+                                                                        value={editForm.statut}
+                                                                        onChange={v => setEditForm(p => ({ ...p, statut: v }))}
+                                                                        options={[
+                                                                            { value: 'a_faire',  label: 'À faire' },
+                                                                            { value: 'en_cours', label: 'En cours' },
+                                                                            { value: 'cloture',  label: 'Clôturé' },
+                                                                        ]}
+                                                                        className="min-w-[110px]"
+                                                                    />
                                                                 ) : (
                                                                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${st.bg} ${st.text}`}>{st.label}</span>
                                                                 )}
@@ -467,19 +487,20 @@ const PlansActionsPage = () => {
                                                                 </td>
                                                             )}
 
-                                                            {/* Actions modifier/supprimer — masquées pour client et junior */}
-                                                            {!isJunior && !isClient && (
+                                                            {/* Actions modifier/supprimer — masquées pour junior uniquement */}
+                                                            {!isJunior && (
                                                                 <td className="px-4 py-3">
                                                                     {isEditing ? (
                                                                         <div className="flex items-center gap-1">
                                                                             <button onClick={() => saveEdit(plan)} disabled={savingId === plan.id}
-                                                                                className="px-2.5 py-1 text-xs font-medium text-white rounded disabled:opacity-60"
-                                                                                style={{ backgroundColor: 'var(--brand-red)' }}>
-                                                                                {savingId === plan.id ? '...' : 'OK'}
+                                                                                className="p-1 rounded text-green-600 hover:text-green-700 hover:bg-green-50 disabled:opacity-50 transition" title="Enregistrer">
+                                                                                {savingId === plan.id
+                                                                                    ? <div className="w-3.5 h-3.5 border-2 border-green-300 border-t-green-600 rounded-full animate-spin" />
+                                                                                    : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}
                                                                             </button>
                                                                             <button onClick={cancelEdit}
-                                                                                className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">
-                                                                                Annuler
+                                                                                className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition" title="Annuler">
+                                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                                                             </button>
                                                                         </div>
                                                                     ) : (
@@ -490,12 +511,14 @@ const PlansActionsPage = () => {
                                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
                                                                                 </svg>
                                                                             </button>
-                                                                            <button onClick={() => handleDelete(plan)}
-                                                                                className="p-1 text-red-500 hover:text-red-700 rounded" title="Supprimer">
-                                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                                                </svg>
-                                                                            </button>
+                                                                            {!isClient && (
+                                                                                <button onClick={() => handleDelete(plan)}
+                                                                                    className="p-1 text-red-500 hover:text-red-700 rounded" title="Supprimer">
+                                                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                                                    </svg>
+                                                                                </button>
+                                                                            )}
                                                                         </div>
                                                                     )}
                                                                 </td>
@@ -510,6 +533,108 @@ const PlansActionsPage = () => {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Modal export PDF — choix de l'audit */}
+            {showExportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    onClick={e => { if (e.target === e.currentTarget) setShowExportModal(false); }}>
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <h3 className="text-sm font-semibold text-gray-800">Exporter en PDF</h3>
+                            </div>
+                            <button onClick={() => setShowExportModal(false)}
+                                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-6 py-4 overflow-y-auto space-y-2">
+                            <p className="text-xs text-gray-500 mb-3">Choisissez l'audit dont vous souhaitez exporter le plan d'actions.</p>
+
+                            {/* Option : tous les audits */}
+                            <button
+                                onClick={() => {
+                                    exportPlanActionsPDF({ plans: filtered, auditNom: 'Tous les audits' });
+                                    setShowExportModal(false);
+                                }}
+                                className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-red-300 hover:bg-red-50/30 transition text-left group">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center flex-shrink-0 transition">
+                                        <svg className="w-3.5 h-3.5 text-gray-500 group-hover:text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-gray-700 group-hover:text-red-700">Tous les audits</p>
+                                        <p className="text-xs text-gray-400">{filtered.length} action{filtered.length > 1 ? 's' : ''} (vue actuelle)</p>
+                                    </div>
+                                </div>
+                                <svg className="w-4 h-4 text-gray-300 group-hover:text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </button>
+
+                            {/* Séparateur */}
+                            <div className="flex items-center gap-2 py-1">
+                                <div className="flex-1 h-px bg-gray-100" />
+                                <span className="text-[11px] text-gray-400 font-medium">ou par audit</span>
+                                <div className="flex-1 h-px bg-gray-100" />
+                            </div>
+
+                            {/* Liste des groupes */}
+                            {groups.map(({ audit, auditId, plans: gPlans }) => {
+                                const gStats = {
+                                    a_faire:  gPlans.filter(p => p.statut === 'a_faire').length,
+                                    en_cours: gPlans.filter(p => p.statut === 'en_cours').length,
+                                    cloture:  gPlans.filter(p => p.statut === 'cloture').length,
+                                };
+                                return (
+                                    <button key={auditId}
+                                        onClick={() => {
+                                            exportPlanActionsPDF({ plans: gPlans, auditNom: audit?.nom, clientNom: audit?.client });
+                                            setShowExportModal(false);
+                                        }}
+                                        className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-gray-100 hover:border-red-200 hover:bg-red-50/20 transition text-left group">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className="w-7 h-7 rounded-lg bg-gray-50 group-hover:bg-red-50 flex items-center justify-center flex-shrink-0 transition">
+                                                <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                                                </svg>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-gray-700 group-hover:text-red-700 truncate">{audit?.nom || `Audit #${auditId}`}</p>
+                                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                                    {audit?.client && <span className="text-[11px] text-gray-400 truncate">{audit.client}</span>}
+                                                    {audit?.referentiel?.nom && <span className="text-[11px] font-medium px-1 py-px rounded bg-violet-50 text-violet-500">{audit.referentiel.nom}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            <div className="flex items-center gap-1">
+                                                {gStats.a_faire  > 0 && <span className="text-[10px] px-1.5 py-px rounded bg-gray-100 text-gray-500">{gStats.a_faire}</span>}
+                                                {gStats.en_cours > 0 && <span className="text-[10px] px-1.5 py-px rounded bg-blue-50 text-blue-600">{gStats.en_cours}</span>}
+                                                {gStats.cloture  > 0 && <span className="text-[10px] px-1.5 py-px rounded bg-green-50 text-green-600">{gStats.cloture}</span>}
+                                            </div>
+                                            <svg className="w-4 h-4 text-gray-300 group-hover:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                            </svg>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -546,7 +671,7 @@ const PlansActionsPage = () => {
                                 className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition">
                                 Annuler
                             </button>
-                            <button onClick={() => { handleUpdateStatut(confirmCloturePlan, 'cloture'); setConfirmCloturePlan(null); }}
+                            <button onClick={() => { saveEdit(confirmCloturePlan, true); setConfirmCloturePlan(null); }}
                                 className="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition">
                                 Confirmer la clôture
                             </button>
