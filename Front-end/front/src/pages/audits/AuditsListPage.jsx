@@ -4,6 +4,7 @@ import { useAuth } from '../../store/auth/AuthContext';
 import { getAllAudits, deleteAudit, archiverAudit } from '../../services/endpoints/auditService';
 import { toast } from 'react-toastify';
 import AppSelect from '../../components/common/AppSelect';
+import Sk from '../../components/common/Sk';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -158,16 +159,21 @@ const AuditsListPage = () => {
             </div>
 
             {/* ── Stats rapides ── */}
-            {!loading && (
-                <div className="grid grid-cols-4 gap-3">
-                    {stats.map((s, i) => (
-                        <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-                            <p className="text-xs font-medium text-gray-400 mb-1">{s.label}</p>
-                            <p className="text-2xl font-bold text-gray-900">{s.value}</p>
+            <div className="grid grid-cols-4 gap-3">
+                {loading ? (
+                    [...Array(4)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 space-y-2">
+                            <Sk className="h-3 w-20" />
+                            <Sk className="h-7 w-10" />
                         </div>
-                    ))}
-                </div>
-            )}
+                    ))
+                ) : stats.map((s, i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+                        <p className="text-xs font-medium text-gray-400 mb-1">{s.label}</p>
+                        <p className="text-2xl font-bold text-gray-900">{s.value}</p>
+                    </div>
+                ))}
+            </div>
 
             {/* ── Filtres ── */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
@@ -220,9 +226,25 @@ const AuditsListPage = () => {
             {/* ── Tableau ── */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <div className="w-6 h-6 border-2 border-gray-200 rounded-full animate-spin"
-                            style={{ borderTopColor: 'var(--brand-red)' }} />
+                    <div className="divide-y divide-gray-50">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="flex items-center gap-4 px-6 py-3.5">
+                                <Sk className="w-7 h-7 rounded-lg flex-shrink-0" />
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                    <Sk className="h-3.5 w-48" />
+                                    <Sk className="h-3 w-32" />
+                                </div>
+                                <Sk className="h-5 w-16 rounded-lg" />
+                                <Sk className="h-3.5 w-20" />
+                                <Sk className="h-5 w-16 rounded-lg" />
+                                <Sk className="h-3 w-24" />
+                                <Sk className="h-3 w-20" />
+                                <div className="flex gap-1.5 ml-2">
+                                    <Sk className="w-7 h-7 rounded-lg" />
+                                    <Sk className="w-7 h-7 rounded-lg" />
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">

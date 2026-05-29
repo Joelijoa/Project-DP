@@ -8,6 +8,7 @@ import UserStatCard from './components/UserStatCard';
 import UserFormModal from './components/UserFormModal';
 import AppSelect from '../../components/common/AppSelect';
 import UserDetailPanel from './components/UserDetailPanel';
+import Sk from '../../components/common/Sk';
 
 const ROLES = ['admin', 'auditeur_senior', 'auditeur_junior', 'client'];
 
@@ -176,10 +177,21 @@ const UtilisateursPage = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-4 gap-4 mb-5">
-                <UserStatCard value={users.length}  label="Total utilisateurs"  iconPath="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                <UserStatCard value={totalActifs}   label="Comptes actifs"       iconPath="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                <UserStatCard value={totalInactifs} label="Comptes inactifs"     iconPath="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                <UserStatCard value={totalPending}  label="Att. 1ère connexion"  iconPath="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                {loading ? (
+                    [...Array(4)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 space-y-2">
+                            <Sk className="h-3 w-28" />
+                            <Sk className="h-7 w-12" />
+                        </div>
+                    ))
+                ) : (
+                    <>
+                        <UserStatCard value={users.length}  label="Total utilisateurs"  iconPath="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                        <UserStatCard value={totalActifs}   label="Comptes actifs"       iconPath="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <UserStatCard value={totalInactifs} label="Comptes inactifs"     iconPath="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        <UserStatCard value={totalPending}  label="Att. 1ère connexion"  iconPath="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </>
+                )}
             </div>
 
             {/* Filtres */}
@@ -212,8 +224,24 @@ const UtilisateursPage = () => {
             <div className="flex gap-5">
             <div className={`${selectedId ? 'flex-1 min-w-0' : 'w-full'} bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden`}>
                 {loading ? (
-                    <div className="flex justify-center py-16">
-                        <div className="w-5 h-5 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: 'var(--brand-red)' }} />
+                    <div className="divide-y divide-gray-50">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+                                <Sk className="w-8 h-8 rounded-full flex-shrink-0" />
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                    <Sk className="h-3.5 w-36" />
+                                    <Sk className="h-3 w-44" />
+                                </div>
+                                <Sk className="h-5 w-20 rounded-full" />
+                                <Sk className="h-3.5 w-24 hidden md:block" />
+                                <Sk className="h-5 w-14 rounded-full" />
+                                <div className="flex gap-1 ml-2">
+                                    <Sk className="w-7 h-7 rounded-lg" />
+                                    <Sk className="w-7 h-7 rounded-lg" />
+                                    <Sk className="w-7 h-7 rounded-lg" />
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="p-12 text-center">

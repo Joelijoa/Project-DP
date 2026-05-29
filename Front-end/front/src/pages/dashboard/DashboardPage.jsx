@@ -6,6 +6,7 @@ import { getAllPlanActions } from '../../services/endpoints/planActionService';
 import { getAllReferentiels } from '../../services/endpoints/referentielService';
 import DonutChart from './components/DonutChart';
 import ClientDashboard from './components/ClientDashboard';
+import Sk from '../../components/common/Sk';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -21,10 +22,6 @@ const PRIORITE = {
     moyenne: { label: 'Moyenne', color: '#d97706', badge: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
     basse:   { label: 'Basse',   color: '#6b7280', badge: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' },
 };
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-const Sk = ({ className }) => <div className={`bg-gray-100 animate-pulse rounded-lg ${className}`} />;
 
 // ── Spinner ───────────────────────────────────────────────────────────────────
 

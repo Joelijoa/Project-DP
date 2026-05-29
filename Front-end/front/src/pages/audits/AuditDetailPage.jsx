@@ -42,6 +42,7 @@ import TabSyntheseISO from './components/TabSyntheseISO';
 import TabNC from './components/TabNC';
 import TabIndicateursISO from './components/TabIndicateursISO';
 import TabPlanActions from './components/TabPlanActions';
+import Sk from '../../components/common/Sk';
 
 // ─── Page principale ───────────────────────────────────────────────────────────
 
@@ -563,8 +564,53 @@ const AuditDetailPage = () => {
     // ── États de chargement ───────────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <div className="w-6 h-6 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: 'var(--brand-red)' }} />
+            <div className="space-y-5">
+                {/* Titre + badges */}
+                <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                        <Sk className="h-6 w-72" />
+                        <div className="flex gap-2">
+                            <Sk className="h-5 w-20 rounded-full" />
+                            <Sk className="h-5 w-16 rounded-full" />
+                        </div>
+                    </div>
+                    <Sk className="h-9 w-32 rounded-xl" />
+                </div>
+                {/* Stepper */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4">
+                    <div className="flex items-center gap-3">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="flex items-center gap-3 flex-1">
+                                <Sk className="w-7 h-7 rounded-full flex-shrink-0" />
+                                <Sk className="h-3 flex-1" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                {/* Tab nav */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+                    <div className="flex gap-2">
+                        {[...Array(6)].map((_, i) => (
+                            <Sk key={i} className={`h-8 rounded-xl ${i === 0 ? 'w-28' : 'w-24'}`} />
+                        ))}
+                    </div>
+                </div>
+                {/* Contenu tab */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                    <Sk className="h-4 w-48" />
+                    <div className="grid grid-cols-2 gap-4">
+                        {[...Array(4)].map((_, i) => (
+                            <div key={i} className="space-y-1.5">
+                                <Sk className="h-3 w-24" />
+                                <Sk className="h-9 w-full rounded-xl" />
+                            </div>
+                        ))}
+                    </div>
+                    <Sk className="h-4 w-40 mt-2" />
+                    <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Sk key={i} className="h-9 w-full rounded-xl" />)}
+                    </div>
+                </div>
             </div>
         );
     }

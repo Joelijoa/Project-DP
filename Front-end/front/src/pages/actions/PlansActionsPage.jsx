@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import RejeterPlanModal from './components/RejeterPlanModal';
 import AppSelect from '../../components/common/AppSelect';
 import { exportPlanActionsPDF } from '../../utils/exportPlanActionsPDF';
+import Sk from '../../components/common/Sk';
 
 const PLAN_VALIDATION_CONFIG = {
     en_attente: { label: 'En attente', bg: 'bg-amber-50',  text: 'text-amber-700' },
@@ -237,9 +238,10 @@ const PlansActionsPage = () => {
                                 </svg>
                             </div>
                         </div>
-                        <p className="text-3xl font-bold tracking-tight" style={{ color: kpi.color }}>
-                            {loading ? '—' : kpi.value}
-                        </p>
+                        {loading
+                            ? <Sk className="h-8 w-12 mt-1" />
+                            : <p className="text-3xl font-bold tracking-tight" style={{ color: kpi.color }}>{kpi.value}</p>
+                        }
                     </div>
                 ))}
             </div>
@@ -297,8 +299,32 @@ const PlansActionsPage = () => {
 
             {/* Contenu */}
             {loading ? (
-                <div className="flex justify-center py-16">
-                    <div className="w-5 h-5 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: 'var(--brand-red)' }} />
+                <div className="space-y-3">
+                    {[...Array(3)].map((_, gi) => (
+                        <div key={gi} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            {/* En-tête groupe */}
+                            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+                                <Sk className="h-4 w-48" />
+                                <Sk className="h-5 w-16 rounded-full ml-auto" />
+                            </div>
+                            {/* Lignes */}
+                            <div className="divide-y divide-gray-50">
+                                {[...Array(gi === 0 ? 4 : gi === 1 ? 3 : 2)].map((_, i) => (
+                                    <div key={i} className="flex items-center gap-4 px-5 py-4">
+                                        <div className="flex-1 space-y-1.5">
+                                            <Sk className="h-3.5 w-32" />
+                                            <Sk className="h-3 w-64" />
+                                        </div>
+                                        <Sk className="h-3 w-24 hidden md:block" />
+                                        <Sk className="h-3 w-20 hidden md:block" />
+                                        <Sk className="h-5 w-16 rounded-full" />
+                                        <Sk className="h-5 w-14 rounded-full" />
+                                        <Sk className="w-7 h-7 rounded-lg" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : groups.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-16">
