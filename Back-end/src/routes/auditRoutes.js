@@ -73,6 +73,14 @@ const { getPlanActions, createPlanAction, updatePlanAction, deletePlanAction, ge
  *     tags: [Audits]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: statut
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [archive]
+ *         description: Passer `statut=archive` pour récupérer uniquement les audits archivés (remplace l'ancienne route /archives)
  *     responses:
  *       200:
  *         description: Liste des audits
@@ -215,6 +223,7 @@ router.get('/:id', verifyToken, getAuditById);
  *               identification: { type: object }
  *               indicateurs: { type: object }
  *               auditeurs_ids: { type: array, items: { type: integer } }
+ *               rapport_archive: { type: boolean, description: "true pour archiver le rapport PDF de l'audit (indépendant de l'archivage de l'audit)" }
  *     responses:
  *       200:
  *         description: Audit mis à jour
