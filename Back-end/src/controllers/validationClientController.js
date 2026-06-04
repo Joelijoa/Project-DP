@@ -39,6 +39,9 @@ const soumettreValidationPlanning = async (req, res) => {
 // PUT /api/audits/:id/validation-planning/repondre  (client)
 const repondreValidationPlanning = async (req, res) => {
     try {
+        if (req.user.role !== 'client')
+            return res.status(403).json({ message: 'Réservé au rôle client.' });
+
         const { action, commentaire } = req.body;
         if (!['valider', 'demander_modification'].includes(action))
             return res.status(400).json({ message: 'Action invalide.' });
@@ -48,7 +51,7 @@ const repondreValidationPlanning = async (req, res) => {
         const audit = await Audit.findByPk(req.params.id);
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé.' });
 
-        if (req.user.role === 'client' && audit.entite_id !== req.user.entite_id)
+        if (audit.entite_id !== req.user.entite_id)
             return res.status(403).json({ message: 'Accès refusé.' });
 
         const statut = action === 'valider' ? 'valide' : 'modification_demandee';
@@ -101,6 +104,9 @@ const soumettreValidationRapport = async (req, res) => {
 // PUT /api/audits/:id/validation-rapport/repondre  (client)
 const repondreValidationRapport = async (req, res) => {
     try {
+        if (req.user.role !== 'client')
+            return res.status(403).json({ message: 'Réservé au rôle client.' });
+
         const { action, commentaire } = req.body;
         if (!['valider', 'demander_modification'].includes(action))
             return res.status(400).json({ message: 'Action invalide.' });
@@ -110,7 +116,7 @@ const repondreValidationRapport = async (req, res) => {
         const audit = await Audit.findByPk(req.params.id);
         if (!audit) return res.status(404).json({ message: 'Audit non trouvé.' });
 
-        if (req.user.role === 'client' && audit.entite_id !== req.user.entite_id)
+        if (audit.entite_id !== req.user.entite_id)
             return res.status(403).json({ message: 'Accès refusé.' });
 
         const statut = action === 'valider' ? 'valide' : 'modification_demandee';

@@ -573,18 +573,20 @@ router.put('/:id/validation-planning/soumettre', verifyToken, verifyRole('admin'
  *         application/json:
  *           schema:
  *             type: object
- *             required: [statut]
+ *             required: [action]
  *             properties:
- *               statut:
+ *               action:
  *                 type: string
- *                 enum: [valide, modifications_demandees]
- *                 example: valide
+ *                 enum: [valider, demander_modification]
+ *                 example: valider
  *               commentaire:
  *                 type: string
  *                 example: "Planning approuvé, merci."
  *     responses:
  *       200:
  *         description: Réponse enregistrée
+ *       403:
+ *         description: Réservé au rôle client
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
@@ -657,18 +659,20 @@ router.put('/:id/validation-rapport/soumettre',  verifyToken, verifyRole('admin'
  *         application/json:
  *           schema:
  *             type: object
- *             required: [statut]
+ *             required: [action]
  *             properties:
- *               statut:
+ *               action:
  *                 type: string
- *                 enum: [valide, modifications_demandees]
- *                 example: valide
+ *                 enum: [valider, demander_modification]
+ *                 example: valider
  *               commentaire:
  *                 type: string
  *                 example: "Rapport validé."
  *     responses:
  *       200:
  *         description: Réponse enregistrée
+ *       403:
+ *         description: Réservé au rôle client
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
