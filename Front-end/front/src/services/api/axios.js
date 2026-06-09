@@ -17,10 +17,11 @@ api.interceptors.request.use((config) => {
 });
 
 // Intercepteur : gérer les erreurs (401 = token expiré → logout)
+// Ne pas rediriger si on est déjà sur /login (échec de connexion normal)
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 && window.location.pathname !== '/login') {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/login';
