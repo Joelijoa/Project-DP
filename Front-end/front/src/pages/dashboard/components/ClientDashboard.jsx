@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import DonutChart from './DonutChart';
 
 const STATUT_AUDIT = {
     brouillon: { label: 'Brouillon', color: '#9ca3af', bg: 'bg-gray-100',   text: 'text-gray-600' },
@@ -8,10 +9,17 @@ const STATUT_AUDIT = {
 };
 
 const PRIORITE = {
-    haute:   { label: 'Haute',   badge: 'bg-red-50 text-red-700' },
-    moyenne: { label: 'Moyenne', badge: 'bg-amber-50 text-amber-700' },
-    basse:   { label: 'Basse',   badge: 'bg-gray-100 text-gray-600' },
+    haute:   { label: 'Haute',   badge: 'bg-red-50 text-red-700',    color: '#CC0000', dot: 'bg-red-500' },
+    moyenne: { label: 'Moyenne', badge: 'bg-amber-50 text-amber-700', color: '#d97706', dot: 'bg-amber-500' },
+    basse:   { label: 'Basse',   badge: 'bg-gray-100 text-gray-600',  color: '#6b7280', dot: 'bg-gray-400' },
 };
+
+const DONUT_SEGMENTS = [
+    { key: 'brouillon', label: 'Brouillon', color: '#9ca3af', bg: 'bg-gray-100',  text: 'text-gray-600' },
+    { key: 'en_cours',  label: 'En cours',  color: '#3b82f6', bg: 'bg-blue-50',   text: 'text-blue-700' },
+    { key: 'termine',   label: 'Terminé',   color: '#16a34a', bg: 'bg-green-50',  text: 'text-green-700' },
+    { key: 'archive',   label: 'Archivé',   color: '#d97706', bg: 'bg-yellow-50', text: 'text-yellow-700' },
+];
 
 const Sk = ({ className }) => <div className={`bg-gray-100 animate-pulse rounded-lg ${className}`} />;
 
@@ -27,6 +35,25 @@ const SectionLabel = ({ children }) => (
 
 const ClientDashboard = ({ user, today, audits, plans, loading, refusedDocs, enCours, termines }) => {
     const clientActionsOuvertes = plans.filter(p => p.statut === 'a_faire' || p.statut === 'en_cours');
+    const actionsCloturees = plans.filter(p => p.statut === 'cloture').length;
+    const cloturePct = plans.length > 0 ? Math.round((actionsCloturees / plans.length) * 100) : 0;
+
+    const donutSegments = DONUT_SEGMENTS.map(s => ({
+        ...s,
+        value: audits.filter(a => a.statut === s.key).length,
+    }));
+
+    const plansByPrio = ['haute', 'moyenne', 'basse'].map(key => ({
+        key,
+        ...PRIORITE[key],
+        total:    plans.filter(p => p.priorite === key).length,
+        ouvertes: plans.filter(p => p.priorite === key && (p.statut === 'a_faire' || p.statut === 'en_cours')).length,
+    }));
+    const maxPrio = Math.max(...plansByPrio.map(p => p.total), 1);
+
+    // Cercle de progression pour le taux de clôture
+    const circR = 28, circC = 2 * Math.PI * circR;
+    const circDash = (cloturePct / 100) * circC;
 
     return (
         <div className="space-y-7">
@@ -128,6 +155,114 @@ const ClientDashboard = ({ user, today, audits, plans, loading, refusedDocs, enC
                             <p className="text-xs text-gray-400 mt-1.5">{s.sub}</p>
                         </div>
                     ))}
+                </div>
+            </div>
+
+            {/* Graphiques */}
+            <div>
+                <SectionLabel>Répartition & Activité</SectionLabel>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+                    {/* Donut statuts — col-span-2 */}
+                    <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <p className="text-sm font-semibold text-gray-800">Statuts des audits</p>
+                            {audits.length > 0 && (
+                                <span className="text-xs text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-lg">
+                                    {audits.length} total
+                                </span>
+                            )}
+                        </div>
+                        {loading ? <Spin /> : (
+                            <div className="flex items-center gap-6">
+                                <div className="flex-shrink-0">
+                                    <DonutChart segments={donutSegments} total={audits.length} />
+                                </div>
+                                <div className="flex-1 space-y-3 min-w-0">
+                                    {donutSegments.map((seg, i) => (
+                                        <div key={i} className="flex items-center gap-2.5">
+                                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                                            <span className="text-xs text-gray-600 flex-1 truncate">{seg.label}</span>
+                                            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${seg.bg} ${seg.text}`}>{seg.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Plans d'actions — col-span-3 */}
+                    <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <p className="text-sm font-semibold text-gray-800">Plans d'actions</p>
+                            {clientActionsOuvertes.length > 0 && (
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg"
+                                    style={{ backgroundColor: 'var(--brand-red-light)', color: 'var(--brand-red)' }}>
+                                    {clientActionsOuvertes.length} ouvertes
+                                </span>
+                            )}
+                        </div>
+                        {loading ? (
+                            <div className="space-y-4 pt-1">
+                                {[...Array(3)].map((_, i) => <Sk key={i} className="h-9" />)}
+                            </div>
+                        ) : plans.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8 text-center">
+                                <svg className="w-8 h-8 text-gray-200 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5" />
+                                </svg>
+                                <p className="text-xs text-gray-400">Aucun plan d'action</p>
+                            </div>
+                        ) : (
+                            <div className="flex gap-6 items-center">
+                                {/* Cercle taux de clôture */}
+                                <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
+                                    <svg width="80" height="80" viewBox="0 0 80 80">
+                                        <g transform="rotate(-90,40,40)">
+                                            <circle cx="40" cy="40" r={circR} fill="none" stroke="#f3f4f6" strokeWidth="10" />
+                                            <circle cx="40" cy="40" r={circR} fill="none" stroke="#16a34a" strokeWidth="10"
+                                                strokeDasharray={`${circDash} ${circC - circDash}`}
+                                                strokeLinecap="round" />
+                                        </g>
+                                        <text x="40" y="36" textAnchor="middle"
+                                            style={{ fontSize: '16px', fontWeight: '800', fill: '#111827', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                                            {cloturePct}%
+                                        </text>
+                                        <text x="40" y="50" textAnchor="middle"
+                                            style={{ fontSize: '7px', fill: '#9ca3af', fontFamily: 'Plus Jakarta Sans, sans-serif', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                                            clôturés
+                                        </text>
+                                    </svg>
+                                    <p className="text-[10px] text-gray-400 text-center leading-tight">
+                                        {actionsCloturees}/{plans.length}<br/>clôturés
+                                    </p>
+                                </div>
+                                {/* Barres priorité */}
+                                <div className="flex-1 space-y-3.5">
+                                    {plansByPrio.map(p => (
+                                        <div key={p.key}>
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-2 h-2 rounded-full ${p.dot}`} />
+                                                    <span className="text-xs font-medium text-gray-700">{p.label}</span>
+                                                    {p.ouvertes > 0 && (
+                                                        <span className={`text-[10px] font-semibold px-1.5 py-px rounded ${p.badge}`}>
+                                                            {p.ouvertes} ouvertes
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs font-bold text-gray-700">{p.total}</span>
+                                            </div>
+                                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                <div className="h-full rounded-full transition-all duration-700"
+                                                    style={{ width: `${(p.total / maxPrio) * 100}%`, backgroundColor: p.color }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
