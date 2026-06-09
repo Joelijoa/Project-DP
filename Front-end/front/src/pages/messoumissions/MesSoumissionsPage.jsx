@@ -37,6 +37,13 @@ const VALIDATION_CONFIG = {
     },
 };
 
+const STATUT_OPTIONS = [
+    { value: '',           label: 'Tous les statuts' },
+    { value: 'en_attente', label: 'En attente' },
+    { value: 'valide',     label: 'Validé' },
+    { value: 'rejete',     label: 'Rejeté' },
+];
+
 const StatusBadge = ({ statut }) => {
     const cfg = VALIDATION_CONFIG[statut];
     if (!cfg) return null;
@@ -54,14 +61,14 @@ const Spin = () => (
     </div>
 );
 
-const EmptyTab = ({ label }) => (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3 bg-gray-50">
-            <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+const EmptyState = ({ label }) => (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+        <div className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
             </svg>
         </div>
-        <p className="text-sm font-medium text-gray-500">{label}</p>
+        <p className="text-sm font-medium text-gray-700">{label}</p>
         <p className="text-xs text-gray-400 mt-1">Aucun élément soumis pour le moment</p>
     </div>
 );
@@ -80,6 +87,8 @@ const MesSoumissionsPage = () => {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [openGroups, setOpenGroups] = useState(new Set());
+    const [search, setSearch] = useState('');
+    const [filterStatut, setFilterStatut] = useState('');
 
     useEffect(() => {
         const run = async () => {
@@ -130,52 +139,116 @@ const MesSoumissionsPage = () => {
     const auditStats = countByStatut(audits);
     const planStats  = countByStatut(plans);
 
+    // Filtres
+    const filteredAudits = useMemo(() => audits.filter(a => {
+        if (search && !a.nom.toLowerCase().includes(search.toLowerCase()) &&
+            !(a.client || '').toLowerCase().includes(search.toLowerCase())) return false;
+        if (filterStatut && a.statut_validation !== filterStatut) return false;
+        return true;
+    }), [audits, search, filterStatut]);
+
+    const filteredPlansByAudit = useMemo(() => plansByAudit.map(g => ({
+        ...g,
+        plans: g.plans.filter(p => {
+            if (search && !(p.action_corrective || '').toLowerCase().includes(search.toLowerCase()) &&
+                !(g.audit?.nom || '').toLowerCase().includes(search.toLowerCase())) return false;
+            if (filterStatut && p.statut_validation !== filterStatut) return false;
+            return true;
+        }),
+    })).filter(g => g.plans.length > 0), [plansByAudit, search, filterStatut]);
+
+    const hasFilters = search || filterStatut;
+    const total = tab === 'audits' ? audits.length : plans.length;
+
     const tabs = [
-        { key: 'audits', label: 'Audits soumis',         count: audits.length, stats: auditStats },
-        { key: 'plans',  label: "Plans d'actions soumis", count: plans.length,  stats: planStats  },
+        { key: 'audits', label: 'Audits soumis',          count: audits.length, stats: auditStats },
+        { key: 'plans',  label: "Plans d'actions soumis",  count: plans.length,  stats: planStats  },
     ];
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
 
             {/* En-tête */}
-            <div>
-                <h1 className="text-xl font-semibold text-gray-900">Mes soumissions</h1>
-                <p className="text-sm text-gray-500 mt-0.5">
-                    Suivi des audits et plans d'actions que vous avez soumis pour validation
-                </p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-xl font-bold text-gray-900">Travaux soumis</h1>
+                    <p className="text-sm text-gray-400 mt-0.5">
+                        Suivi des audits et plans d'actions soumis pour validation
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl">
+                    <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                    </svg>
+                    <span className="text-xs font-semibold text-gray-600">{total} soumission{total > 1 ? 's' : ''}</span>
+                </div>
             </div>
 
             {loading ? <Spin /> : (
                 <>
-                    {/* Onglets */}
-                    <div className="flex gap-3">
+                    {/* Onglets — style Archives */}
+                    <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
                         {tabs.map(t => (
                             <button key={t.key} onClick={() => setTab(t.key)}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${tab === t.key ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-                                <div className="text-left">
-                                    <p className={`text-lg font-bold leading-none ${tab === t.key ? 'text-red-700' : 'text-gray-800'}`}>
-                                        {t.count}
-                                    </p>
-                                    <p className={`text-xs mt-0.5 ${tab === t.key ? 'text-red-600' : 'text-gray-500'}`}>
-                                        {t.label}
-                                    </p>
-                                </div>
+                                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                                    tab === t.key
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                }`}>
+                                {t.label}
                                 {t.count > 0 && (
-                                    <div className="flex gap-1.5 ml-2">
-                                        {t.stats.en_attente > 0 && (
-                                            <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0 mt-0.5" title={`${t.stats.en_attente} en attente`} />
-                                        )}
-                                        {t.stats.valide > 0 && (
-                                            <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 mt-0.5" title={`${t.stats.valide} validé(s)`} />
-                                        )}
-                                        {t.stats.rejete > 0 && (
-                                            <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-0.5" title={`${t.stats.rejete} rejeté(s)`} />
-                                        )}
+                                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-md ${
+                                        tab === t.key ? 'bg-gray-100 text-gray-700' : 'bg-gray-200 text-gray-500'
+                                    }`}>
+                                        {t.count}
+                                    </span>
+                                )}
+                                {t.count > 0 && (
+                                    <div className="flex gap-1">
+                                        {t.stats.en_attente > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />}
+                                        {t.stats.valide > 0     && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />}
+                                        {t.stats.rejete > 0     && <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />}
                                     </div>
                                 )}
                             </button>
                         ))}
+                    </div>
+
+                    {/* Barre de filtres — style Archives */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3.5 flex items-center gap-3 flex-wrap">
+                        <div className="relative flex-1 min-w-48">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                            </svg>
+                            <input
+                                type="text"
+                                placeholder="Rechercher un audit ou action..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-1 py-1">
+                            {STATUT_OPTIONS.map(opt => (
+                                <button key={opt.value} onClick={() => setFilterStatut(opt.value)}
+                                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
+                                        filterStatut === opt.value
+                                            ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                    }`}>
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                        {hasFilters && (
+                            <button onClick={() => { setSearch(''); setFilterStatut(''); }}
+                                className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition">
+                                Réinitialiser
+                            </button>
+                        )}
+                        <span className="ml-auto text-xs text-gray-400">
+                            {tab === 'audits' ? filteredAudits.length : filteredPlansByAudit.reduce((s, g) => s + g.plans.length, 0)} résultat{(tab === 'audits' ? filteredAudits.length : filteredPlansByAudit.reduce((s, g) => s + g.plans.length, 0)) > 1 ? 's' : ''}
+                        </span>
                     </div>
 
                     {/* Alerte rejets */}
@@ -200,31 +273,34 @@ const MesSoumissionsPage = () => {
                         </div>
                     )}
 
-                    {/* Liste audits */}
+                    {/* ── Onglet Audits ── */}
                     {tab === 'audits' && (
-                        audits.length === 0
-                            ? <EmptyTab label="Aucun audit soumis" />
-                            : <div className="space-y-3 max-w-4xl">
-                                {audits.map(a => {
+                        filteredAudits.length === 0
+                            ? <EmptyState label={audits.length === 0 ? 'Aucun audit soumis' : 'Aucun résultat pour ces filtres'} />
+                            : <div className="space-y-3">
+                                {filteredAudits.map(a => {
                                     const cfg = VALIDATION_CONFIG[a.statut_validation];
                                     return (
                                         <div key={a.id}
-                                            className={`bg-white border rounded-2xl p-5 transition-all ${a.statut_validation === 'rejete' ? 'border-red-200' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}>
+                                            className={`bg-white border rounded-2xl p-5 shadow-sm transition-all ${
+                                                a.statut_validation === 'rejete'
+                                                    ? 'border-red-200'
+                                                    : 'border-gray-100 hover:border-gray-200 hover:shadow-md'
+                                            }`}>
                                             <div className="flex items-start justify-between gap-4">
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 flex-wrap mb-2">
                                                         <StatusBadge statut={a.statut_validation} />
                                                         {a.referentiel && (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-violet-50 text-violet-600">
-                                                                {a.referentiel.nom}
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-gray-100 text-gray-600">
+                                                                {a.referentiel.type === 'ISO27001' ? 'ISO 27001' : a.referentiel.type}
                                                             </span>
                                                         )}
                                                     </div>
                                                     <p className="text-sm font-semibold text-gray-900">{a.nom}</p>
                                                     {a.client && (
-                                                        <p className="text-xs text-gray-400 mt-1">{a.client}</p>
+                                                        <p className="text-xs text-gray-400 mt-0.5">{a.client}</p>
                                                     )}
-                                                    {/* Motif de rejet */}
                                                     {a.statut_validation === 'rejete' && a.commentaire_rejet && (
                                                         <div className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2.5">
                                                             <svg className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -238,7 +314,8 @@ const MesSoumissionsPage = () => {
                                                     )}
                                                 </div>
                                                 <button onClick={() => navigate(`/audits/${a.id}`)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition flex-shrink-0">
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-xl transition hover:opacity-90 flex-shrink-0"
+                                                    style={{ backgroundColor: 'var(--brand-red)' }}>
                                                     Voir l'audit
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -251,12 +328,12 @@ const MesSoumissionsPage = () => {
                             </div>
                     )}
 
-                    {/* Liste plans — groupés par audit */}
+                    {/* ── Onglet Plans ── */}
                     {tab === 'plans' && (
-                        plansByAudit.length === 0
-                            ? <EmptyTab label="Aucun plan d'action soumis" />
-                            : <div className="space-y-3 max-w-4xl">
-                                {plansByAudit.map(({ audit, auditId, plans: groupPlans }) => {
+                        filteredPlansByAudit.length === 0
+                            ? <EmptyState label={plans.length === 0 ? "Aucun plan d'action soumis" : 'Aucun résultat pour ces filtres'} />
+                            : <div className="space-y-3">
+                                {filteredPlansByAudit.map(({ audit, auditId, plans: groupPlans }) => {
                                     const isOpen = openGroups.has(auditId);
                                     const byStatut = {
                                         en_attente: groupPlans.filter(p => p.statut_validation === 'en_attente').length,
@@ -264,10 +341,9 @@ const MesSoumissionsPage = () => {
                                         rejete:     groupPlans.filter(p => p.statut_validation === 'rejete').length,
                                     };
                                     return (
-                                        <div key={auditId} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                                            {/* En-tête groupe */}
+                                        <div key={auditId} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                                             <button onClick={() => toggleGroup(auditId)}
-                                                className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition text-left">
+                                                className="w-full flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition text-left">
                                                 <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -277,9 +353,9 @@ const MesSoumissionsPage = () => {
                                                         <span className="text-sm font-semibold text-gray-800 truncate">
                                                             {audit?.nom || `Audit #${auditId}`}
                                                         </span>
-                                                        {audit?.referentiel?.nom && (
-                                                            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 flex-shrink-0">
-                                                                {audit.referentiel.nom}
+                                                        {audit?.referentiel?.type && (
+                                                            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 flex-shrink-0">
+                                                                {audit.referentiel.type === 'ISO27001' ? 'ISO 27001' : audit.referentiel.type}
                                                             </span>
                                                         )}
                                                     </div>
@@ -295,7 +371,6 @@ const MesSoumissionsPage = () => {
                                                 </div>
                                             </button>
 
-                                            {/* Plans du groupe */}
                                             {isOpen && (
                                                 <div className="border-t border-gray-100 divide-y divide-gray-50">
                                                     {groupPlans.map(p => {
@@ -339,9 +414,10 @@ const MesSoumissionsPage = () => {
                                                             </div>
                                                         );
                                                     })}
-                                                    <div className="px-4 py-2.5 flex justify-end">
+                                                    <div className="px-5 py-3 flex justify-end bg-gray-50/50">
                                                         <button onClick={() => navigate(`/audits/${auditId}`)}
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition">
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-xl transition hover:opacity-90"
+                                                            style={{ backgroundColor: 'var(--brand-red)' }}>
                                                             Voir l'audit
                                                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
