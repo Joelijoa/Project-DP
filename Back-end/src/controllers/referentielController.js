@@ -49,10 +49,13 @@ const getReferentielStats = async (req, res) => {
         }
         const domaines = await Domaine.count({ where: { referentiel_id: req.params.id } });
         const objectifs = await Objectif.count({
-            include: [{ model: Domaine, as: 'domaine', where: { referentiel_id: req.params.id }, attributes: [] }],
+            include: [{ model: Domaine, as: 'domaine', where: { referentiel_id: req.params.id }, attributes: [], required: true }],
         });
         const mesures = await Mesure.count({
-            include: [{ model: Objectif, as: 'objectif', include: [{ model: Domaine, as: 'domaine', where: { referentiel_id: req.params.id }, attributes: [] }] }],
+            include: [{
+                model: Objectif, as: 'objectif', required: true,
+                include: [{ model: Domaine, as: 'domaine', where: { referentiel_id: req.params.id }, attributes: [], required: true }],
+            }],
         });
         res.json({
             referentiel: { id: referentiel.id, nom: referentiel.nom, type: referentiel.type },
