@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
-import { getAllAudits, getEvaluations, getSoA, repondreValidationRapport } from '../../services/endpoints/auditService';
+import { getAllAudits, getEvaluations, getSoA, repondreValidationRapport, archiverRapport } from '../../services/endpoints/auditService';
 import { getPlanActions } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { exportAuditReportPDF } from '../../utils/exportReportPDF';
@@ -302,6 +302,7 @@ export default function MesRapportsPage() {
     const [filterRef, setFilterRef] = useState('');
     const [selected, setSelected] = useState(null);
     const [exporting, setExporting] = useState({});
+    const [archivingRapportId, setArchivingRapportId] = useState(null);
     const [configModal, setConfigModal] = useState({ open: false, audit: null, referentiel: null, loadingRef: false });
 
     useEffect(() => {
@@ -330,6 +331,19 @@ export default function MesRapportsPage() {
 
     const hasFilters = search || filterRef;
     const resetFilters = () => { setSearch(''); setFilterRef(''); };
+
+    const handleArchiverRapport = async (audit) => {
+        setArchivingRapportId(audit.id);
+        try {
+            await archiverRapport(audit.id);
+            toast.success(`Rapport de "${audit.nom}" archivé`);
+            setAudits(prev => prev.filter(a => a.id !== audit.id));
+        } catch {
+            toast.error("Erreur lors de l'archivage du rapport");
+        } finally {
+            setArchivingRapportId(null);
+        }
+    };
 
     const handleExport = async (audit, format, options = {}) => {
         setExporting(prev => ({ ...prev, [audit.id]: format }));
@@ -478,14 +492,15 @@ export default function MesRapportsPage() {
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={() => setSelected(audit)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                                                    disabled={!!exporting[audit.id] || archivingRapportId === audit.id}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <IconEye />
                                                     Voir
                                                 </button>
                                                 <button
                                                     onClick={() => handleOpenConfigModal(audit)}
-                                                    disabled={!!exporting[audit.id]}
+                                                    disabled={!!exporting[audit.id] || archivingRapportId === audit.id}
                                                     title="Configurer et télécharger le rapport PDF"
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#CC0000] text-white hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
@@ -494,12 +509,25 @@ export default function MesRapportsPage() {
                                                 </button>
                                                 <button
                                                     onClick={() => handleExport(audit, 'excel')}
-                                                    disabled={!!exporting[audit.id]}
+                                                    disabled={!!exporting[audit.id] || archivingRapportId === audit.id}
                                                     title="Télécharger le rapport Excel"
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     {exporting[audit.id] === 'excel' ? <IconSpin size="w-3.5 h-3.5" /> : <IconTable />}
                                                     {exporting[audit.id] === 'excel' ? 'Génération…' : 'Excel'}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleArchiverRapport(audit)}
+                                                    disabled={!!exporting[audit.id] || archivingRapportId === audit.id}
+                                                    title="Archiver ce rapport"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {archivingRapportId === audit.id ? <IconSpin size="w-3.5 h-3.5" /> : (
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                                                        </svg>
+                                                    )}
+                                                    {archivingRapportId === audit.id ? 'Archivage…' : 'Archiver'}
                                                 </button>
                                             </div>
                                         </td>
