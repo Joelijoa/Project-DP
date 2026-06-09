@@ -129,10 +129,42 @@ const AuditsListPage = () => {
 
     // Stats rapides
     const stats = [
-        { label: 'Total',      value: audits.length },
-        { label: 'En cours',   value: audits.filter(a => a.statut === 'en_cours').length },
-        { label: 'Terminés',   value: audits.filter(a => a.statut === 'termine').length },
-        { label: 'Brouillons', value: audits.filter(a => a.statut === 'brouillon').length },
+        {
+            label: 'Total',
+            value: audits.length,
+            icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'En cours',
+            value: audits.filter(a => a.statut === 'en_cours').length,
+            icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Terminés',
+            value: audits.filter(a => a.statut === 'termine').length,
+            icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            ),
+        },
+        {
+            label: 'Brouillons',
+            value: audits.filter(a => a.statut === 'brouillon').length,
+            icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+            ),
+        },
     ];
 
     return (
@@ -169,7 +201,12 @@ const AuditsListPage = () => {
                     ))
                 ) : stats.map((s, i) => (
                     <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-                        <p className="text-xs font-medium text-gray-400 mb-1">{s.label}</p>
+                        <div className="flex items-start justify-between mb-3">
+                            <p className="text-xs font-medium text-gray-400">{s.label}</p>
+                            <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400">
+                                {s.icon}
+                            </div>
+                        </div>
                         <p className="text-2xl font-bold text-gray-900">{s.value}</p>
                     </div>
                 ))}
