@@ -1,10 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { getAllAudits, getEvaluations, getSoA, repondreValidationRapport } from '../../services/endpoints/auditService';
 import { getPlanActions } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { exportAuditReportPDF } from '../../utils/exportReportPDF';
+import { exportAuditReportExcel } from '../../utils/exportReportExcel';
 import logoDataprotect from '../../assets/images/logoDataprotect.png';
+import ReportConfigModal from '../rapports/components/ReportConfigModal';
+
+const REF_OPTIONS = [
+    { value: '',         label: 'Tous' },
+    { value: 'DNSSI',    label: 'DNSSI' },
+    { value: 'ISO27001', label: 'ISO 27001' },
+];
 
 const STATUT_AUDIT = {
     brouillon: { label: 'Brouillon', badge: 'bg-gray-100 text-gray-600' },
@@ -43,6 +51,24 @@ function IconX() {
     return (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+    );
+}
+
+function IconDownload() {
+    return (
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+    );
+}
+
+function IconTable() {
+    return (
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
     );
 }
@@ -273,26 +299,84 @@ export default function MesRapportsPage() {
     const [audits, setAudits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [filterRef, setFilterRef] = useState('');
     const [selected, setSelected] = useState(null);
+    const [exporting, setExporting] = useState({});
+    const [configModal, setConfigModal] = useState({ open: false, audit: null, referentiel: null, loadingRef: false });
 
     useEffect(() => {
         getAllAudits()
             .then(res => {
                 const all = res.data.audits || [];
-                const validated = all.filter(a =>
-                    a.validation_rapport?.statut === 'accepte' || a.statut === 'termine'
+                const visible = all.filter(a =>
+                    a.validation_rapport?.statut === 'valide' ||
+                    a.validation_rapport?.statut === 'en_attente' ||
+                    a.validation_rapport?.statut === 'modification_demandee' ||
+                    a.statut === 'termine' ||
+                    a.statut === 'archive'
                 );
-                setAudits(validated);
+                setAudits(visible);
             })
             .catch(() => toast.error('Erreur lors du chargement des rapports'))
             .finally(() => setLoading(false));
     }, []);
 
-    const filtered = audits.filter(a => {
-        if (!search) return true;
+    const filtered = useMemo(() => audits.filter(a => {
         const q = search.toLowerCase();
-        return a.nom.toLowerCase().includes(q) || (a.client || '').toLowerCase().includes(q);
-    });
+        if (q && !a.nom.toLowerCase().includes(q) && !(a.client || '').toLowerCase().includes(q)) return false;
+        if (filterRef && a.referentiel?.type !== filterRef) return false;
+        return true;
+    }), [audits, search, filterRef]);
+
+    const hasFilters = search || filterRef;
+    const resetFilters = () => { setSearch(''); setFilterRef(''); };
+
+    const handleExport = async (audit, format, options = {}) => {
+        setExporting(prev => ({ ...prev, [audit.id]: format }));
+        try {
+            const [evRes, planRes, soaRes, refRes] = await Promise.all([
+                getEvaluations(audit.id),
+                getPlanActions(audit.id),
+                getSoA(audit.id),
+                getReferentielById(audit.referentiel_id),
+            ]);
+            const payload = {
+                audit,
+                evaluations: evRes.data.evaluations || [],
+                planActions: planRes.data.plans_actions || [],
+                soaEntries: soaRes.data.soa || [],
+                referentiel: refRes.data.referentiel,
+                logoDataprotectUrl: logoDataprotect,
+            };
+            if (format === 'pdf') {
+                await exportAuditReportPDF({ ...payload, options });
+            } else {
+                await exportAuditReportExcel(payload);
+            }
+            toast.success(`Rapport ${format.toUpperCase()} exporté`);
+        } catch (err) {
+            console.error(err);
+            toast.error(`Erreur lors de l'export ${format.toUpperCase()}`);
+        } finally {
+            setExporting(prev => ({ ...prev, [audit.id]: null }));
+        }
+    };
+
+    const handleOpenConfigModal = async (audit) => {
+        setConfigModal({ open: true, audit, referentiel: null, loadingRef: true });
+        try {
+            const refRes = await getReferentielById(audit.referentiel_id);
+            setConfigModal(prev => prev.open ? { ...prev, referentiel: refRes.data.referentiel, loadingRef: false } : prev);
+        } catch {
+            setConfigModal(prev => prev.open ? { ...prev, loadingRef: false } : prev);
+        }
+    };
+
+    const handlePdfConfirm = (options) => {
+        const audit = configModal.audit;
+        setConfigModal({ open: false, audit: null, referentiel: null, loadingRef: false });
+        handleExport(audit, 'pdf', options);
+    };
 
     return (
         <div>
@@ -303,7 +387,7 @@ export default function MesRapportsPage() {
                 </p>
             </div>
 
-            {/* Barre de recherche */}
+            {/* Filtres */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
                 <div className="flex flex-wrap gap-3 items-center">
                     <div className="relative flex-1 min-w-[220px]">
@@ -312,12 +396,25 @@ export default function MesRapportsPage() {
                         </svg>
                         <input
                             type="text"
-                            placeholder="Rechercher un rapport…"
+                            placeholder="Rechercher par nom ou client…"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-300"
                         />
                     </div>
+                    <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-1 py-1">
+                        {REF_OPTIONS.map(opt => (
+                            <button key={opt.value} onClick={() => setFilterRef(opt.value)}
+                                className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${filterRef === opt.value ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                    {hasFilters && (
+                        <button onClick={resetFilters} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition whitespace-nowrap">
+                            Réinitialiser
+                        </button>
+                    )}
                     <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">
                         {filtered.length} rapport{filtered.length !== 1 ? 's' : ''}
                     </span>
@@ -377,14 +474,34 @@ export default function MesRapportsPage() {
                                                 {st.label}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3.5 text-right">
-                                            <button
-                                                onClick={() => setSelected(audit)}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
-                                            >
-                                                <IconEye />
-                                                Voir le rapport
-                                            </button>
+                                        <td className="px-4 py-3.5">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => setSelected(audit)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                                                >
+                                                    <IconEye />
+                                                    Voir
+                                                </button>
+                                                <button
+                                                    onClick={() => handleOpenConfigModal(audit)}
+                                                    disabled={!!exporting[audit.id]}
+                                                    title="Configurer et télécharger le rapport PDF"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#CC0000] text-white hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {exporting[audit.id] === 'pdf' ? <IconSpin size="w-3.5 h-3.5" /> : <IconDownload />}
+                                                    {exporting[audit.id] === 'pdf' ? 'Génération…' : 'PDF'}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleExport(audit, 'excel')}
+                                                    disabled={!!exporting[audit.id]}
+                                                    title="Télécharger le rapport Excel"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {exporting[audit.id] === 'excel' ? <IconSpin size="w-3.5 h-3.5" /> : <IconTable />}
+                                                    {exporting[audit.id] === 'excel' ? 'Génération…' : 'Excel'}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -399,14 +516,27 @@ export default function MesRapportsPage() {
                     audit={selected}
                     onClose={() => setSelected(null)}
                     onValidated={() => {
-                        // Rafraîchir le statut de validation dans la liste
                         getAllAudits().then(res => {
                             const all = res.data.audits || [];
                             setAudits(all.filter(a =>
-                                a.validation_rapport?.statut === 'accepte' || a.statut === 'termine'
+                                a.validation_rapport?.statut === 'valide' ||
+                                a.validation_rapport?.statut === 'en_attente' ||
+                                a.validation_rapport?.statut === 'modification_demandee' ||
+                                a.statut === 'termine' ||
+                                a.statut === 'archive'
                             ));
                         }).catch(() => {});
                     }}
+                />
+            )}
+
+            {configModal.open && (
+                <ReportConfigModal
+                    audit={configModal.audit}
+                    referentiel={configModal.referentiel}
+                    loadingRef={configModal.loadingRef}
+                    onConfirm={handlePdfConfirm}
+                    onClose={() => setConfigModal({ open: false, audit: null, referentiel: null, loadingRef: false })}
                 />
             )}
         </div>
