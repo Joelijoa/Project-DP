@@ -151,11 +151,12 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                                                     </td>
                                                     {/* Preuves */}
                                                     <td className="px-3 py-3">
-                                                        <input type="text" value={ev.preuve || ''}
+                                                        <textarea value={ev.preuve || ''}
                                                             onChange={e => !readOnly && setEval(repId, 'preuve', e.target.value)}
                                                             readOnly={readOnly}
+                                                            rows={6}
                                                             placeholder={readOnly ? '—' : 'Références...'}
-                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed" />
+                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y min-h-[120px]" />
                                                     </td>
                                                     {/* Note */}
                                                     <td className="px-3 py-3">

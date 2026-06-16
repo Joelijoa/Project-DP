@@ -197,13 +197,13 @@ const TabEvaluation = ({ referentiel, localEvals, setEval, openDomaines, setOpen
                                                                         <ConformiteBadge conformite={conformite} />
                                                                     </td>
                                                                     <td className="px-3 py-2 w-36">
-                                                                        <input
-                                                                            type="text"
+                                                                        <textarea
                                                                             value={ev.preuve || ''}
                                                                             onChange={e => !readOnly && setEval(mesure.id, 'preuve', e.target.value)}
                                                                             readOnly={readOnly}
+                                                                            rows={6}
                                                                             placeholder={readOnly ? '—' : isNA ? 'Justifier la N/A...' : 'Références...'}
-                                                                            className={`w-full text-xs border rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-not-allowed ${isNA && !readOnly
+                                                                            className={`w-full text-xs border rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 read-only:cursor-not-allowed resize-y min-h-[120px] ${isNA && !readOnly
                                                                                 ? 'border-orange-200 bg-orange-50 read-only:bg-orange-50'
                                                                                 : 'border-gray-200 read-only:bg-white read-only:text-gray-700'
                                                                                 }`}
