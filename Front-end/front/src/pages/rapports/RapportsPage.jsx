@@ -135,10 +135,15 @@ export default function RapportsPage() {
                                 recommandation: e.recommandation || '',
                             }));
 
-                        reformulations = await reformulerConstats(items, payload.referentiel?.nom || '');
+                        if (items.length === 0) {
+                            toast.info('Aucun constat à reformuler — champs vides.');
+                        } else {
+                            reformulations = await reformulerConstats(items, payload.referentiel?.nom || '');
+                        }
                     } catch (err) {
-                        console.warn('[Groq] Reformulation échouée, fallback texte brut :', err.message);
-                        toast.warn('Reformulation IA indisponible — le rapport utilise les constats bruts.');
+                        const detail = err.response?.data?.message || err.message;
+                        console.warn('[Groq] Reformulation échouée :', detail);
+                        toast.warn(`Reformulation IA indisponible (${detail}) — constats bruts utilisés.`);
                     }
                 }
                 await exportAuditReportPDF({ ...payload, reformulations, options });
