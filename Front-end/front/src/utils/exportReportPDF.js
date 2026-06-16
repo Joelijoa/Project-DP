@@ -20,9 +20,12 @@ const H = 297;
 const CW = W - 2 * M;
 
 const CONFORMITE = {
-    conforme: 'Conforme', partiel: 'Partiellement conforme',
-    non_conforme: 'Non conforme', nc_mineure: 'NC Mineure',
-    nc_majeure: 'NC Majeure', na: 'N/A',
+    conforme:     'Conforme',
+    partiel:      'Partiellement conforme',
+    non_conforme: 'Non conforme',
+    nc_mineure:   'NC Mineure',
+    nc_majeure:   'NC Majeure',
+    na:           'N/A',
 };
 const PHASE = {
     cadrage: 'Cadrage', prerequis: 'Prérequis',
@@ -79,7 +82,7 @@ async function chartToPNG(config, wPx, hPx) {
             ...config,
             options: { ...(config.options || {}), responsive: false, animation: false },
         });
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 30));
         const ctx = canvas.getContext('2d');
         ctx.globalCompositeOperation = 'destination-over';
         ctx.fillStyle = 'white';
@@ -91,6 +94,21 @@ async function chartToPNG(config, wPx, hPx) {
     } finally {
         if (document.body.contains(canvas)) document.body.removeChild(canvas);
     }
+}
+
+function computeDomStats(referentiel, evaluations) {
+    return sortedDomaines(referentiel).map(d => {
+        const ids = new Set();
+        for (const o of d.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
+        const evs   = evaluations.filter(e => ids.has(e.mesure_id));
+        const conf  = evs.filter(e => e.conformite === 'conforme').length;
+        const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
+        const ncMin = evs.filter(e => e.conformite === 'nc_mineure').length;
+        const taux  = evs.length ? Math.round(conf / evs.length * 100) : 0;
+        const sumMat = evs.reduce((s, e) => s + (e.niveau_maturite ?? 0), 0);
+        const moy   = evs.length ? (sumMat / evs.length).toFixed(1) : 'N/A';
+        return { nom: d.nom || d.code || '', total: evs.length, conf, ncMin, ncMaj, taux, maturite: moy };
+    }).filter(d => d.total > 0);
 }
 
 function sortedDomaines(referentiel) {
@@ -330,7 +348,7 @@ function renderIntroduction(doc, audit, logo, num) {
     }
 }
 
-async function renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num) {
+async function renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num, preCharts = {}) {
     const hdr = `${num}. Résumé exécutif`;
     drawHeader(doc, logo, hdr);
     let y = 32;
@@ -357,12 +375,12 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
     y += 27;
 
     const [donutPNG, barPNG] = await Promise.all([
-        chartToPNG({
+        preCharts.donut || chartToPNG({
             type: 'doughnut',
             data: { datasets: [{ data: [stats.tauxConformite, 100 - stats.tauxConformite], backgroundColor: ['#16a34a', '#e5e7eb'], borderWidth: 0 }] },
             options: { cutout: '74%', plugins: { legend: { display: false }, tooltip: { enabled: false } } },
-        }, 260, 260),
-        chartToPNG({
+        }, 200, 200),
+        preCharts.conformiteBar || chartToPNG({
             type: 'bar',
             data: {
                 labels: CONF_LABELS,
@@ -376,7 +394,7 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
                     y: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' }, color: '#1e293b' } },
                 },
             },
-        }, 580, 310),
+        }, 440, 240),
     ]);
 
     const donutMM = 45, barH = 50, barW = CW - donutMM - 8;
@@ -394,18 +412,12 @@ async function renderResume(doc, audit, stats, evaluations, planActions, referen
     doc.text(`${stats.maturiteMoyenne} / 5`, M + 38, y);
     y += 9;
 
-    const doms = sortedDomaines(referentiel);
-    if (doms.length > 0) {
+    const domStats = preCharts.domStats || computeDomStats(referentiel, evaluations);
+    if (domStats.length > 0) {
         y = subTitle(doc, `${num}.1  Résultats par domaine`, y);
-        const domRows = doms.map(d => {
-            const ids = new Set();
-            for (const o of d.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
-            const evs   = evaluations.filter(e => ids.has(e.mesure_id));
-            const conf  = evs.filter(e => e.conformite === 'conforme').length;
-            const ncMaj = evs.filter(e => e.conformite === 'nc_majeure').length;
-            const ncMin = evs.filter(e => e.conformite === 'nc_mineure').length;
-            return [d.nom || d.code || '', String(evs.length), String(conf), String(ncMin), String(ncMaj), evs.length ? `${Math.round(conf / evs.length * 100)} %` : '—'];
-        });
+        const domRows = domStats.map(d =>
+            [d.nom, String(d.total), String(d.conf), String(d.ncMin), String(d.ncMaj), `${d.taux} %`]
+        );
         autoTable(doc, {
             startY: y,
             head: [['Domaine', 'Mesures', 'Conformes', 'NC Min.', 'NC Maj.', 'Taux']],
@@ -573,7 +585,7 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
                 const constat = isNA && ev.preuve ? `Raison N/A : ${ev.preuve}` : (ref?.constat || ev.commentaire || '—');
                 const reco = isNA ? '—' : (ref?.recommandation || ev.recommandation || '—');
                 const conformiteDisplay = isNA
-                    ? (ev.conformite ? (CONFORMITE[ev.conformite] || ev.conformite) : 'Non applicable')
+                    ? 'N/A'
                     : (CONFORMITE[ev.conformite] || ev.conformite || '—');
                 return [inf?.mesure?.code || `M${ev.mesure_id}`, inf?.mesure?.description || '—', conformiteDisplay, mat, constat, reco];
             }),
@@ -768,31 +780,19 @@ function renderContexteReglementaire(doc, audit, logo, num) {
     bodyText(doc, `Dans le cadre du référentiel DNSSI, l'entité auditée est tenue de :\n— Mettre en place les mesures de sécurité définies par le référentiel\n— Conduire des audits de sécurité périodiques\n— Remédier aux non-conformités identifiées dans les délais impartis\n— Soumettre les rapports d'audit à la DNSSI selon les modalités définies\n— Former et sensibiliser son personnel aux enjeux de cybersécurité`, y);
 }
 
-async function renderTableauDeBordTheme(doc, audit, evaluations, referentiel, logo, num) {
+async function renderTableauDeBordTheme(doc, audit, evaluations, referentiel, logo, num, preCharts = {}) {
     const hdr = `${num}. Tableau de bord`;
     drawHeader(doc, logo, hdr);
     let y = 32;
     y = sectionTitle(doc, num, 'Tableau de bord par thème', y);
     y = bodyText(doc, `Cette section présente une vue synthétique du niveau de conformité par domaine thématique du référentiel ${audit.referentiel?.nom || 'DNSSI'}. Elle permet d'identifier rapidement les domaines nécessitant une attention prioritaire.`, y);
 
-    const doms = sortedDomaines(referentiel);
-    const domStats = doms.map(d => {
-        const ids = new Set();
-        for (const o of d.objectifs || []) for (const m of o.mesures || []) ids.add(m.id);
-        const evs    = evaluations.filter(e => ids.has(e.mesure_id));
-        const conf   = evs.filter(e => e.conformite === 'conforme').length;
-        const ncMaj  = evs.filter(e => e.conformite === 'nc_majeure').length;
-        const ncMin  = evs.filter(e => e.conformite === 'nc_mineure').length;
-        const taux   = evs.length ? Math.round(conf / evs.length * 100) : 0;
-        const sumMat = evs.reduce((s, e) => s + (e.niveau_maturite ?? 0), 0);
-        const moy    = evs.length ? (sumMat / evs.length).toFixed(1) : 'N/A';
-        return { nom: d.nom || d.code || '', total: evs.length, conf, ncMin, ncMaj, taux, maturite: moy };
-    }).filter(d => d.total > 0);
+    const domStats = preCharts.domStats || computeDomStats(referentiel, evaluations);
 
     if (domStats.length > 0) {
         const nbDoms  = domStats.length;
         const chartH  = Math.min(90, Math.max(40, nbDoms * 11));
-        const barPNG  = await chartToPNG({
+        const barPNG  = preCharts.themesBar || await chartToPNG({
             type: 'bar',
             data: {
                 labels: domStats.map(d => d.nom.length > 28 ? d.nom.slice(0, 26) + '…' : d.nom),
@@ -810,7 +810,7 @@ async function renderTableauDeBordTheme(doc, audit, evaluations, referentiel, lo
                     y: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#1e293b' } },
                 },
             },
-        }, 620, Math.max(200, nbDoms * 38));
+        }, 480, Math.max(160, nbDoms * 30));
 
         doc.addImage(barPNG, 'PNG', M, y, CW, chartH);
         y += chartH + 6;
@@ -924,14 +924,62 @@ function renderConclusion(doc, audit, stats, planActions, logo, num) {
 
 // ─── EXPORT PRINCIPAL ─────────────────────────────────────────────────────────
 export async function exportAuditReportPDF({ audit, evaluations, planActions, soaEntries, referentiel, logoDataprotectUrl, reformulations = {}, options = {} }) {
-    const refType = getReferentielType(referentiel);
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-    const logo      = logoDataprotectUrl ? await loadLogo(logoDataprotectUrl) : { b64: null, ar: 4 };
-    const year      = new Date().getFullYear();
+    const refType   = getReferentielType(referentiel);
     const today     = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
     const mesureMap = buildMesureMap(referentiel);
     const stats     = buildStats(evaluations);
+    const domStats  = computeDomStats(referentiel, evaluations);
+
+    // Pré-génération parallèle : logo + tous les graphiques en même temps
+    const needsThemesBar = refType === 'dnssi' && (options.tableauDeBord ?? true) && domStats.length > 0;
+    const nbDoms = domStats.length;
+
+    const [logo, donutPNG, conformiteBarPNG, themesBarPNG] = await Promise.all([
+        logoDataprotectUrl ? loadLogo(logoDataprotectUrl) : Promise.resolve({ b64: null, ar: 4 }),
+        chartToPNG({
+            type: 'doughnut',
+            data: { datasets: [{ data: [stats.tauxConformite, 100 - stats.tauxConformite], backgroundColor: ['#16a34a', '#e5e7eb'], borderWidth: 0 }] },
+            options: { cutout: '74%', plugins: { legend: { display: false }, tooltip: { enabled: false } } },
+        }, 200, 200),
+        chartToPNG({
+            type: 'bar',
+            data: {
+                labels: CONF_LABELS,
+                datasets: [{ data: CONF_KEYS.map(k => stats.counts[k]), backgroundColor: CONF_COLORS, borderRadius: 4, borderSkipped: false }],
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: {
+                    x: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 11 }, color: '#6b7280' }, beginAtZero: true },
+                    y: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' }, color: '#1e293b' } },
+                },
+            },
+        }, 440, 240),
+        needsThemesBar ? chartToPNG({
+            type: 'bar',
+            data: {
+                labels: domStats.map(d => d.nom.length > 28 ? d.nom.slice(0, 26) + '…' : d.nom),
+                datasets: [{
+                    data: domStats.map(d => d.taux),
+                    backgroundColor: domStats.map(d => d.taux >= 80 ? '#16a34a' : d.taux >= 50 ? '#ca8a04' : '#dc2626'),
+                    borderRadius: 4, borderSkipped: false,
+                }],
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: {
+                    x: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 }, color: '#6b7280' }, beginAtZero: true, max: 100 },
+                    y: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#1e293b' } },
+                },
+            },
+        }, 480, Math.max(160, nbDoms * 30)) : Promise.resolve(null),
+    ]);
+
+    const preCharts = { donut: donutPNG, conformiteBar: conformiteBarPNG, themesBar: themesBarPNG, domStats };
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     // Page de garde (toujours)
     renderCover(doc, audit, logo, today);
@@ -965,7 +1013,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
         }
         if (o.resume) {
             const page = addPage(); num++;
-            await renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num);
+            await renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num, preCharts);
             tocSections.push({ title: `${num}. Résumé exécutif`, page });
         }
         if (o.contexteReglementaire) {
@@ -985,7 +1033,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
         }
         if (o.tableauDeBord) {
             const page = addPage(); num++;
-            await renderTableauDeBordTheme(doc, audit, evaluations, referentiel, logo, num);
+            await renderTableauDeBordTheme(doc, audit, evaluations, referentiel, logo, num, preCharts);
             tocSections.push({ title: `${num}. Tableau de bord par thème`, page });
         }
         if (o.recommandations) {
@@ -1019,7 +1067,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
         }
         if (o.resume) {
             const page = addPage(); num++;
-            await renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num);
+            await renderResume(doc, audit, stats, evaluations, planActions, referentiel, logo, num, preCharts);
             tocSections.push({ title: `${num}. Résumé exécutif`, page });
         }
         if (o.terminologie) {

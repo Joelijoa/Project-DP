@@ -7,10 +7,11 @@ const NIVEAUX_LABELS = ['Aucun', 'Initial', 'Reproductible', 'Défini', 'Maitris
 
 const calcConformite = (niveau) => {
     if (niveau === null || niveau === undefined) return 'na';
-    if (niveau === -1) return 'na';
-    if (niveau <= 1) return 'non_conforme';
-    if (niveau <= 3) return 'partiel';
-    return 'conforme';
+    if (niveau < 0) return 'na';           // -1 (DNSSI N/A) et -2 (ISO Annex A N/A)
+    if (niveau === 0) return 'nc_majeure'; // 0 = NC majeure (SMSI) ou Aucun (DNSSI)
+    if (niveau <= 2) return 'nc_mineure';  // 1-2 = NC mineure (SMSI niveau=2, DNSSI Initial/Reproductible)
+    if (niveau <= 3) return 'partiel';     // 3 = Défini → Partiel
+    return 'conforme';                     // 4-5 = Conforme
 };
 
 const getArchiveCol        = (role) => role === 'client' ? 'archive_client' : role === 'auditeur_junior' ? 'archive_junior' : 'archive_interne';
