@@ -93,6 +93,7 @@ const TabEvaluationISO = ({ referentiel, localEvals, setEval, openDomaines, setO
                                             <th className="text-left px-5 py-2.5 font-semibold text-gray-400 uppercase tracking-wider w-56">Contrôle</th>
                                             <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider w-44">Niveau maturité</th>
                                             <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider w-36">Preuves / Références</th>
+                                            <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Note</th>
                                             <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Constat</th>
                                             <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Recommandation</th>
                                         </tr>
@@ -155,15 +156,26 @@ const TabEvaluationISO = ({ referentiel, localEvals, setEval, openDomaines, setO
                                                                 className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed" />
                                                         )}
                                                     </td>
+                                                    {/* Note */}
+                                                    <td className="px-3 py-3">
+                                                        {!isNA && (
+                                                            <textarea value={ev.note || ''}
+                                                                onChange={e => !readOnly && setEval(mesure.id, 'note', e.target.value)}
+                                                                readOnly={readOnly}
+                                                                rows={6}
+                                                                placeholder={readOnly ? '—' : 'Note...'}
+                                                                className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y min-h-[120px]" />
+                                                        )}
+                                                    </td>
                                                     {/* Constat */}
                                                     <td className="px-3 py-3">
                                                         {!isNA && (
                                                             <textarea value={ev.commentaire || ''}
                                                                 onChange={e => !readOnly && setEval(mesure.id, 'commentaire', e.target.value)}
                                                                 readOnly={readOnly}
-                                                                rows={5}
+                                                                rows={6}
                                                                 placeholder={readOnly ? '—' : 'Constat...'}
-                                                                className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
+                                                                className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y min-h-[120px]" />
                                                         )}
                                                     </td>
                                                     {/* Recommandation */}
@@ -172,9 +184,9 @@ const TabEvaluationISO = ({ referentiel, localEvals, setEval, openDomaines, setO
                                                             <textarea value={ev.recommandation || ''}
                                                                 onChange={e => !readOnly && setEval(mesure.id, 'recommandation', e.target.value)}
                                                                 readOnly={readOnly}
-                                                                rows={5}
+                                                                rows={6}
                                                                 placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                                className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
+                                                                className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y min-h-[120px]" />
                                                         )}
                                                     </td>
                                                 </tr>

@@ -112,6 +112,7 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                                             <th className="text-left px-5 py-2.5 font-semibold text-gray-400 uppercase tracking-wider w-48">Exigence</th>
                                             <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider w-36">Conformité</th>
                                             <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider w-32">Preuves / Références</th>
+                                            <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Note</th>
                                             <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Constat</th>
                                             <th className="text-left px-3 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Recommandation</th>
                                         </tr>
@@ -156,23 +157,32 @@ const TabExigencesSMSI = ({ referentiel, localEvals, setEval, isDirty, saving, o
                                                             placeholder={readOnly ? '—' : 'Références...'}
                                                             className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed" />
                                                     </td>
+                                                    {/* Note */}
+                                                    <td className="px-3 py-3">
+                                                        <textarea value={ev.note || ''}
+                                                            onChange={e => !readOnly && setEval(repId, 'note', e.target.value)}
+                                                            readOnly={readOnly}
+                                                            rows={6}
+                                                            placeholder={readOnly ? '—' : 'Note...'}
+                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y min-h-[120px]" />
+                                                    </td>
                                                     {/* Constat */}
                                                     <td className="px-3 py-3">
                                                         <textarea value={ev.commentaire || ''}
                                                             onChange={e => !readOnly && setEval(repId, 'commentaire', e.target.value)}
                                                             readOnly={readOnly}
-                                                            rows={5}
+                                                            rows={6}
                                                             placeholder={readOnly ? '—' : 'Constat...'}
-                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
+                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y min-h-[120px]" />
                                                     </td>
                                                     {/* Recommandation */}
                                                     <td className="px-3 py-3">
                                                         <textarea value={ev.recommandation || ''}
                                                             onChange={e => !readOnly && setEval(repId, 'recommandation', e.target.value)}
                                                             readOnly={readOnly}
-                                                            rows={5}
+                                                            rows={6}
                                                             placeholder={readOnly ? '—' : 'Recommandation...'}
-                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y" />
+                                                            className="w-full text-xs border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none read-only:bg-white read-only:text-gray-700 read-only:cursor-not-allowed resize-y min-h-[120px]" />
                                                     </td>
                                                 </tr>
                                             );

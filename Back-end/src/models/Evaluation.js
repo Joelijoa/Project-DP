@@ -36,6 +36,10 @@ const Evaluation = sequelize.define('Evaluation', {
         type: DataTypes.STRING(500),
         allowNull: true,
     },
+    note: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
     updated_by: {
         type: DataTypes.INTEGER,
         allowNull: true,

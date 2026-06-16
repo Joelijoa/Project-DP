@@ -319,6 +319,7 @@ const saveEvaluations = async (req, res) => {
                     commentaire: ev.commentaire || null,
                     recommandation: ev.recommandation || null,
                     preuve: ev.preuve || null,
+                    note: ev.note || null,
                     updated_by: req.user.userId,
                 },
             });
@@ -329,6 +330,7 @@ const saveEvaluations = async (req, res) => {
                     commentaire: ev.commentaire || null,
                     recommandation: ev.recommandation || null,
                     preuve: ev.preuve || null,
+                    note: ev.note || null,
                     updated_by: req.user.userId,
                 });
             }
