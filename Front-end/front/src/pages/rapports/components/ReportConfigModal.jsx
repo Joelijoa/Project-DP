@@ -142,6 +142,7 @@ const ReportConfigModal = ({ audit, referentiel, loadingRef, onConfirm, onClose 
     const [options, setOptions] = useState(Object.fromEntries(sections.map(s => [s.key, true])));
     const [fcExpanded, setFcExpanded] = useState(false);
     const [selectedDomains, setSelectedDomains] = useState(null); // null = not yet init
+    const [reformulerIA, setReformulerIA] = useState(false);
 
     const toggle = key => setOptions(prev => ({ ...prev, [key]: !prev[key] }));
     const allChecked = sections.every(s => options[s.key]);
@@ -153,6 +154,7 @@ const ReportConfigModal = ({ audit, referentiel, loadingRef, onConfirm, onClose 
         onConfirm({
             ...options,
             domainesFC: allSelected ? null : (selectedDomains ? [...selectedDomains] : null),
+            reformulerIA,
         });
     };
 
@@ -263,6 +265,30 @@ const ReportConfigModal = ({ audit, referentiel, loadingRef, onConfirm, onClose 
                                     </div>
                                 );
                             })}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Option IA */}
+                <div className="px-6 pb-4">
+                    <div
+                        onClick={() => setReformulerIA(v => !v)}
+                        className={`flex items-start gap-3 px-3 py-3 rounded-xl border cursor-pointer select-none transition-colors ${reformulerIA ? 'border-purple-200 bg-purple-50/60' : 'border-gray-100 bg-gray-50/60 hover:bg-gray-100/60'}`}
+                    >
+                        <div className={`w-4 h-4 rounded flex items-center justify-center border flex-shrink-0 mt-0.5 transition-colors ${reformulerIA ? 'border-transparent bg-purple-600' : 'border-gray-300 bg-white'}`}>
+                            {reformulerIA && (
+                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            )}
+                        </div>
+                        <div className="flex-1">
+                            <p className={`text-xs font-semibold leading-tight ${reformulerIA ? 'text-purple-800' : 'text-gray-600'}`}>
+                                ✨ Reformuler les constats avec l'IA
+                            </p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                                Groq (Llama 3.3 70B) reformule chaque constat et recommandation de façon professionnelle. Quelques secondes supplémentaires.
+                            </p>
                         </div>
                     </div>
                 </div>

@@ -476,7 +476,7 @@ function renderPlanAudit(doc, audit, referentiel, logo, num) {
     }
 }
 
-function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, selectedDomainIds = null, soaEntries = null) {
+function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, selectedDomainIds = null, soaEntries = null, reformulations = {}) {
     // Build map of non-applicable SoA entries: mesure_id → justification_exclusion
     const soaNAMap = {};
     if (soaEntries) {
@@ -569,8 +569,9 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
                 const inf = mesureMap[ev.mesure_id];
                 const isNA = ev.conformite === 'na' || (ev.niveau_maturite != null && ev.niveau_maturite < 0);
                 const mat = ev.niveau_maturite != null && ev.niveau_maturite >= 0 ? `${ev.niveau_maturite}/5` : 'N/A';
-                const constat = isNA && ev.preuve ? `Raison N/A : ${ev.preuve}` : (ev.commentaire || '—');
-                const reco = isNA ? '—' : (ev.recommandation || '—');
+                const ref = reformulations[ev.mesure_id];
+                const constat = isNA && ev.preuve ? `Raison N/A : ${ev.preuve}` : (ref?.constat || ev.commentaire || '—');
+                const reco = isNA ? '—' : (ref?.recommandation || ev.recommandation || '—');
                 const conformiteDisplay = isNA
                     ? (ev.conformite ? (CONFORMITE[ev.conformite] || ev.conformite) : 'Non applicable')
                     : (CONFORMITE[ev.conformite] || ev.conformite || '—');
@@ -922,7 +923,7 @@ function renderConclusion(doc, audit, stats, planActions, logo, num) {
 }
 
 // ─── EXPORT PRINCIPAL ─────────────────────────────────────────────────────────
-export async function exportAuditReportPDF({ audit, evaluations, planActions, soaEntries, referentiel, logoDataprotectUrl, options = {} }) {
+export async function exportAuditReportPDF({ audit, evaluations, planActions, soaEntries, referentiel, logoDataprotectUrl, reformulations = {}, options = {} }) {
     const refType = getReferentielType(referentiel);
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -979,7 +980,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
         }
         if (o.faitsConstates) {
             const page = addPage(); num++;
-            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, options.domainesFC ?? null);
+            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, options.domainesFC ?? null, null, reformulations);
             tocSections.push({ title: `${num}. Faits constatés`, page });
         }
         if (o.tableauDeBord) {
@@ -1033,7 +1034,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
         }
         if (o.faitsConstates) {
             const page = addPage(); num++;
-            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, options.domainesFC ?? null, soaEntries);
+            renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, logo, num, options.domainesFC ?? null, soaEntries, reformulations);
             tocSections.push({ title: `${num}. Faits constatés`, page });
         }
         if (o.recommandations) {

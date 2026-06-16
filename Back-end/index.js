@@ -12,6 +12,7 @@ const entiteRoutes = require('./src/routes/entiteRoutes');
 const logRoutes    = require('./src/routes/logRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const settingsRoutes = require('./src/routes/settingsRoutes');
+const groqRoutes = require('./src/routes/groqRoutes');
 const swaggerSpecs = require('./src/config/swagger');
 const { verifyToken } = require('./src/middlewares/authMiddleware');
 const { getAllPlanActions } = require('./src/controllers/planActionController');
@@ -35,6 +36,7 @@ app.use('/api/entites', entiteRoutes);
 app.use('/api/logs',   logRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/groq', groqRoutes);
 
 // Route globale plans-actions enregistrée AVANT le middleware auditRoutes pour éviter
 // que /:id dans auditRoutes ne capte "plans-actions" comme paramètre

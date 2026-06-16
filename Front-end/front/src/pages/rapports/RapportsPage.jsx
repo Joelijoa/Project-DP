@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../store/auth/AuthContext';
 import { getAllAudits, getArchivedAudits, getEvaluations, getSoA, archiverRapport } from '../../services/endpoints/auditService';
+import { reformulerConstats } from '../../services/endpoints/groqService';
 import { getPlanActions } from '../../services/endpoints/planActionService';
 import { getReferentielById } from '../../services/endpoints/referentielService';
 import { exportAuditReportPDF } from '../../utils/exportReportPDF';
@@ -112,7 +113,35 @@ export default function RapportsPage() {
             };
 
             if (format === 'pdf') {
-                await exportAuditReportPDF({ ...payload, options });
+                let reformulations = {};
+                if (options.reformulerIA) {
+                    try {
+                        const evs = payload.evaluations;
+                        const mesureMap = {};
+                        for (const d of (payload.referentiel?.domaines || []))
+                            for (const o of d.objectifs || [])
+                                for (const m of o.mesures || [])
+                                    mesureMap[m.id] = m;
+
+                        const items = evs
+                            .filter(e => e.commentaire || e.recommandation || e.note)
+                            .map(e => ({
+                                mesure_id: e.mesure_id,
+                                mesureCode: mesureMap[e.mesure_id]?.code || '',
+                                mesureDescription: mesureMap[e.mesure_id]?.description || '',
+                                conformite: e.conformite,
+                                note: e.note || '',
+                                commentaire: e.commentaire || '',
+                                recommandation: e.recommandation || '',
+                            }));
+
+                        reformulations = await reformulerConstats(items, payload.referentiel?.nom || '');
+                    } catch (err) {
+                        console.warn('[Groq] Reformulation échouée, fallback texte brut :', err.message);
+                        toast.warn('Reformulation IA indisponible — le rapport utilise les constats bruts.');
+                    }
+                }
+                await exportAuditReportPDF({ ...payload, reformulations, options });
             } else {
                 await exportAuditReportExcel(payload);
             }
