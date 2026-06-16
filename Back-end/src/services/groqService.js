@@ -2,50 +2,45 @@ const Groq = require('groq-sdk');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-/**
- * Reformule les constats et recommandations d'un audit via Groq (Llama 3.3 70B).
- * @param {Array} items — [{ mesure_id, mesureCode, mesureDescription, conformite, note, commentaire, recommandation }]
- * @param {string} referentielNom — nom du référentiel (ex: "DNSSI", "ISO 27001:2022")
- * @returns {Object} map mesure_id → { constat, recommandation }
- */
-async function reformulerConstats(items, referentielNom = 'référentiel de sécurité') {
-    // Filtrer les items qui ont au moins un constat ou une recommandation
-    const toProcess = items.filter(i => i.commentaire || i.recommandation);
-    if (toProcess.length === 0) return {};
+const MODEL = 'llama-3.1-8b-instant'; // 30 000 TPM gratuit
+const BATCH_SIZE = 5;
+const MAX_TEXT = 400; // tronque les textes longs pour économiser les tokens
 
-    const prompt = `Tu es un auditeur senior en sécurité des systèmes d'information.
-Référentiel audité : ${referentielNom}
+function trunc(str) {
+    if (!str) return '';
+    return str.length > MAX_TEXT ? str.slice(0, MAX_TEXT) + '…' : str;
+}
 
-Pour chaque évaluation ci-dessous, reformule le constat et la recommandation de façon professionnelle, claire et détaillée, comme dans un rapport d'audit officiel remis à la direction.
-- Le constat doit être factuel, précis et objectif (2-4 phrases).
-- La recommandation doit être concrète et actionnable (2-4 phrases).
-- Si le constat ou la recommandation bruts sont vides, génère un texte cohérent basé sur le niveau de conformité et la mesure auditée.
-- Réponds UNIQUEMENT en JSON valide, sans texte autour : un tableau d'objets avec les champs "mesure_id", "constat", "recommandation".
+async function reformulerBatch(batch, referentielNom) {
+    const prompt = `Tu es un auditeur senior en sécurité des systèmes d'information. Référentiel : ${referentielNom}.
 
-Évaluations :
-${JSON.stringify(toProcess.map(i => ({
+Pour chaque évaluation, reformule le constat et la recommandation de façon professionnelle et détaillée pour un rapport d'audit officiel (2-4 phrases chacun).
+Réponds UNIQUEMENT avec un tableau JSON : [{"mesure_id": 1, "constat": "...", "recommandation": "..."}, ...]
+
+${JSON.stringify(batch.map(i => ({
     mesure_id: i.mesure_id,
-    mesure: `${i.mesureCode || ''} — ${i.mesureDescription || ''}`.trim(),
-    conformite: i.conformite || 'non_evalue',
-    note_auditeur: i.note || '',
-    constat_brut: i.commentaire || '',
-    recommandation_brute: i.recommandation || '',
+    mesure: trunc(`${i.mesureCode || ''} ${i.mesureDescription || ''}`),
+    conformite: i.conformite || '',
+    note: trunc(i.note),
+    constat_brut: trunc(i.commentaire),
+    reco_brute: trunc(i.recommandation),
 })), null, 2)}`;
 
     const response = await groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: MODEL,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
-        max_tokens: 4000,
-        response_format: { type: 'json_object' },
+        max_tokens: 2000,
     });
 
-    const raw = response.choices[0]?.message?.content || '{}';
-    const parsed = JSON.parse(raw);
+    const raw = response.choices[0]?.message?.content || '';
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) {
+        console.error('[Groq] Réponse non parseable :', raw.slice(0, 200));
+        return {};
+    }
 
-    // Groq peut retourner { "evaluations": [...] } ou directement [...]
-    const arr = Array.isArray(parsed) ? parsed : (parsed.evaluations || parsed.reformulations || Object.values(parsed)[0] || []);
-
+    const arr = JSON.parse(match[0]);
     const result = {};
     for (const item of arr) {
         if (item.mesure_id != null) {
@@ -55,6 +50,22 @@ ${JSON.stringify(toProcess.map(i => ({
             };
         }
     }
+    return result;
+}
+
+async function reformulerConstats(items, referentielNom = 'référentiel de sécurité') {
+    const toProcess = items.filter(i => i.commentaire || i.recommandation);
+    if (toProcess.length === 0) return {};
+
+    const result = {};
+
+    // Traitement par lots
+    for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
+        const batch = toProcess.slice(i, i + BATCH_SIZE);
+        const batchResult = await reformulerBatch(batch, referentielNom);
+        Object.assign(result, batchResult);
+    }
+
     return result;
 }
 
