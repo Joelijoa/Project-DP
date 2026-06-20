@@ -2,49 +2,43 @@ const Groq = require('groq-sdk');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const MODEL = 'llama-3.1-8b-instant'; // 30 000 TPM gratuit
-const BATCH_SIZE = 5;
-const MAX_TEXT = 400; // tronque les textes longs pour économiser les tokens
+const MODEL = 'llama-3.1-8b-instant';
+const MAX_TEXT = 200;       // réduit l'input tokens
+const SINGLE_CALL_MAX = 25; // sous ce seuil : 1 seul appel API
+const BATCH_SIZE = 20;      // au-delà : batchs de 20 en parallèle
+const MAX_CONCURRENCY = 4;
 
 function trunc(str) {
     if (!str) return '';
     return str.length > MAX_TEXT ? str.slice(0, MAX_TEXT) + '…' : str;
 }
 
-async function reformulerBatch(batch, referentielNom) {
-    const prompt = `Tu es un auditeur senior en sécurité des systèmes d'information. Référentiel : ${referentielNom}.
+function buildPrompt(batch, referentielNom) {
+    const data = batch.map(i => ({
+        id: i.mesure_id,
+        code: trunc(`${i.mesureCode || ''} ${i.mesureDescription || ''}`),
+        conformite: i.conformite || '',
+        constat: trunc(i.commentaire),
+        reco: trunc(i.recommandation),
+    }));
 
-Pour chaque évaluation, reformule le constat et la recommandation de façon professionnelle et détaillée pour un rapport d'audit officiel (2-4 phrases chacun).
-Réponds UNIQUEMENT avec un tableau JSON : [{"mesure_id": 1, "constat": "...", "recommandation": "..."}, ...]
+    return `Auditeur SSI, référentiel ${referentielNom}. Reformule chaque constat et recommandation en 1-2 phrases professionnelles concises.
+Réponds UNIQUEMENT JSON : [{"id":1,"constat":"...","recommandation":"..."},...]
 
-${JSON.stringify(batch.map(i => ({
-    mesure_id: i.mesure_id,
-    mesure: trunc(`${i.mesureCode || ''} ${i.mesureDescription || ''}`),
-    conformite: i.conformite || '',
-    note: trunc(i.note),
-    constat_brut: trunc(i.commentaire),
-    reco_brute: trunc(i.recommandation),
-})), null, 2)}`;
+${JSON.stringify(data)}`;
+}
 
-    const response = await groq.chat.completions.create({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: 2000,
-    });
-
-    const raw = response.choices[0]?.message?.content || '';
+function parseResponse(raw) {
     const match = raw.match(/\[[\s\S]*\]/);
     if (!match) {
         console.error('[Groq] Réponse non parseable :', raw.slice(0, 200));
         return {};
     }
-
     const arr = JSON.parse(match[0]);
     const result = {};
     for (const item of arr) {
-        if (item.mesure_id != null) {
-            result[item.mesure_id] = {
+        if (item.id != null) {
+            result[item.id] = {
                 constat: item.constat || '',
                 recommandation: item.recommandation || '',
             };
@@ -53,19 +47,37 @@ ${JSON.stringify(batch.map(i => ({
     return result;
 }
 
+async function callGroq(batch, referentielNom) {
+    const response = await groq.chat.completions.create({
+        model: MODEL,
+        messages: [{ role: 'user', content: buildPrompt(batch, referentielNom) }],
+        temperature: 0.2,
+        max_tokens: 1500,
+    });
+    return parseResponse(response.choices[0]?.message?.content || '');
+}
+
 async function reformulerConstats(items, referentielNom = 'référentiel de sécurité') {
     const toProcess = items.filter(i => i.commentaire || i.recommandation);
     if (toProcess.length === 0) return {};
 
-    const result = {};
-
-    // Traitement par lots
-    for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
-        const batch = toProcess.slice(i, i + BATCH_SIZE);
-        const batchResult = await reformulerBatch(batch, referentielNom);
-        Object.assign(result, batchResult);
+    // Cas rapide : tout en un seul appel
+    if (toProcess.length <= SINGLE_CALL_MAX) {
+        return callGroq(toProcess, referentielNom);
     }
 
+    // Cas grand volume : batchs parallèles
+    const batches = [];
+    for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
+        batches.push(toProcess.slice(i, i + BATCH_SIZE));
+    }
+
+    const result = {};
+    for (let i = 0; i < batches.length; i += MAX_CONCURRENCY) {
+        const chunk = batches.slice(i, i + MAX_CONCURRENCY);
+        const results = await Promise.all(chunk.map(b => callGroq(b, referentielNom)));
+        results.forEach(r => Object.assign(result, r));
+    }
     return result;
 }
 
