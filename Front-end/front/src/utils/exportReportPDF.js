@@ -602,17 +602,22 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
                     if (rank < (CONF_RANK[worstConf] ?? 5)) worstConf = ev.conformite;
                     if (ev.niveau_maturite != null && ev.niveau_maturite >= 0) { sumMat += ev.niveau_maturite; nMat++; }
                 }
-                const ref = reformulations[ev.mesure_id];
-                const c = isNA && ev.preuve ? `N/A : ${ev.preuve}` : (ref?.constat || ev.commentaire || '');
-                const r = isNA ? '' : (ref?.recommandation || ev.recommandation || '');
+                // Textes bruts pour fallback si pas de reformulation IA
+                const c = isNA && ev.preuve ? `N/A : ${ev.preuve}` : (ev.commentaire || '');
+                const r = isNA ? '' : (ev.recommandation || '');
                 if (c) constats.push(c);
                 if (r) recos.push(r);
             }
 
             const conformiteDisplay = allNA ? 'N/A' : (CONFORMITE[worstConf] || worstConf || '—');
-            const mat = nMat > 0 ? `${(sumMat / nMat).toFixed(1)}/5` : 'N/A';
-            const constat = constats.map(s => s.trim().replace(/\.+$/, '')).join('. ') + (constats.length ? '.' : '') || '—';
-            const reco = recos.map(s => s.trim().replace(/\.+$/, '')).join('. ') + (recos.length ? '.' : '') || '—';
+            const mat = nMat > 0 ? `${Math.round(sumMat / nMat)}` : 'N/A';
+
+            // Reformulation IA indexée par objectif.id (priorité) sinon textes bruts joints
+            const objRef = reformulations[objectif.id];
+            const constat = objRef?.constat
+                || (constats.length ? constats.map(s => s.trim().replace(/\.+$/, '')).join('. ') + '.' : '—');
+            const reco = objRef?.recommandation
+                || (recos.length ? recos.map(s => s.trim().replace(/\.+$/, '')).join('. ') + '.' : '—');
             const desc = stripObjPrefix(objectif.description || objectif.nom || '');
 
             tableRows.push([objectif.code, desc, conformiteDisplay, mat, constat, reco]);
@@ -627,7 +632,9 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
             styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', lineColor: BDR, lineWidth: 0.15 },
             headStyles: { fillColor: NAVY2, textColor: WHITE, fontStyle: 'bold', fontSize: 8, cellPadding: 4 },
             alternateRowStyles: { fillColor: LIGHT },
-            columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 32 }, 2: { cellWidth: 26 }, 3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 39 }, 5: { cellWidth: 39 } },
+            columnStyles: getReferentielType(referentiel) === 'iso27001'
+                ? { 0: { cellWidth: 16 }, 1: { cellWidth: 30 }, 2: { cellWidth: 26 }, 3: { cellWidth: 14, halign: 'center' }, 4: { cellWidth: 44 }, 5: { cellWidth: 44 } }
+                : { 0: { cellWidth: 22 }, 1: { cellWidth: 32 }, 2: { cellWidth: 26 }, 3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 39 }, 5: { cellWidth: 39 } },
             margin: { left: M, right: M, top: 26, bottom: 16 },
             didParseCell: d => {
                 if (d.section === 'body') {

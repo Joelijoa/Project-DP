@@ -4,8 +4,8 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const MODEL = 'llama-3.1-8b-instant';
 const MAX_TEXT = 200;
-const BATCH_SIZE = 10;
-const MAX_CONCURRENCY = 3;
+const BATCH_SIZE = 15;
+const MAX_CONCURRENCY = 5;
 
 function trunc(str) {
     if (!str) return '';
@@ -63,7 +63,7 @@ async function callGroq(batch, referentielNom) {
             model: MODEL,
             messages: [{ role: 'user', content: buildPrompt(batch, referentielNom) }],
             temperature: 0.2,
-            max_tokens: 2500,
+            max_tokens: 3500,
         });
         return parseResponse(response.choices[0]?.message?.content || '');
     } catch (err) {

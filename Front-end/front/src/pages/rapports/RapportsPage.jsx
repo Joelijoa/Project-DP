@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../store/auth/AuthContext';
 import { getAllAudits, getArchivedAudits, getEvaluations, getSoA, archiverRapport } from '../../services/endpoints/auditService';
@@ -54,6 +54,7 @@ export default function RapportsPage() {
     const [exporting, setExporting] = useState({});
     const [archivingRapportId, setArchivingRapportId] = useState(null);
     const [configModal, setConfigModal] = useState({ open: false, audit: null, referentiel: null, loadingRef: false });
+    const reformCache = useRef({});
 
     const canArchive = !!user;
 
@@ -115,38 +116,56 @@ export default function RapportsPage() {
             if (format === 'pdf') {
                 let reformulations = {};
                 if (options.reformulerIA) {
-                    try {
-                        const evs = payload.evaluations;
-                        const mesureMap = {};
-                        for (const d of (payload.referentiel?.domaines || []))
-                            for (const o of d.objectifs || [])
-                                for (const m of o.mesures || [])
-                                    mesureMap[m.id] = m;
+                    const cacheKey = `${audit.id}`;
+                    if (reformCache.current[cacheKey]) {
+                        reformulations = reformCache.current[cacheKey];
+                        toast.info('Reformulations IA récupérées depuis le cache.', { autoClose: 1500 });
+                    } else {
+                        try {
+                            const evs = payload.evaluations;
 
-                        const items = evs
-                            .filter(e => e.commentaire || e.recommandation || e.note)
-                            .map(e => ({
-                                mesure_id: e.mesure_id,
-                                mesureCode: mesureMap[e.mesure_id]?.code || '',
-                                mesureDescription: mesureMap[e.mesure_id]?.description || '',
-                                conformite: e.conformite,
-                                note: e.note || '',
-                                commentaire: e.commentaire || '',
-                                recommandation: e.recommandation || '',
+                            const mesureToObjectif = {};
+                            for (const d of (payload.referentiel?.domaines || []))
+                                for (const o of d.objectifs || [])
+                                    for (const m of o.mesures || [])
+                                        mesureToObjectif[m.id] = o;
+
+                            const objMap = {};
+                            for (const ev of evs) {
+                                if (!ev.commentaire && !ev.recommandation) continue;
+                                const obj = mesureToObjectif[ev.mesure_id];
+                                if (!obj) continue;
+                                if (!objMap[obj.id]) objMap[obj.id] = { id: obj.id, code: obj.code, desc: obj.description || '', commentaires: [], recos: [] };
+                                if (ev.commentaire) objMap[obj.id].commentaires.push(ev.commentaire);
+                                if (ev.recommandation) objMap[obj.id].recos.push(ev.recommandation);
+                            }
+
+                            const items = Object.values(objMap).map(o => ({
+                                mesure_id: o.id,
+                                mesureCode: o.code,
+                                mesureDescription: o.desc,
+                                commentaire: o.commentaires.join('. '),
+                                recommandation: o.recos.join('. '),
                             }));
 
-                        if (items.length === 0) {
-                            toast.info('Aucun constat à reformuler — champs vides.');
-                        } else {
-                            reformulations = await reformulerConstats(items, payload.referentiel?.nom || '');
+                            if (items.length === 0) {
+                                toast.info('Aucun constat à reformuler — champs vides.');
+                            } else {
+                                const toastId = toast.loading(`Reformulation IA en cours (${items.length} objectifs)…`);
+                                reformulations = await reformulerConstats(items, payload.referentiel?.nom || '');
+                                toast.dismiss(toastId);
+                                reformCache.current[cacheKey] = reformulations;
+                            }
+                        } catch (err) {
+                            const detail = err.response?.data?.message || err.message;
+                            console.warn('[Groq] Reformulation échouée :', detail);
+                            toast.warn(`Reformulation IA indisponible (${detail}) — constats bruts utilisés.`);
                         }
-                    } catch (err) {
-                        const detail = err.response?.data?.message || err.message;
-                        console.warn('[Groq] Reformulation échouée :', detail);
-                        toast.warn(`Reformulation IA indisponible (${detail}) — constats bruts utilisés.`);
                     }
                 }
+                const pdfToastId = toast.loading('Génération du PDF…');
                 await exportAuditReportPDF({ ...payload, reformulations, options });
+                toast.dismiss(pdfToastId);
             } else {
                 await exportAuditReportExcel(payload);
             }
