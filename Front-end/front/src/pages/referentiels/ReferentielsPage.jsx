@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import { getAllReferentiels, getReferentielById, getReferentielStats } from '../../services/endpoints/referentielService';
+import { useEffect, useState, useCallback } from 'react';
+import { toast } from 'react-toastify';
+import { getAllReferentiels, getReferentielById, getReferentielStats, createReferentiel, deleteReferentiel } from '../../services/endpoints/referentielService';
+import { useAuth } from '../../store/auth/AuthContext';
 
 const TYPE_CONFIG = {
     ISO27001: { label: 'ISO 27001:2022', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
@@ -270,7 +272,487 @@ const AnnexeAChapitreRow = ({ domaine }) => {
     );
 };
 
+/* ─── Templates ───────────────────────────────────────────────────────────── */
+let _uid = 0;
+const uid = () => `k${++_uid}`;
+
+const mkMesure = (code, description) => ({ _key: uid(), code, description });
+const mkObjectif = (code, description, mesures = []) => ({ _key: uid(), code, description, mesures });
+const mkDomaine = (code, nom, objectifs = []) => ({ _key: uid(), code, nom, objectifs });
+
+const TEMPLATES = {
+    NIS2: [
+        mkDomaine('1', 'Politique et gouvernance', [
+            mkObjectif('1.1', 'Gouvernance de la cybersécurité', [
+                mkMesure('1.1.a', 'Politique de sécurité des réseaux et des SI'),
+                mkMesure('1.1.b', "Rôles et responsabilités en matière de cybersécurité"),
+                mkMesure('1.1.c', 'Formation et sensibilisation à la cybersécurité'),
+            ]),
+        ]),
+        mkDomaine('2', 'Gestion des risques', [
+            mkObjectif('2.1', 'Analyse et traitement des risques', [
+                mkMesure('2.1.a', 'Identification et évaluation des risques cyber'),
+                mkMesure('2.1.b', 'Traitement et acceptation des risques'),
+            ]),
+            mkObjectif('2.2', "Sécurité de la chaîne d'approvisionnement", [
+                mkMesure('2.2.a', 'Politique de sécurité des fournisseurs TIC'),
+                mkMesure('2.2.b', 'Évaluation et suivi des fournisseurs'),
+            ]),
+        ]),
+        mkDomaine('3', 'Gestion des incidents', [
+            mkObjectif('3.1', 'Détection et réponse', [
+                mkMesure('3.1.a', 'Détection et surveillance des incidents cyber'),
+                mkMesure('3.1.b', 'Procédure de réponse aux incidents'),
+                mkMesure('3.1.c', 'Analyse post-incident et retour d\'expérience'),
+            ]),
+            mkObjectif('3.2', 'Notification', [
+                mkMesure('3.2.a', 'Signalement aux autorités compétentes (ANSSI/CERT)'),
+                mkMesure('3.2.b', 'Communication aux parties affectées'),
+            ]),
+        ]),
+        mkDomaine('4', 'Continuité des activités', [
+            mkObjectif('4.1', 'Plans de continuité et reprise', [
+                mkMesure('4.1.a', "Plan de continuité d'activité (PCA)"),
+                mkMesure('4.1.b', "Plan de reprise d'activité (PRA)"),
+                mkMesure('4.1.c', 'Tests et exercices de continuité'),
+            ]),
+        ]),
+        mkDomaine('5', 'Sécurité technique', [
+            mkObjectif('5.1', "Contrôle d'accès et authentification", [
+                mkMesure('5.1.a', 'Gestion des identités et des accès (IAM)'),
+                mkMesure('5.1.b', 'Authentification multi-facteurs (MFA)'),
+            ]),
+            mkObjectif('5.2', 'Chiffrement', [
+                mkMesure('5.2.a', 'Politique de chiffrement des données'),
+                mkMesure('5.2.b', 'Gestion des clés cryptographiques'),
+            ]),
+            mkObjectif('5.3', 'Sécurité réseau', [
+                mkMesure('5.3.a', 'Segmentation et cloisonnement réseau'),
+                mkMesure('5.3.b', 'Surveillance et journalisation réseau'),
+            ]),
+        ]),
+        mkDomaine('6', 'Évaluation et amélioration', [
+            mkObjectif('6.1', 'Tests et audits', [
+                mkMesure('6.1.a', 'Tests de pénétration réguliers'),
+                mkMesure('6.1.b', 'Audits de cybersécurité indépendants'),
+                mkMesure('6.1.c', 'Revue périodique des pratiques de sécurité'),
+            ]),
+        ]),
+    ],
+    PCIDSS: [
+        mkDomaine('1', 'Sécurité réseau (Req. 1-2)', [
+            mkObjectif('1.1', 'Contrôles réseau', [
+                mkMesure('1.1.a', 'Configuration et maintenance des pare-feux'),
+                mkMesure('1.1.b', 'Règles de flux réseau documentées et approuvées'),
+            ]),
+            mkObjectif('1.2', 'Configurations sécurisées', [
+                mkMesure('1.2.a', 'Suppression des paramètres par défaut des fournisseurs'),
+                mkMesure('1.2.b', 'Inventaire des composants système'),
+            ]),
+        ]),
+        mkDomaine('2', 'Protection des données (Req. 3-4)', [
+            mkObjectif('2.1', 'Données stockées', [
+                mkMesure('2.1.a', 'Protection des données de porteur de carte (CHD)'),
+                mkMesure('2.1.b', 'Chiffrement des numéros de compte primaires (PAN)'),
+            ]),
+            mkObjectif('2.2', 'Données en transit', [
+                mkMesure('2.2.a', 'Chiffrement des transmissions réseau ouvertes'),
+                mkMesure('2.2.b', 'Protocoles de chiffrement approuvés uniquement'),
+            ]),
+        ]),
+        mkDomaine('3', 'Gestion des vulnérabilités (Req. 5-6)', [
+            mkObjectif('3.1', 'Protection anti-malware', [
+                mkMesure('3.1.a', 'Logiciels anti-malware déployés sur tous les systèmes'),
+                mkMesure('3.1.b', 'Signatures et moteurs mis à jour régulièrement'),
+            ]),
+            mkObjectif('3.2', 'Développement et correctifs sécurisés', [
+                mkMesure('3.2.a', 'Procédures de développement sécurisé (SSDLC)'),
+                mkMesure('3.2.b', 'Gestion et application des correctifs de sécurité'),
+            ]),
+        ]),
+        mkDomaine('4', "Contrôle d'accès (Req. 7-9)", [
+            mkObjectif('4.1', 'Accès logique', [
+                mkMesure('4.1.a', "Restriction d'accès aux données CHD selon besoin"),
+                mkMesure('4.1.b', 'Identifiant unique par utilisateur'),
+                mkMesure('4.1.c', 'MFA pour les accès administrateur et distants'),
+            ]),
+            mkObjectif('4.2', 'Accès physique', [
+                mkMesure('4.2.a', 'Contrôle accès physique aux zones de données CHD'),
+                mkMesure('4.2.b', 'Journal des accès physiques aux zones sensibles'),
+            ]),
+        ]),
+        mkDomaine('5', 'Surveillance et tests (Req. 10-11)', [
+            mkObjectif('5.1', 'Journalisation et surveillance', [
+                mkMesure('5.1.a', "Journaux d'audit pour tous les accès aux données CHD"),
+                mkMesure('5.1.b', 'Revue quotidienne des journaux'),
+                mkMesure('5.1.c', 'Synchronisation des horloges système (NTP)'),
+            ]),
+            mkObjectif('5.2', 'Tests de sécurité', [
+                mkMesure('5.2.a', 'Tests de pénétration annuels'),
+                mkMesure('5.2.b', 'Scans de vulnérabilités trimestriels (ASV approuvé)'),
+            ]),
+        ]),
+        mkDomaine('6', 'Politiques et gouvernance (Req. 12)', [
+            mkObjectif('6.1', 'Politique de sécurité de l\'information', [
+                mkMesure('6.1.a', "Politique de sécurité documentée et approuvée"),
+                mkMesure('6.1.b', 'Programme de gestion des risques formalisé'),
+                mkMesure('6.1.c', 'Formation annuelle de sensibilisation à la sécurité'),
+            ]),
+        ]),
+    ],
+};
+
+const DEFAULT_CONFORMITE_OPTIONS = [
+    { value: 'conforme',      label: 'Conforme' },
+    { value: 'partiel',       label: 'Partiellement conforme' },
+    { value: 'nc_mineure',    label: 'NC Mineure' },
+    { value: 'nc_majeure',    label: 'NC Majeure' },
+    { value: 'non_conforme',  label: 'Non conforme' },
+    { value: 'na',            label: 'Non applicable' },
+];
+
+/* ─── Wizard de création ───────────────────────────────────────────────────── */
+const CreateWizard = ({ onClose, onCreated }) => {
+    const [step, setStep] = useState(1);
+    const [saving, setSaving] = useState(false);
+    const [info, setInfo] = useState({ nom: '', type: '', version: '', description: '' });
+    const [domaines, setDomaines] = useState([mkDomaine('', '', [mkObjectif('', '', [mkMesure('', '')])])]);
+    const [evalConfig, setEvalConfig] = useState({
+        champs: ['conformite', 'maturite', 'commentaire', 'recommandation'],
+        conformite_options: DEFAULT_CONFORMITE_OPTIONS,
+        maturite_max: 5,
+    });
+    const [openDom, setOpenDom] = useState({});
+    const [openObj, setOpenObj] = useState({});
+
+    const setI = (k, v) => setInfo(p => ({ ...p, [k]: v }));
+
+    // ── Domaine helpers
+    const addDomaine = () => setDomaines(p => [...p, mkDomaine('', '', [mkObjectif('', '', [mkMesure('', '')])])]);
+    const removeDomaine = (dk) => setDomaines(p => p.filter(d => d._key !== dk));
+    const updDomaine = (dk, field, val) => setDomaines(p => p.map(d => d._key === dk ? { ...d, [field]: val } : d));
+
+    // ── Objectif helpers
+    const addObjectif = (dk) => setDomaines(p => p.map(d => d._key === dk
+        ? { ...d, objectifs: [...d.objectifs, mkObjectif('', '', [mkMesure('', '')])] } : d));
+    const removeObjectif = (dk, ok) => setDomaines(p => p.map(d => d._key === dk
+        ? { ...d, objectifs: d.objectifs.filter(o => o._key !== ok) } : d));
+    const updObjectif = (dk, ok, field, val) => setDomaines(p => p.map(d => d._key === dk
+        ? { ...d, objectifs: d.objectifs.map(o => o._key === ok ? { ...o, [field]: val } : o) } : d));
+
+    // ── Mesure helpers
+    const addMesure = (dk, ok) => setDomaines(p => p.map(d => d._key === dk
+        ? { ...d, objectifs: d.objectifs.map(o => o._key === ok
+            ? { ...o, mesures: [...o.mesures, mkMesure('', '')] } : o) } : d));
+    const removeMesure = (dk, ok, mk) => setDomaines(p => p.map(d => d._key === dk
+        ? { ...d, objectifs: d.objectifs.map(o => o._key === ok
+            ? { ...o, mesures: o.mesures.filter(m => m._key !== mk) } : o) } : d));
+    const updMesure = (dk, ok, mk, field, val) => setDomaines(p => p.map(d => d._key === dk
+        ? { ...d, objectifs: d.objectifs.map(o => o._key === ok
+            ? { ...o, mesures: o.mesures.map(m => m._key === mk ? { ...m, [field]: val } : m) } : o) } : d));
+
+    const applyTemplate = (tpl) => {
+        setDomaines(TEMPLATES[tpl].map(d => ({
+            ...d,
+            _key: uid(),
+            objectifs: d.objectifs.map(o => ({
+                ...o,
+                _key: uid(),
+                mesures: o.mesures.map(m => ({ ...m, _key: uid() })),
+            })),
+        })));
+        if (tpl === 'NIS2') setI('nom', 'NIS2');
+        if (tpl === 'PCIDSS') setI('nom', 'PCI-DSS v4.0');
+        setI('type', tpl);
+        setStep(2);
+    };
+
+    const toggleChamp = (c) => setEvalConfig(p => ({
+        ...p,
+        champs: p.champs.includes(c) ? p.champs.filter(x => x !== c) : [...p.champs, c],
+    }));
+
+    const handleSubmit = async () => {
+        if (!info.nom.trim() || !info.type.trim()) return toast.error('Nom et type requis.');
+        const payload = {
+            ...info,
+            evaluation_config: evalConfig,
+            domaines: domaines.map(d => ({
+                code: d.code, nom: d.nom,
+                objectifs: d.objectifs.map(o => ({
+                    code: o.code, description: o.description,
+                    mesures: o.mesures.map(m => ({ code: m.code, description: m.description })),
+                })),
+            })),
+        };
+        setSaving(true);
+        try {
+            await createReferentiel(payload);
+            toast.success(`Référentiel "${info.nom}" créé avec succès.`);
+            onCreated();
+            onClose();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Erreur lors de la création.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-400';
+    const inputStyle = { color: '#111827' };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <div>
+                        <h2 className="text-base font-bold text-gray-900">Créer un référentiel personnalisé</h2>
+                        <div className="flex items-center gap-2 mt-1.5">
+                            {['Informations', 'Structure', 'Méthode d\'évaluation'].map((label, i) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step > i + 1 ? 'bg-green-500 text-white' : step === i + 1 ? 'text-white' : 'bg-gray-200 text-gray-500'}`}
+                                        style={step === i + 1 ? { backgroundColor: 'var(--brand-red)' } : {}}>
+                                        {step > i + 1 ? '✓' : i + 1}
+                                    </span>
+                                    <span className={`text-xs ${step === i + 1 ? 'font-semibold text-gray-800' : 'text-gray-400'}`}>{label}</span>
+                                    {i < 2 && <span className="text-gray-300 text-xs">›</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto px-6 py-5">
+
+                    {/* Step 1 — Infos */}
+                    {step === 1 && (
+                        <div className="space-y-5">
+                            {/* Templates rapides */}
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Partir d'un template</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { key: 'NIS2', label: 'NIS2', sub: 'Directive européenne 2022/2555 — 6 domaines, 19 exigences', color: '#1D4ED8', bg: '#EFF6FF' },
+                                        { key: 'PCIDSS', label: 'PCI-DSS v4.0', sub: 'Payment Card Industry — 6 domaines, 12 exigences', color: '#7C3AED', bg: '#F5F3FF' },
+                                    ].map(t => (
+                                        <button key={t.key} onClick={() => applyTemplate(t.key)}
+                                            className="text-left p-4 rounded-2xl border-2 hover:shadow-md transition"
+                                            style={{ borderColor: t.color, backgroundColor: t.bg }}>
+                                            <p className="text-sm font-bold" style={{ color: t.color }}>{t.label}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">{t.sub}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="flex items-center gap-3 my-4">
+                                    <div className="flex-1 h-px bg-gray-200" />
+                                    <span className="text-xs text-gray-400">ou créer manuellement</span>
+                                    <div className="flex-1 h-px bg-gray-200" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Nom du référentiel *</label>
+                                    <input className={inputCls} style={inputStyle} value={info.nom} onChange={e => setI('nom', e.target.value)} placeholder="Ex : NIS2, PCI-DSS, HDS..." />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Identifiant type *</label>
+                                    <input className={inputCls} style={inputStyle} value={info.type} onChange={e => setI('type', e.target.value.toUpperCase())} placeholder="Ex : NIS2, PCIDSS, HDS" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Version</label>
+                                    <input className={inputCls} style={inputStyle} value={info.version} onChange={e => setI('version', e.target.value)} placeholder="Ex : 2022, v4.0..." />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Description</label>
+                                    <input className={inputCls} style={inputStyle} value={info.description} onChange={e => setI('description', e.target.value)} placeholder="Brève description..." />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 2 — Structure */}
+                    {step === 2 && (
+                        <div className="space-y-3">
+                            <p className="text-xs text-gray-500">Hiérarchie : <strong>Domaine → Objectif → Mesure</strong>. Chaque mesure sera une ligne d'évaluation dans l'audit.</p>
+                            {domaines.map((d) => (
+                                <div key={d._key} className="border border-gray-200 rounded-2xl overflow-hidden">
+                                    {/* Domaine header */}
+                                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50">
+                                        <button onClick={() => setOpenDom(p => ({ ...p, [d._key]: !p[d._key] }))}
+                                            className="text-gray-400 hover:text-gray-600 transition">
+                                            <svg className={`w-4 h-4 transition-transform ${openDom[d._key] ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                                        </button>
+                                        <input value={d.code} onChange={e => updDomaine(d._key, 'code', e.target.value)}
+                                            placeholder="Code" className="w-16 px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none" style={inputStyle} />
+                                        <input value={d.nom} onChange={e => updDomaine(d._key, 'nom', e.target.value)}
+                                            placeholder="Nom du domaine" className="flex-1 px-2 py-1 text-sm font-medium border border-gray-200 rounded-lg focus:outline-none" style={inputStyle} />
+                                        <span className="text-xs text-gray-400">{d.objectifs.length} obj.</span>
+                                        {domaines.length > 1 && (
+                                            <button onClick={() => removeDomaine(d._key)} className="text-gray-300 hover:text-red-400 transition ml-1">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Objectifs */}
+                                    {openDom[d._key] && (
+                                        <div className="px-4 py-3 space-y-2 border-t border-gray-100">
+                                            {d.objectifs.map((o) => (
+                                                <div key={o._key} className="border border-gray-100 rounded-xl overflow-hidden">
+                                                    <div className="flex items-center gap-2 px-3 py-2 bg-gray-50/70">
+                                                        <button onClick={() => setOpenObj(p => ({ ...p, [o._key]: !p[o._key] }))}
+                                                            className="text-gray-400 hover:text-gray-600">
+                                                            <svg className={`w-3.5 h-3.5 transition-transform ${openObj[o._key] ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                                                        </button>
+                                                        <input value={o.code} onChange={e => updObjectif(d._key, o._key, 'code', e.target.value)}
+                                                            placeholder="Code" className="w-14 px-2 py-0.5 text-xs border border-gray-200 rounded-lg focus:outline-none" style={inputStyle} />
+                                                        <input value={o.description} onChange={e => updObjectif(d._key, o._key, 'description', e.target.value)}
+                                                            placeholder="Description de l'objectif" className="flex-1 px-2 py-0.5 text-xs border border-gray-200 rounded-lg focus:outline-none" style={inputStyle} />
+                                                        <span className="text-xs text-gray-400">{o.mesures.length} mes.</span>
+                                                        {d.objectifs.length > 1 && (
+                                                            <button onClick={() => removeObjectif(d._key, o._key)} className="text-gray-300 hover:text-red-400">
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Mesures */}
+                                                    {openObj[o._key] && (
+                                                        <div className="px-3 py-2 space-y-1.5 border-t border-gray-100">
+                                                            {o.mesures.map((m) => (
+                                                                <div key={m._key} className="flex items-center gap-2">
+                                                                    <span className="w-2 h-2 rounded-full bg-gray-300 shrink-0" />
+                                                                    <input value={m.code} onChange={e => updMesure(d._key, o._key, m._key, 'code', e.target.value)}
+                                                                        placeholder="Code" className="w-16 px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none" style={inputStyle} />
+                                                                    <input value={m.description} onChange={e => updMesure(d._key, o._key, m._key, 'description', e.target.value)}
+                                                                        placeholder="Description de la mesure / exigence" className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none" style={inputStyle} />
+                                                                    {o.mesures.length > 1 && (
+                                                                        <button onClick={() => removeMesure(d._key, o._key, m._key)} className="text-gray-300 hover:text-red-400">
+                                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                            <button onClick={() => addMesure(d._key, o._key)}
+                                                                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition mt-1">
+                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                                                Ajouter une mesure
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <button onClick={() => addObjectif(d._key)}
+                                                className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                                Ajouter un objectif
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            <button onClick={addDomaine}
+                                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-gray-300 hover:text-gray-700 hover:bg-gray-50 transition">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                Ajouter un domaine
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Step 3 — Méthode d'évaluation */}
+                    {step === 3 && (
+                        <div className="space-y-6">
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Champs actifs dans la grille d'évaluation</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { key: 'conformite',      label: 'Conformité', desc: 'Statut conforme / NC / partiel...' },
+                                        { key: 'maturite',        label: 'Niveau de maturité', desc: 'Échelle numérique (0 à 5)' },
+                                        { key: 'commentaire',     label: 'Constat', desc: 'Observation de l\'auditeur' },
+                                        { key: 'recommandation',  label: 'Recommandation', desc: 'Action corrective suggérée' },
+                                        { key: 'preuve',          label: 'Preuves / Références', desc: 'Documents justificatifs' },
+                                        { key: 'note',            label: 'Note interne', desc: 'Remarque confidentielle' },
+                                    ].map(({ key, label, desc }) => {
+                                        const checked = evalConfig.champs.includes(key);
+                                        return (
+                                            <button key={key} onClick={() => toggleChamp(key)}
+                                                className={`flex items-start gap-3 p-3 rounded-xl border-2 text-left transition ${checked ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 ${checked ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
+                                                    {checked && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}
+                                                </div>
+                                                <div>
+                                                    <p className={`text-xs font-semibold ${checked ? 'text-blue-700' : 'text-gray-700'}`}>{label}</p>
+                                                    <p className="text-[11px] text-gray-500 mt-0.5">{desc}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {evalConfig.champs.includes('maturite') && (
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Échelle de maturité</p>
+                                    <div className="flex gap-2">
+                                        {[3, 4, 5].map(n => (
+                                            <button key={n} onClick={() => setEvalConfig(p => ({ ...p, maturite_max: n }))}
+                                                className={`px-4 py-2 rounded-xl border-2 text-sm font-medium transition ${evalConfig.maturite_max === n ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                                                0 à {n}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-gray-50 rounded-2xl p-4">
+                                <p className="text-xs font-semibold text-gray-500 mb-2">Résumé</p>
+                                <p className="text-sm text-gray-700"><strong>{info.nom}</strong> — {info.type} {info.version}</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {domaines.length} domaine(s) · {domaines.reduce((a, d) => a + d.objectifs.length, 0)} objectif(s) · {domaines.reduce((a, d) => a + d.objectifs.reduce((b, o) => b + o.mesures.length, 0), 0)} mesure(s)
+                                </p>
+                                <p className="text-xs text-gray-500 mt-0.5">Champs : {evalConfig.champs.join(', ')}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+                    <button onClick={step === 1 ? onClose : () => setStep(s => s - 1)}
+                        className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+                        {step === 1 ? 'Annuler' : '← Retour'}
+                    </button>
+                    {step < 3 ? (
+                        <button onClick={() => setStep(s => s + 1)}
+                            disabled={step === 1 && (!info.nom.trim() || !info.type.trim())}
+                            className="px-5 py-2 text-sm font-semibold text-white rounded-xl transition disabled:opacity-40"
+                            style={{ backgroundColor: 'var(--brand-red)' }}>
+                            Suivant →
+                        </button>
+                    ) : (
+                        <button onClick={handleSubmit} disabled={saving}
+                            className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-xl transition disabled:opacity-60"
+                            style={{ backgroundColor: 'var(--brand-red)' }}>
+                            {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {saving ? 'Création…' : 'Créer le référentiel'}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* ─── Page principale ──────────────────────────────────────────────────────── */
 const ReferentielsPage = () => {
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'admin';
     const [referentiels, setReferentiels] = useState([]);
     const [stats, setStats] = useState({});
     const [selected, setSelected] = useState(null);
@@ -278,27 +760,37 @@ const ReferentielsPage = () => {
     const [loadingTree, setLoadingTree] = useState(false);
     const [loadingList, setLoadingList] = useState(true);
     const [search, setSearch] = useState('');
+    const [showWizard, setShowWizard] = useState(false);
 
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const res = await getAllReferentiels();
-                const list = res.data.referentiels || [];
-                setReferentiels(list);
-                // Charger les stats pour chaque référentiel
-                const statsMap = {};
-                await Promise.all(list.map(async (r) => {
-                    try {
-                        const s = await getReferentielStats(r.id);
-                        statsMap[r.id] = s.data.stats;
-                    } catch {}
-                }));
-                setStats(statsMap);
-            } catch {}
-            finally { setLoadingList(false); }
-        };
-        load();
+    const load = useCallback(async () => {
+        setLoadingList(true);
+        try {
+            const res = await getAllReferentiels();
+            const list = res.data.referentiels || [];
+            setReferentiels(list);
+            const statsMap = {};
+            await Promise.all(list.map(async (r) => {
+                try { const s = await getReferentielStats(r.id); statsMap[r.id] = s.data.stats; } catch {}
+            }));
+            setStats(statsMap);
+        } catch {}
+        finally { setLoadingList(false); }
     }, []);
+
+    useEffect(() => { load(); }, [load]);
+
+    const handleDelete = async (ref) => {
+        if (!window.confirm(`Supprimer le référentiel "${ref.nom}" ? Cette action est irréversible.`)) return;
+        try {
+            await deleteReferentiel(ref.id);
+            toast.success(`Référentiel "${ref.nom}" supprimé.`);
+            setSelected(null);
+            setTree(null);
+            load();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Erreur lors de la suppression.');
+        }
+    };
 
     const selectReferentiel = async (ref) => {
         if (selected?.id === ref.id) { setSelected(null); setTree(null); return; }
@@ -339,10 +831,22 @@ const ReferentielsPage = () => {
 
     return (
         <div>
+            {showWizard && <CreateWizard onClose={() => setShowWizard(false)} onCreated={load} />}
+
             {/* En-tête */}
-            <div className="mb-6">
-                <h1 className="text-xl font-bold text-gray-900">Référentiels</h1>
-                <p className="text-sm text-gray-500 mt-0.5">Vue arborescente des référentiels de contrôle</p>
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h1 className="text-xl font-bold text-gray-900">Référentiels</h1>
+                    <p className="text-sm text-gray-500 mt-0.5">Vue arborescente des référentiels de contrôle</p>
+                </div>
+                {isAdmin && (
+                    <button onClick={() => setShowWizard(true)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl transition hover:opacity-90"
+                        style={{ backgroundColor: 'var(--brand-red)' }}>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        Nouveau référentiel
+                    </button>
+                )}
             </div>
 
             {/* Cartes de sélection */}
@@ -353,29 +857,34 @@ const ReferentielsPage = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     {referentiels.map(ref => {
-                        const cfg = TYPE_CONFIG[ref.type] || TYPE_CONFIG.DNSSI;
+                        const cfg = TYPE_CONFIG[ref.type] || { label: ref.type, color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' };
                         const s = stats[ref.id];
                         const isActive = selected?.id === ref.id;
                         return (
-                            <button
+                            <div
                                 key={ref.id}
-                                onClick={() => selectReferentiel(ref)}
-                                className="text-left rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg"
+                                className="relative text-left rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg cursor-pointer"
                                 style={{
                                     borderColor: isActive ? cfg.color : '#E5E7EB',
                                     boxShadow: isActive ? `0 0 0 3px ${cfg.bg}, 0 0 0 4px ${cfg.border}` : undefined,
                                 }}
+                                onClick={() => selectReferentiel(ref)}
                             >
                                 <div className="p-5" style={{ backgroundColor: isActive ? cfg.bg : '#fff' }}>
                                     {/* Header */}
                                     <div className="flex items-start justify-between gap-3 mb-4">
                                         <div className="flex-1 min-w-0">
-                                            <span
-                                                className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-md mb-2 tracking-wide uppercase"
-                                                style={{ backgroundColor: cfg.bg, color: cfg.color }}
-                                            >
-                                                {cfg.label}
-                                            </span>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-md tracking-wide uppercase"
+                                                    style={{ backgroundColor: cfg.bg, color: cfg.color }}>
+                                                    {cfg.label}
+                                                </span>
+                                                {ref.is_custom && (
+                                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-200">
+                                                        Personnalisé
+                                                    </span>
+                                                )}
+                                            </div>
                                             <h3 className="text-sm font-semibold text-gray-900 leading-snug">{ref.nom}</h3>
                                             {ref.version && (
                                                 <p className="text-xs text-gray-400 mt-0.5">Version {ref.version}</p>
@@ -416,12 +925,20 @@ const ReferentielsPage = () => {
                                     </div>
 
                                     {/* Footer toggle */}
-                                    <div className="flex items-center gap-1.5 text-xs font-semibold pt-3 border-t" style={{ color: cfg.color, borderColor: isActive ? cfg.border : '#F3F4F6' }}>
-                                        {isActive ? <ChevronDown /> : <ChevronRight />}
-                                        <span>{isActive ? "Masquer l'arborescence" : "Voir l'arborescence"}</span>
+                                    <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: isActive ? cfg.border : '#F3F4F6' }}>
+                                        <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: cfg.color }}>
+                                            {isActive ? <ChevronDown /> : <ChevronRight />}
+                                            <span>{isActive ? "Masquer l'arborescence" : "Voir l'arborescence"}</span>
+                                        </div>
+                                        {isAdmin && ref.is_custom && (
+                                            <button onClick={e => { e.stopPropagation(); handleDelete(ref); }}
+                                                className="text-xs text-red-400 hover:text-red-600 transition px-2 py-0.5 rounded-lg hover:bg-red-50">
+                                                Supprimer
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                            </button>
+                            </div>
                         );
                     })}
                 </div>

@@ -16,12 +16,20 @@ const Referentiel = sequelize.define('Referentiel', {
         allowNull: true,
     },
     type: {
-        type: DataTypes.ENUM('ISO27001', 'DNSSI'),
+        type: DataTypes.STRING(50),
         allowNull: false,
     },
     description: {
         type: DataTypes.TEXT,
         allowNull: true,
+    },
+    evaluation_config: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+    },
+    is_custom: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
     },
 }, {
     tableName: 'referentiels',

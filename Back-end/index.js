@@ -57,6 +57,29 @@ const start = async () => {
         await sequelize.authenticate();
         console.log('PostgreSQL connecté avec succès (Sequelize)');
 
+        // Migration : ENUM → VARCHAR pour referentiels.type + nouvelles colonnes
+        try {
+            await sequelize.query(`
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name = 'referentiels' AND column_name = 'type' AND data_type = 'USER-DEFINED'
+                    ) THEN
+                        ALTER TABLE referentiels ALTER COLUMN type TYPE VARCHAR(50) USING type::text;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'referentiels' AND column_name = 'evaluation_config') THEN
+                        ALTER TABLE referentiels ADD COLUMN evaluation_config JSONB;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'referentiels' AND column_name = 'is_custom') THEN
+                        ALTER TABLE referentiels ADD COLUMN is_custom BOOLEAN DEFAULT false;
+                    END IF;
+                END $$;
+            `);
+        } catch (migErr) {
+            console.warn('[Migration] Pré-migration référentiels :', migErr.message);
+        }
+
         await sequelize.sync({ alter: true });
         console.log('Tables synchronisées');
 

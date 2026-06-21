@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middlewares/authMiddleware');
-const { getAllReferentiels, getReferentielById, getReferentielStats } = require('../controllers/referentielController');
+const { verifyToken, verifyRole } = require('../middlewares/authMiddleware');
+const { getAllReferentiels, getReferentielById, getReferentielStats, createReferentiel, deleteReferentiel } = require('../controllers/referentielController');
 
 /**
  * @swagger
@@ -86,5 +86,9 @@ router.get('/:id', verifyToken, getReferentielById);
  *         description: Référentiel non trouvé
  */
 router.get('/:id/stats', verifyToken, getReferentielStats);
+
+// Admin only — créer / supprimer un référentiel personnalisé
+router.post('/', verifyToken, verifyRole('admin'), createReferentiel);
+router.delete('/:id', verifyToken, verifyRole('admin'), deleteReferentiel);
 
 module.exports = router;
