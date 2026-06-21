@@ -567,30 +567,56 @@ function renderFaitsConstates(doc, audit, evaluations, mesureMap, referentiel, l
             y += reasonBoxH + 4;
         }
 
-        // Build rows: evaluated measures + SoA N/A measures not already in evs
-        const evsIds = new Set(evs.map(e => e.mesure_id));
-        const soaRows = allMesureIds
-            .filter(id => id in soaNAMap && !evsIds.has(id))
-            .map(id => {
-                const inf = mesureMap[id];
-                const justif = soaNAMap[id] || '(non renseignée)';
-                return [inf?.mesure?.code || `M${id}`, inf?.mesure?.description || '—', 'N/A', 'N/A', `Exclu du périmètre : ${justif}`, '—'];
-            });
-        const tableRows = [
-            ...evs.map(ev => {
-                const inf = mesureMap[ev.mesure_id];
+        // Index évaluations par mesure_id
+        const evMap = Object.fromEntries(evaluations.map(e => [e.mesure_id, e]));
+
+        // Ordre conformité du pire au meilleur (pour choisir la pire conformité de l'objectif)
+        const CONF_RANK = { nc_majeure: 0, non_conforme: 1, nc_mineure: 2, partiel: 3, conforme: 4, na: 5 };
+
+        // Une ligne par OBJECTIF (comme la plateforme : 4.1, 4.2, 4.3...)
+        const tableRows = [];
+        for (const objectif of domaine.objectifs || []) {
+            const objMesureIds = (objectif.mesures || []).map(m => m.id);
+            const objEvs = objMesureIds.map(id => evMap[id]).filter(Boolean);
+
+            // Objectif exclu via SoA (toutes mesures N/A SoA, aucune évaluée)
+            const allSoaNA = objMesureIds.length > 0 && objMesureIds.every(id => id in soaNAMap) && objEvs.length === 0;
+            if (allSoaNA) {
+                const justif = soaNAMap[objMesureIds[0]] || '—';
+                tableRows.push([objectif.code, stripObjPrefix(objectif.description || objectif.nom || ''), 'N/A', 'N/A', `Exclu du périmètre : ${justif}`, '—']);
+                continue;
+            }
+
+            if (objEvs.length === 0) continue;
+
+            // Agrégation : pire conformité, maturité moyenne, constats/recos joints
+            const allNA = objEvs.every(e => e.conformite === 'na' || (e.niveau_maturite != null && e.niveau_maturite < 0));
+            let worstConf = 'na';
+            let sumMat = 0, nMat = 0;
+            const constats = [], recos = [];
+
+            for (const ev of objEvs) {
                 const isNA = ev.conformite === 'na' || (ev.niveau_maturite != null && ev.niveau_maturite < 0);
-                const mat = ev.niveau_maturite != null && ev.niveau_maturite >= 0 ? `${ev.niveau_maturite}/5` : 'N/A';
+                if (!isNA) {
+                    const rank = CONF_RANK[ev.conformite] ?? 5;
+                    if (rank < (CONF_RANK[worstConf] ?? 5)) worstConf = ev.conformite;
+                    if (ev.niveau_maturite != null && ev.niveau_maturite >= 0) { sumMat += ev.niveau_maturite; nMat++; }
+                }
                 const ref = reformulations[ev.mesure_id];
-                const constat = isNA && ev.preuve ? `Raison N/A : ${ev.preuve}` : (ref?.constat || ev.commentaire || '—');
-                const reco = isNA ? '—' : (ref?.recommandation || ev.recommandation || '—');
-                const conformiteDisplay = isNA
-                    ? 'N/A'
-                    : (CONFORMITE[ev.conformite] || ev.conformite || '—');
-                return [inf?.mesure?.code || `M${ev.mesure_id}`, inf?.mesure?.description || '—', conformiteDisplay, mat, constat, reco];
-            }),
-            ...soaRows,
-        ];
+                const c = isNA && ev.preuve ? `N/A : ${ev.preuve}` : (ref?.constat || ev.commentaire || '');
+                const r = isNA ? '' : (ref?.recommandation || ev.recommandation || '');
+                if (c) constats.push(c);
+                if (r) recos.push(r);
+            }
+
+            const conformiteDisplay = allNA ? 'N/A' : (CONFORMITE[worstConf] || worstConf || '—');
+            const mat = nMat > 0 ? `${(sumMat / nMat).toFixed(1)}/5` : 'N/A';
+            const constat = constats.map(s => s.trim().replace(/\.+$/, '')).join('. ') + (constats.length ? '.' : '') || '—';
+            const reco = recos.map(s => s.trim().replace(/\.+$/, '')).join('. ') + (recos.length ? '.' : '') || '—';
+            const desc = stripObjPrefix(objectif.description || objectif.nom || '');
+
+            tableRows.push([objectif.code, desc, conformiteDisplay, mat, constat, reco]);
+        }
 
         autoTable(doc, {
             startY: y,
@@ -706,7 +732,7 @@ function renderTerminologie(doc, logo, num) {
     });
 }
 
-function renderSoA(doc, soaEntries, mesureMap, logo) {
+function renderSoA(doc, soaEntries, mesureMap, logo, referentiel) {
     drawHeader(doc, logo, 'Annexe A — SoA');
     let y = 32;
     doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
@@ -719,10 +745,24 @@ function renderSoA(doc, soaEntries, mesureMap, logo) {
     doc.text(`${soaEntries.length} mesure(s)  ·  Applicable : ${app}  ·  Non applicable : ${soaEntries.filter(s => s.applicable === false).length}`, M, y);
     y += 8;
 
+    // Trier les entrées SoA dans l'ordre du référentiel (comme la plateforme)
+    const soaByMesure = Object.fromEntries(soaEntries.map(s => [s.mesure_id, s]));
+    const soaOrdered = [];
+    const seenSoa = new Set();
+    for (const d of sortedDomaines(referentiel))
+        for (const o of d.objectifs || [])
+            for (const m of o.mesures || [])
+                if (soaByMesure[m.id] && !seenSoa.has(m.id)) {
+                    soaOrdered.push(soaByMesure[m.id]);
+                    seenSoa.add(m.id);
+                }
+    for (const s of soaEntries)
+        if (!seenSoa.has(s.mesure_id)) soaOrdered.push(s);
+
     autoTable(doc, {
         startY: y,
         head: [['Dom.', 'Code', 'Mesure', 'App.', 'Justification / Raisons', 'Mise en œuvre', 'Référence']],
-        body: soaEntries.map(s => {
+        body: soaOrdered.map(s => {
             const inf = mesureMap[s.mesure_id];
             const justif = s.applicable === false
                 ? (s.justification_exclusion || '—')
@@ -1097,7 +1137,7 @@ export async function exportAuditReportPDF({ audit, evaluations, planActions, so
         }
         if (o.soa && soaEntries?.length > 0) {
             const page = addPage();
-            renderSoA(doc, soaEntries, mesureMap, logo);
+            renderSoA(doc, soaEntries, mesureMap, logo, referentiel);
             tocSections.push({ title: "Annexe A — Déclaration d'Applicabilité", page });
         }
     }

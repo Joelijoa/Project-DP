@@ -3,10 +3,9 @@ const Groq = require('groq-sdk');
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const MODEL = 'llama-3.1-8b-instant';
-const MAX_TEXT = 200;       // réduit l'input tokens
-const SINGLE_CALL_MAX = 25; // sous ce seuil : 1 seul appel API
-const BATCH_SIZE = 20;      // au-delà : batchs de 20 en parallèle
-const MAX_CONCURRENCY = 4;
+const MAX_TEXT = 200;
+const BATCH_SIZE = 10;
+const MAX_CONCURRENCY = 3;
 
 function trunc(str) {
     if (!str) return '';
@@ -22,9 +21,14 @@ function buildPrompt(batch, referentielNom) {
         reco: trunc(i.recommandation),
     }));
 
-    return `Auditeur SSI, référentiel ${referentielNom}. Reformule chaque constat et recommandation en 1-2 phrases professionnelles concises.
-Réponds UNIQUEMENT JSON : [{"id":1,"constat":"...","recommandation":"..."},...]
+    return `Tu es auditeur senior en sécurité des systèmes d'information. Référentiel : ${referentielNom}.
 
+Pour chaque élément, reformule le constat et la recommandation en phrases complètes, formelles et professionnelles (style rapport d'audit officiel). Utilise des phrases déclaratives. N'utilise pas de tirets ou listes. 1 à 2 phrases maximum par champ.
+
+Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
+[{"id":1,"constat":"Phrase formelle complète.","recommandation":"Phrase formelle complète."},...]
+
+Données :
 ${JSON.stringify(data)}`;
 }
 
@@ -34,39 +38,44 @@ function parseResponse(raw) {
         console.error('[Groq] Réponse non parseable :', raw.slice(0, 200));
         return {};
     }
-    const arr = JSON.parse(match[0]);
-    const result = {};
-    for (const item of arr) {
-        if (item.id != null) {
-            result[item.id] = {
-                constat: item.constat || '',
-                recommandation: item.recommandation || '',
-            };
+    try {
+        const arr = JSON.parse(match[0]);
+        const result = {};
+        for (const item of arr) {
+            if (item.id != null) {
+                result[item.id] = {
+                    constat: item.constat || '',
+                    recommandation: item.recommandation || '',
+                };
+            }
         }
+        return result;
+    } catch {
+        console.error('[Groq] JSON.parse échoué sur :', match[0].slice(0, 200));
+        return {};
     }
-    return result;
 }
 
+// Un appel Groq — retourne {} en cas d'erreur (ne propage pas)
 async function callGroq(batch, referentielNom) {
-    const response = await groq.chat.completions.create({
-        model: MODEL,
-        messages: [{ role: 'user', content: buildPrompt(batch, referentielNom) }],
-        temperature: 0.2,
-        max_tokens: 1500,
-    });
-    return parseResponse(response.choices[0]?.message?.content || '');
+    try {
+        const response = await groq.chat.completions.create({
+            model: MODEL,
+            messages: [{ role: 'user', content: buildPrompt(batch, referentielNom) }],
+            temperature: 0.2,
+            max_tokens: 2500,
+        });
+        return parseResponse(response.choices[0]?.message?.content || '');
+    } catch (err) {
+        console.error('[Groq] Erreur batch :', err.message);
+        return {};
+    }
 }
 
 async function reformulerConstats(items, referentielNom = 'référentiel de sécurité') {
     const toProcess = items.filter(i => i.commentaire || i.recommandation);
     if (toProcess.length === 0) return {};
 
-    // Cas rapide : tout en un seul appel
-    if (toProcess.length <= SINGLE_CALL_MAX) {
-        return callGroq(toProcess, referentielNom);
-    }
-
-    // Cas grand volume : batchs parallèles
     const batches = [];
     for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
         batches.push(toProcess.slice(i, i + BATCH_SIZE));
