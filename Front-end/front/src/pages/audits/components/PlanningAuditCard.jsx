@@ -24,6 +24,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
     const [expandedRow, setExpandedRow] = useState(null);
     const [exporting, setExporting] = useState(false);
     const exportRef = useRef(null);
+    const section3Ref = useRef(null);
 
     const setP = (key, val) => setIdentification(prev => ({
         ...prev,
@@ -150,17 +151,80 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                 scale: 2, useCORS: true, allowTaint: true,
                 backgroundColor: '#ffffff', logging: false,
             });
-            const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pw = pdf.internal.pageSize.getWidth();
             const ph = pdf.internal.pageSize.getHeight();
-            const imgH = (canvas.height * pw) / canvas.width;
-            let y = 0;
-            while (y < imgH) {
-                if (y > 0) pdf.addPage();
-                pdf.addImage(imgData, 'JPEG', 0, -y, pw, imgH);
-                y += ph;
+            const scale = canvas.width / pw;
+            const pageHeightPx = Math.floor(ph * scale);
+            const topMarginMm = 8;
+            const topMarginPx = Math.floor(topMarginMm * scale);
+            const ctx = canvas.getContext('2d');
+
+            // Position de la section 3 dans le canvas (saut de page forcé)
+            let forceBreakAt = null;
+            if (section3Ref.current && exportRef.current) {
+                const elRect = exportRef.current.getBoundingClientRect();
+                const s3Rect = section3Ref.current.getBoundingClientRect();
+                forceBreakAt = Math.floor((s3Rect.top - elRect.top) * (canvas.width / elRect.width));
             }
+
+            const isLightRow = (y) => {
+                const row = ctx.getImageData(0, Math.floor(y), canvas.width, 1).data;
+                for (let i = 0; i < row.length; i += 4) {
+                    if ((row[i] + row[i + 1] + row[i + 2]) / 3 < 200) return false;
+                }
+                return true;
+            };
+
+            // Cherche d'abord en arrière (fin de ligne précédente), puis en avant (début de ligne suivante)
+            const findSafeCut = (idealY) => {
+                const searchPx = 120 * scale;
+                const back = Math.max(0, idealY - searchPx);
+                for (let y = Math.floor(idealY); y > back; y--) {
+                    if (isLightRow(y)) return y;
+                }
+                const fwd = Math.min(canvas.height, idealY + searchPx);
+                for (let y = Math.ceil(idealY); y < fwd; y++) {
+                    if (isLightRow(y)) return y;
+                }
+                return Math.floor(idealY);
+            };
+
+            let srcY = 0;
+            let pageNum = 0;
+            while (srcY < canvas.height) {
+                if (pageNum > 0) pdf.addPage();
+                // Pages de continuation : réserver la marge en haut
+                const topPad = pageNum > 0 ? topMarginPx : 0;
+                const availH = pageHeightPx - topPad;
+                const idealEnd = srcY + availH;
+
+                // Saut forcé avant la section 3
+                let cutY;
+                if (forceBreakAt !== null && forceBreakAt > srcY && forceBreakAt < idealEnd) {
+                    cutY = forceBreakAt;
+                    forceBreakAt = null;
+                } else {
+                    cutY = idealEnd >= canvas.height ? canvas.height : findSafeCut(idealEnd);
+                }
+                const sliceH = cutY - srcY;
+
+                const slice = document.createElement('canvas');
+                slice.width = canvas.width;
+                slice.height = sliceH + topPad;
+                const sCtx = slice.getContext('2d');
+                if (topPad > 0) {
+                    sCtx.fillStyle = '#ffffff';
+                    sCtx.fillRect(0, 0, canvas.width, topPad);
+                }
+                sCtx.drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, topPad, canvas.width, sliceH);
+                pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, (sliceH + topPad) / scale);
+
+                srcY = cutY;
+                pageNum++;
+            }
+
             const safeName = (audit.nom || 'audit').replace(/[^a-zA-Z0-9_-]/g, '_');
             pdf.save(`Plan_Audit_${safeName}.pdf`);
         } catch {
@@ -172,9 +236,9 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
 
     /* ── Données pour le rendu export ── */
     const exportRows = rawEtapes ? migrateEtapesLocal(rawEtapes) : ETAPES_DEF.map(e => ({ ...e }));
-    const fmtEx = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : '—';
-    const auditeurs = (audit.auditeurs || []).map(a => `${a.prenom} ${a.nom}`).join(', ') || '—';
-    const dateAudit = [audit.date_debut, audit.date_fin].filter(Boolean).map(d => fmtEx(d.split('T')[0])).join(' → ') || '—';
+    const fmtEx = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : '-';
+    const auditeurs = (audit.auditeurs || []).map(a => `${a.prenom} ${a.nom}`).join(', ') || '-';
+    const dateAudit = [audit.date_debut, audit.date_fin].filter(Boolean).map(d => fmtEx(d.split('T')[0])).join(' / ') || '-';
     const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
     const year = new Date().getFullYear();
 
@@ -376,7 +440,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
 
                         {/* Title block */}
                         <div style={{ padding: '26px 32px 18px' }}>
-                            <p style={{ margin: 0, fontSize: '9px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#CC0000' }}>DataProtect — Plan d'audit</p>
+                            <p style={{ margin: 0, fontSize: '9px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#CC0000' }}>DataProtect - Plan d'audit</p>
                             <h1 style={{ margin: '6px 0 5px', fontSize: '21px', fontWeight: 700, color: '#111111', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{audit.nom || 'Audit ISO 27001'}</h1>
                             <p style={{ margin: 0, fontSize: '12px', color: '#4b5563', fontWeight: 400 }}>
                                 {audit.client || ''}{audit.referentiel?.nom ? ` · ${audit.referentiel.nom}` : ''}
@@ -390,8 +454,8 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
                                 {[
-                                    { label: 'Organisation auditée', value: audit.client || '—' },
-                                    { label: 'Référentiel', value: audit.referentiel?.nom || '—' },
+                                    { label: 'Organisation auditée', value: audit.client || '-' },
+                                    { label: 'Référentiel', value: audit.referentiel?.nom || '-' },
                                     { label: "Période d'audit", value: dateAudit },
                                     { label: "Équipe d'audit", value: auditeurs },
                                 ].map(({ label, value }, idx) => (
@@ -439,18 +503,18 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                     <tbody>
                                         {exportRows.map((e, i) => {
                                             const dc = dureeCalc(e.date_debut, e.date_fin);
-                                            const dureeAff = dc || e.duree || '—';
+                                            const dureeAff = dc || e.duree || '-';
                                             const debut = fmtEx(e.date_debut);
                                             const fin = fmtEx(e.date_fin);
-                                            const periode = debut !== '—' && fin !== '—' ? `${debut} → ${fin}` : debut !== '—' ? debut : fin !== '—' ? fin : '—';
+                                            const periode = debut !== '-' && fin !== '-' ? `${debut} au ${fin}` : debut !== '-' ? debut : fin !== '-' ? fin : '-';
                                             return (
                                                 <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                                                     <td style={{ padding: '7px 9px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 700, color: '#374151', borderRight: '1px solid #e5e7eb', width: '22px' }}>{i + 1}</td>
-                                                    <td style={{ padding: '7px 9px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 600, color: '#111111', borderRight: '1px solid #e5e7eb', width: '110px' }}>{e.nom || '—'}</td>
-                                                    <td style={{ padding: '7px 9px', textAlign: 'center', verticalAlign: 'middle', color: '#374151', borderRight: '1px solid #e5e7eb', lineHeight: '1.5' }}>{e.activites || '—'}</td>
+                                                    <td style={{ padding: '7px 9px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 600, color: '#111111', borderRight: '1px solid #e5e7eb', width: '110px' }}>{e.nom || '-'}</td>
+                                                    <td style={{ padding: '7px 9px', textAlign: 'center', verticalAlign: 'middle', color: '#374151', borderRight: '1px solid #e5e7eb', lineHeight: '1.5' }}>{e.activites || '-'}</td>
                                                     <td style={{ padding: '7px 9px', textAlign: 'center', verticalAlign: 'middle', color: '#374151', borderRight: '1px solid #e5e7eb', width: '115px' }}>{periode}</td>
                                                     <td style={{ padding: '7px 9px', textAlign: 'center', verticalAlign: 'middle', color: '#374151', borderRight: '1px solid #e5e7eb', width: '55px', fontWeight: 500 }}>{dureeAff}</td>
-                                                    <td style={{ padding: '7px 9px', textAlign: 'center', verticalAlign: 'middle', color: '#374151', lineHeight: '1.5' }}>{e.livrables || '—'}</td>
+                                                    <td style={{ padding: '7px 9px', textAlign: 'center', verticalAlign: 'middle', color: '#374151', lineHeight: '1.5' }}>{e.livrables || '-'}</td>
                                                 </tr>
                                             );
                                         })}
@@ -461,7 +525,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
 
                         {/* Section 3 — Programme des entretiens */}
                         {sessions.length > 0 && (
-                            <div style={{ padding: '0 32px 22px' }}>
+                            <div ref={section3Ref} style={{ padding: '0 32px 22px' }}>
                                 <h2 style={{ margin: '0 0 12px', fontSize: '12px', fontWeight: 700, color: '#111111', letterSpacing: '-0.005em' }}>3. Programme des entretiens</h2>
                                 {sessions.map((s, si) => {
                                     const { jour, date: dateStr } = fmtDateSession(s.date);
@@ -469,7 +533,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                         <div key={si} style={{ marginBottom: '14px' }}>
                                             <div style={{ backgroundColor: '#111111', color: '#ffffff', padding: '7px 12px', borderRadius: '4px 4px 0 0', display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <span style={{ fontSize: '10px', fontWeight: 700 }}>{jour || '—'}</span>
+                                                    <span style={{ fontSize: '10px', fontWeight: 700 }}>{jour || '-'}</span>
                                                     {dateStr && <span style={{ fontSize: '9px', color: '#9ca3af' }}>{dateStr}</span>}
                                                 </div>
                                                 <div style={{ fontSize: '8px', backgroundColor: 'rgba(255,255,255,0.12)', padding: '3px 8px', borderRadius: '10px', color: '#d1d5db' }}>
@@ -486,17 +550,17 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                                                 </thead>
                                                 <tbody>
                                                     {(s.entretiens || []).map((e, ei) => {
-                                                        const plageAff = e.plage_debut && e.plage_fin ? `${e.plage_debut} – ${e.plage_fin}` : e.plage || '—';
+                                                        const plageAff = e.plage_debut && e.plage_fin ? `${e.plage_debut} - ${e.plage_fin}` : e.plage || '-';
                                                         const ints = getInterlocuteurs(e).filter(Boolean);
                                                         return (
                                                             <tr key={ei} style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: ei % 2 === 0 ? '#ffffff' : '#fafafa' }}>
                                                                 <td style={{ padding: '7px 10px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 600, color: '#111111', borderRight: '1px solid #e5e7eb', width: '150px' }}>
                                                                     {ints.length > 0
                                                                         ? ints.map((name, ni) => <div key={ni} style={{ marginBottom: ni < ints.length - 1 ? '3px' : 0 }}>{name}</div>)
-                                                                        : '—'}
+                                                                        : '-'}
                                                                 </td>
                                                                 <td style={{ padding: '7px 10px', textAlign: 'center', verticalAlign: 'middle', color: '#374151', fontWeight: 500, borderRight: '1px solid #e5e7eb', width: '95px' }}>{plageAff}</td>
-                                                                <td style={{ padding: '7px 10px', textAlign: 'center', verticalAlign: 'middle', color: '#374151', lineHeight: '1.6' }}>{e.exigences || '—'}</td>
+                                                                <td style={{ padding: '7px 10px', textAlign: 'center', verticalAlign: 'middle', color: '#374151', lineHeight: '1.6' }}>{e.exigences || '-'}</td>
                                                             </tr>
                                                         );
                                                     })}
@@ -511,7 +575,7 @@ const PlanningAuditCard = ({ audit, identification, setIdentification, onSave, s
                         {/* Footer */}
                         <div style={{ margin: '8px 32px 0', borderTop: '1px solid #e5e7eb', padding: '12px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '8px', color: '#9ca3af' }}>© {year} DataProtect · Tous droits réservés</span>
-                            <span style={{ fontSize: '8px', color: '#9ca3af', fontWeight: 500 }}>Document confidentiel — Usage restreint aux parties concernées</span>
+                            <span style={{ fontSize: '8px', color: '#9ca3af', fontWeight: 500 }}>Document confidentiel - Usage restreint aux parties concernées</span>
                             <span style={{ fontSize: '8px', color: '#9ca3af' }}>REF-PA-{year}-001 / V1.0</span>
                         </div>
                     </div>
