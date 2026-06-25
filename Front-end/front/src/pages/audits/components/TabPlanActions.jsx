@@ -42,7 +42,6 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
     const handleSubmit = async (e) => {
         e.preventDefault();
         const newErrors = {};
-        if (!editingId && !form.mesure_id) newErrors.mesure_id = true;
         if (!form.action_corrective?.trim()) newErrors.action_corrective = true;
         if (!form.responsable?.trim()) newErrors.responsable = true;
         if (!form.delai) newErrors.delai = true;
