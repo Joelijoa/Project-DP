@@ -16,6 +16,7 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
     const [showGenConfirm, setShowGenConfirm] = useState(false);
     const [viewingPlan, setViewingPlan] = useState(null);
     const [filterPriorite, setFilterPriorite] = useState('all');
+    const [sortBy, setSortBy] = useState('priorite');
     const setF = (k, v) => {
         setForm(p => ({ ...p, [k]: v }));
         if (errors[k]) setErrors(p => ({ ...p, [k]: false }));
@@ -65,10 +66,14 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
 
     const allMesures = referentiel?.domaines?.flatMap(d => d.objectifs?.flatMap(o => o.mesures ?? []) ?? []) ?? [];
 
-    // Map mesure_id → code du domaine parent (pour distinguer §4-10 vs Annexe A)
+    // Map mesure_id → domaine complet
     const mesureDomainCode = {};
+    const mesureDomainInfo = {};
     referentiel?.domaines?.forEach(d => {
-        d.objectifs?.forEach(o => o.mesures?.forEach(m => { mesureDomainCode[m.id] = d.code; }));
+        d.objectifs?.forEach(o => o.mesures?.forEach(m => {
+            mesureDomainCode[m.id] = d.code;
+            mesureDomainInfo[m.id] = { id: d.id, code: d.code, nom: (d.nom || d.description || d.code || '').trim() };
+        }));
     });
 
     const isNCMesure = (m) => {
@@ -131,9 +136,107 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
     };
 
     const PRIORITE_ORDER = { haute: 0, moyenne: 1, basse: 2 };
+
+    // Build mesure order from referentiel (preserves referentiel order)
+    const mesureOrder = {};
+    allMesures.forEach((m, i) => { mesureOrder[m.id] = i; });
+
     const filteredPlans = planActions
         .filter(p => filterPriorite === 'all' || p.priorite === filterPriorite)
-        .sort((a, b) => (PRIORITE_ORDER[a.priorite] ?? 1) - (PRIORITE_ORDER[b.priorite] ?? 1));
+        .sort((a, b) => {
+            if (sortBy === 'mesure') {
+                const oa = mesureOrder[a.mesure_id] ?? 9999;
+                const ob = mesureOrder[b.mesure_id] ?? 9999;
+                return oa !== ob ? oa - ob : (PRIORITE_ORDER[a.priorite] ?? 1) - (PRIORITE_ORDER[b.priorite] ?? 1);
+            }
+            return (PRIORITE_ORDER[a.priorite] ?? 1) - (PRIORITE_ORDER[b.priorite] ?? 1);
+        });
+
+    const renderPlanRow = (plan) => {
+        const pr = PRIORITE_CONFIG[plan.priorite] ?? PRIORITE_CONFIG.moyenne;
+        const st = STATUT_PLAN_CONFIG[plan.statut] ?? STATUT_PLAN_CONFIG.a_faire;
+        return (
+            <tr key={plan.id} className="hover:bg-gray-50/40">
+                <td className="px-4 py-3">
+                    <span className="font-mono font-semibold text-gray-600">{plan.mesure?.code || `#${plan.mesure_id}`}</span>
+                </td>
+                <td className="px-4 py-3 max-w-xs">
+                    <p className="text-gray-700 line-clamp-2">{plan.action_corrective || plan.description_nc || '—'}</p>
+                </td>
+                <td className="px-4 py-3 text-gray-600">{plan.responsable || '—'}</td>
+                <td className="px-4 py-3 text-gray-600">
+                    {plan.delai ? new Date(plan.delai).toLocaleDateString('fr-FR') : '—'}
+                </td>
+                <td className="px-4 py-3 text-center">
+                    <span className={`inline-flex px-2 py-0.5 rounded font-medium ${pr.bg} ${pr.text}`}>{pr.label}</span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                    <span className={`inline-flex px-2 py-0.5 rounded font-medium ${st.bg} ${st.text}`}>{st.label}</span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                    {(() => {
+                        const vc = PLAN_VALIDATION_CONFIG[plan.statut_validation];
+                        const isJuniorUser = user?.role === 'auditeur_junior';
+                        const isSeniorAdminUser = user?.role === 'admin' || user?.role === 'auditeur_senior';
+                        return (
+                            <div className="flex items-center justify-center gap-1 flex-wrap">
+                                {vc
+                                    ? <span className={`inline-flex px-2 py-0.5 rounded font-medium ${vc.bg} ${vc.text}`}>{vc.label}</span>
+                                    : <span className="text-gray-400 text-xs">—</span>
+                                }
+                                {!readOnly && isJuniorUser && plan.created_by === user?.id && plan.statut_validation !== 'en_attente' && plan.statut_validation !== 'valide' && (
+                                    <button onClick={() => onSoumettre(plan.id)}
+                                        className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium">
+                                        Soumettre
+                                    </button>
+                                )}
+                                {!readOnly && isSeniorAdminUser && plan.statut_validation === 'en_attente' && (
+                                    <>
+                                        <button onClick={() => onValider(plan.id)}
+                                            className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 hover:bg-green-100 font-medium">✓</button>
+                                        <button onClick={() => onRejeter(plan.id)}
+                                            className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-700 hover:bg-red-100 font-medium">✕</button>
+                                    </>
+                                )}
+                                {plan.commentaire_rejet && (
+                                    <span title={plan.commentaire_rejet} className="cursor-help text-red-400">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })()}
+                </td>
+                <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                        <button onClick={() => setViewingPlan(plan)}
+                            className="p-1 text-gray-400 hover:text-indigo-600 rounded" title="Visualiser">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
+                        {!readOnly && (
+                            <>
+                                <button onClick={() => handleEdit(plan)}
+                                    className="p-1 text-gray-400 hover:text-blue-600 rounded" title="Modifier">
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                                    </svg>
+                                </button>
+                                <button onClick={() => { if (window.confirm('Supprimer cette action ?')) onDelete(plan.id); }}
+                                    className="p-1 text-gray-400 hover:text-red-600 rounded" title="Supprimer">
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                    </svg>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </td>
+            </tr>
+        );
+    };
 
     return (
         <div className="space-y-4">
@@ -170,6 +273,22 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                             <button key={key} onClick={() => setFilterPriorite(key)}
                                 className={`px-2.5 py-0.5 rounded text-xs font-medium transition ${filterPriorite === key
                                     ? `${activeBg ?? 'bg-gray-700'} text-white`
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}>
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    {/* Tri */}
+                    <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
+                        <span className="text-xs text-gray-400">Trier :</span>
+                        {[
+                            { key: 'priorite', label: 'Priorité' },
+                            { key: 'mesure', label: 'Mesure' },
+                        ].map(({ key, label }) => (
+                            <button key={key} onClick={() => setSortBy(key)}
+                                className={`px-2.5 py-0.5 rounded text-xs font-medium transition ${sortBy === key
+                                    ? 'bg-gray-700 text-white'
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}>
                                 {label}
@@ -409,91 +528,32 @@ const TabPlanActions = ({ referentiel, planActions, localEvals, soaMap, isISO, u
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {filteredPlans.map(plan => {
-                                const pr = PRIORITE_CONFIG[plan.priorite] ?? PRIORITE_CONFIG.moyenne;
-                                const st = STATUT_PLAN_CONFIG[plan.statut] ?? STATUT_PLAN_CONFIG.a_faire;
-                                return (
-                                    <tr key={plan.id} className="hover:bg-gray-50/40">
-                                        <td className="px-4 py-3">
-                                            <span className="font-mono font-semibold text-gray-600">{plan.mesure?.code || `#${plan.mesure_id}`}</span>
-                                        </td>
-                                        <td className="px-4 py-3 max-w-xs">
-                                            <p className="text-gray-700 line-clamp-2">{plan.action_corrective || plan.description_nc || '—'}</p>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-600">{plan.responsable || '—'}</td>
-                                        <td className="px-4 py-3 text-gray-600">
-                                            {plan.delai ? new Date(plan.delai).toLocaleDateString('fr-FR') : '—'}
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`inline-flex px-2 py-0.5 rounded font-medium ${pr.bg} ${pr.text}`}>{pr.label}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`inline-flex px-2 py-0.5 rounded font-medium ${st.bg} ${st.text}`}>{st.label}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            {(() => {
-                                                const vc = PLAN_VALIDATION_CONFIG[plan.statut_validation];
-                                                const isJuniorUser = user?.role === 'auditeur_junior';
-                                                const isSeniorAdminUser = user?.role === 'admin' || user?.role === 'auditeur_senior';
-                                                return (
-                                                    <div className="flex items-center justify-center gap-1 flex-wrap">
-                                                        {vc
-                                                            ? <span className={`inline-flex px-2 py-0.5 rounded font-medium ${vc.bg} ${vc.text}`}>{vc.label}</span>
-                                                            : <span className="text-gray-400 text-xs">—</span>
-                                                        }
-                                                        {!readOnly && isJuniorUser && plan.created_by === user?.id && plan.statut_validation !== 'en_attente' && plan.statut_validation !== 'valide' && (
-                                                            <button onClick={() => onSoumettre(plan.id)}
-                                                                className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium">
-                                                                Soumettre
-                                                            </button>
-                                                        )}
-                                                        {!readOnly && isSeniorAdminUser && plan.statut_validation === 'en_attente' && (
-                                                            <>
-                                                                <button onClick={() => onValider(plan.id)}
-                                                                    className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 hover:bg-green-100 font-medium">✓</button>
-                                                                <button onClick={() => onRejeter(plan.id)}
-                                                                    className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-700 hover:bg-red-100 font-medium">✕</button>
-                                                            </>
-                                                        )}
-                                                        {plan.commentaire_rejet && (
-                                                            <span title={plan.commentaire_rejet} className="cursor-help text-red-400">
-                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })()}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-1">
-                                                <button onClick={() => setViewingPlan(plan)}
-                                                    className="p-1 text-gray-400 hover:text-indigo-600 rounded" title="Visualiser">
-                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
-                                                </button>
-                                                {!readOnly && (
-                                                    <>
-                                                        <button onClick={() => handleEdit(plan)}
-                                                            className="p-1 text-gray-400 hover:text-blue-600 rounded" title="Modifier">
-                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                                                            </svg>
-                                                        </button>
-                                                        <button onClick={() => { if (window.confirm('Supprimer cette action ?')) onDelete(plan.id); }}
-                                                            className="p-1 text-gray-400 hover:text-red-600 rounded" title="Supprimer">
-                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                            </svg>
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                            {(() => {
+                                if (sortBy !== 'mesure') {
+                                    return filteredPlans.map(plan => renderPlanRow(plan));
+                                }
+                                // Grouper par domaine
+                                const rows = [];
+                                let lastDomainId = null;
+                                filteredPlans.forEach(plan => {
+                                    const info = mesureDomainInfo[plan.mesure_id];
+                                    const domainId = info?.id ?? null;
+                                    if (domainId !== lastDomainId) {
+                                        lastDomainId = domainId;
+                                        rows.push(
+                                            <tr key={`domain-${domainId}`} className="bg-gray-100 border-t-2 border-gray-200">
+                                                <td colSpan={8} className="px-4 py-2">
+                                                    <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
+                                                        {info?.nom || `Domaine ${info?.code || ''}`}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+                                    rows.push(renderPlanRow(plan));
+                                });
+                                return rows;
+                            })()}
                         </tbody>
                     </table>
                 </div>
